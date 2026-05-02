@@ -1,0 +1,18 @@
+## Контекст побудови застосунку
+
+Перед реалізацією або архітектурним рішенням читати файли в такому порядку:
+
+1. `spec/project-overview.md` — продукт, цілі, функції і scope.
+2. `spec/architecture.md` — системна структура, межі, маршрути й інтеграції.
+3. `spec/database-schema.md` — таблиці, обмеження, індекси і JSON-схеми.
+4. `spec/ui-context.md` — UI-напрям, макети, компоненти і стани.
+5. `spec/design-prototype.md` — як використовувати Claude design prototype.
+6. `spec/code-standards.md` — правила реалізації і conventions.
+7. `spec/ai-workflow-rules.md` — workflow, scoping rules і delivery approach.
+8. `spec/progress-tracker.md` — поточна фаза, прогрес, відкриті питання і наступні кроки.
+
+Оновлювати `spec/progress-tracker.md` після кожної meaningful implementation change.
+
+Якщо реалізація змінює архітектуру, scope або стандарти, спочатку оновити відповідний файл у `spec/`.
+
+Папка `design-prototype/` містить UI-референс. Не копіювати її напряму в production-код.

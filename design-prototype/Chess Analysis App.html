@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Chess Analysis App</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body, #root { height: 100%; width: 100%; overflow: hidden; }
+  body {
+    background: #0e1a0e;
+    font-family: 'DM Sans', sans-serif;
+    color: #d4e8d0;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #2d5a27; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #3d7a35; }
+
+  /* ── Mobile bottom nav ── */
+  .mobile-nav { display: none; }
+  .desktop-sidebar { display: flex; }
+
+  @media (max-width: 768px) {
+    .mobile-nav { display: flex !important; }
+    .desktop-sidebar { display: none !important; }
+    .analysis-layout { flex-direction: column !important; overflow-y: auto !important; }
+    .analysis-right { border-left: none !important; border-top: 1px solid #2a3d2a !important; min-height: 340px; }
+    .analysis-board-area { padding: 12px !important; gap: 10px !important; }
+    .dashboard-stats { grid-template-columns: repeat(2, 1fr) !important; }
+    .dashboard-import { flex-direction: column !important; }
+    .dashboard-import-mini-board { display: none !important; }
+    .player-badge-name { font-size: 11px !important; }
+  }
+
+  @media (max-width: 480px) {
+    .dashboard-stats { grid-template-columns: repeat(2, 1fr) !important; }
+  }
+
+  @media (max-width: 768px) {
+    :root { --mobile-nav-h: 60px; }
+    #root > div > div:nth-child(2) { padding-bottom: 60px; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="chess-pieces.jsx"></script>
+<script type="text/babel" src="chess-board.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel">
+
+// ─── THEME ───────────────────────────────────────────────────────────────────
+const T = {
+  bg0:      '#0e1a0e',
+  bg1:      '#131f13',
+  bg2:      '#182418',
+  bg3:      '#1f2e1f',
+  bg4:      '#253025',
+  border:   '#2a3d2a',
+  green:    '#2d5a27',
+  greenMid: '#3d7a35',
+  greenLt:  '#5fa854',
+  greenPl:  '#a8d5a2',
+  cream:    '#d4e8d0',
+  muted:    '#7a9e76',
+  faded:    '#4a6647',
+  red:      '#c0392b',
+  amber:    '#d4a017',
+  gold:     '#c9945a',
+};
+
+// ─── SAMPLE DATA ─────────────────────────────────────────────────────────────
+const SAMPLE_GAME = {
+  white: 'Magnus Carlsen',
+  black: 'Fabiano Caruana',
+  event: 'World Championship 2018',
+  result: '½-½',
+  opening: "Queen's Gambit Declined",
+  date: '2018.11.09',
+  moves: [
+    { san: 'e4',   fen: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1',        eval: 0.3,  class: 'book',      comment: null },
+    { san: 'e5',   fen: 'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2',       eval: 0.2,  class: 'book',      comment: null },
+    { san: 'Nf3',  fen: 'rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2',      eval: 0.4,  class: 'book',      comment: 'Класичний розвиток коня — тиск на е5.' },
+    { san: 'Nc6',  fen: 'r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3',    eval: 0.3,  class: 'book',      comment: null },
+    { san: 'Bb5',  fen: 'r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3',   eval: 0.5,  class: 'best',      comment: 'Іспанська партія. Слон атакує коня-захисника.' },
+    { san: 'a6',   fen: 'r1bqkbnr/1ppp1ppp/p1n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 4',  eval: 0.3,  class: 'book',      comment: null },
+    { san: 'Ba4',  fen: 'r1bqkbnr/1ppp1ppp/p1n5/4p3/B3P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 1 4',   eval: 0.4,  class: 'good',      comment: null },
+    { san: 'Nf6',  fen: 'r1bqkb1r/1ppp1ppp/p1n2n2/4p3/B3P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 2 5', eval: 0.3,  class: 'best',      comment: 'Активний розвиток.' },
+    { san: 'O-O',  fen: 'r1bqkb1r/1ppp1ppp/p1n2n2/4p3/B3P3/5N2/PPPP1PPP/RNBQ1RK1 w KQkq - 2 5',eval: 0.5,  class: 'best',      comment: 'Рокіровка — король у безпеці.' },
+    { san: 'b5',   fen: 'r1bqkb1r/2pp1ppp/p1n2n2/1p2p3/B3P3/5N2/PPPP1PPP/RNBQ1RK1 b kq - 1 6', eval: 0.2,  class: 'good',      comment: null },
+    { san: 'Bb3',  fen: 'r1bqkb1r/2pp1ppp/p1n2n2/1p2p3/4P3/1B3N2/PPPP1PPP/RNBQ1RK1 b kq - 2 6',eval: 0.4,  class: 'good',      comment: null },
+    { san: 'd6',   fen: 'r1bqkb1r/2p2ppp/p1np1n2/1p2p3/4P3/1B3N2/PPPP1PPP/RNBQ1RK1 w kq - 0 7',eval: 0.3,  class: 'book',      comment: null },
+    { san: 'c3',   fen: 'r1bqkb1r/2p2ppp/p1np1n2/1p2p3/4P3/1BP2N2/PP1P1PPP/RNBQ1RK1 b kq - 0 7',eval: 0.4, class: 'best',      comment: 'Підготовка d4 — боротьба за центр.' },
+    { san: 'O-O',  fen: 'r1bq1rk1/2p2ppp/p1np1n2/1p2p3/4P3/1BP2N2/PP1P1PPP/RNBQ1RK1 w - - 1 8', eval: 0.3, class: 'good',     comment: null },
+    { san: 'd4',   fen: 'r1bq1rk1/2p2ppp/p1np1n2/1p2p3/3PP3/1BP2N2/PP3PPP/RNBQ1RK1 b - d3 0 8',  eval: 0.5, class: 'brilliant', comment: 'Прорив у центрі! Ключовий момент іспанської.' },
+    { san: 'Bg4',  fen: 'r2q1rk1/2p2ppp/p1np1n2/1p2p3/3PP1b1/1BP2N2/PP3PPP/RNBQ1RK1 w - - 1 9',  eval: 0.1, class: 'mistake',  comment: 'Неточність! Чорні мали грати Nxd4 з рівністю.' },
+    { san: 'dxe5', fen: 'r2q1rk1/2p2ppp/p1np1n2/1p2P3/4P1b1/1BP2N2/PP3PPP/RNBQ1RK1 b - - 0 9',   eval: 0.7, class: 'best',     comment: null },
+    { san: 'Nxe4', fen: 'r2q1rk1/2p2ppp/p1np4/1p2P3/4n1b1/1BP2N2/PP3PPP/RNBQ1RK1 w - - 0 10',    eval: 0.4, class: 'miss',     comment: 'Краще було Nxe5 з перевагою.' },
+  ],
+  accuracy: { white: 91.2, black: 87.5 },
+  mistakes: { white: 0, black: 1 },
+  blunders: { white: 0, black: 0 },
+};
+
+const LIBRARY_GAMES = [
+  { id: 1, white: 'Kasparov', black: 'Deep Blue', event: 'Матч, Гра 6', date: '1997', result: '0-1', opening: "Caro-Kann", moves: 19, accuracy: 94 },
+  { id: 2, white: 'Fischer', black: 'Spassky', event: 'ЧС, Партія 6', date: '1972', result: '1-0', opening: "Queen's Gambit", moves: 41, accuracy: 97 },
+  { id: 3, white: 'Tal', black: 'Botvinnik', event: 'ЧС, Партія 5', date: '1960', result: '1-0', opening: "King's Indian", moves: 32, accuracy: 88 },
+  { id: 4, white: 'Carlsen', black: 'Nepomniachtchi', event: 'ЧС 2021, Г.6', date: '2021', result: '1-0', opening: "Ruy Lopez", moves: 136, accuracy: 89 },
+  { id: 5, white: 'Anand', black: 'Gelfand', event: 'ЧС 2012, Г.8', date: '2012', result: '1-0', opening: "Nimzo-Indian", moves: 56, accuracy: 92 },
+  { id: 6, white: 'Karpov', black: 'Kasparov', event: 'ЧС 1985, Г.24', date: '1985', result: '0-1', opening: "Sicilian", moves: 42, accuracy: 91 },
+];
+
+// ─── ICON COMPONENTS ─────────────────────────────────────────────────────────
+const Icon = ({ d, size = 16, stroke = T.muted, fill = 'none', strokeWidth = 1.5 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+    <path d={d}/>
+  </svg>
+);
+
+const Icons = {
+  home:     "M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10",
+  analysis: "M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18",
+  library:  "M4 19.5A2.5 2.5 0 0 1 6.5 17H20 M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z",
+  profile:  "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
+  prev:     "M15 18l-6-6 6-6",
+  next:     "M9 18l6-6-6-6",
+  first:    "M19 20L9 12l10-8v16z M5 19V5",
+  last:     "M5 4l10 8-10 8V4z M19 5v14",
+  flip:     "M7 16V4m0 0L3 8m4-4l4 4 M17 8v12m0 0l4-4m-4 4l-4-4",
+  search:   "M21 21l-6-6m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0z",
+  import:   "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M7 10l5 5 5-5 M12 15V3",
+  upload:   "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M17 8l-5-5-5 5 M12 3v12",
+  link:     "M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71 M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71",
+  chart:    "M18 20V10 M12 20V4 M6 20v-6",
+  star:     "M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z",
+  clock:    "M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M12 6v6l4 2",
+  trophy:   "M6 9H4.5a2.5 2.5 0 0 1 0-5H6 M18 9h1.5a2.5 2.5 0 0 0 0-5H18 M4 22h16 M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22 M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22 M18 2H6v7a6 6 0 0 0 12 0V2z",
+};
+
+// ─── EVAL BAR ─────────────────────────────────────────────────────────────────
+const EvalBar = ({ eval: ev = 0, height = 480 }) => {
+  const clamp = Math.max(-5, Math.min(5, ev));
+  const whitePct = 50 + (clamp / 5) * 45;
+  const label = ev > 0 ? `+${ev.toFixed(1)}` : ev.toFixed(1);
+
+  return (
+    <div style={{ width: 24, height, display:'flex', flexDirection:'column', borderRadius: 4, overflow:'hidden', border:`1px solid ${T.border}`, position:'relative', flexShrink:0 }}>
+      {/* Black portion */}
+      <div style={{ flex: 1, background: '#1a1a1a', transition:'flex 0.5s ease' }} />
+      {/* White portion */}
+      <div style={{ height:`${whitePct}%`, background:'#e8dcc8', transition:'height 0.5s ease', flexShrink:0 }} />
+      {/* Label */}
+      <div style={{
+        position:'absolute', left:'50%', top: ev >= 0 ? undefined : '50%',
+        bottom: ev >= 0 ? '50%' : undefined,
+        transform:'translateX(-50%)',
+        fontSize: 9, fontFamily:"'DM Mono',monospace", fontWeight:500,
+        color: ev > 0 ? '#1a1a1a' : '#e8dcc8',
+        padding:'2px 1px', letterSpacing:'-0.5px',
+        writingMode:'vertical-rl', textOrientation:'mixed',
+      }}>{label}</div>
+    </div>
+  );
+};
+
+// ─── MOVE CLASSIFICATION BADGE ───────────────────────────────────────────────
+const MoveClass = {
+  brilliant: { symbol: '!!', color: '#00bcd4', bg: 'rgba(0,188,212,0.15)', label: 'Бріліант' },
+  best:      { symbol: '!',  color: '#4caf50', bg: 'rgba(76,175,80,0.15)',  label: 'Найкращий' },
+  good:      { symbol: '⊕',  color: '#8bc34a', bg: 'rgba(139,195,74,0.12)', label: 'Добре' },
+  book:      { symbol: '⊙',  color: '#7a9e76', bg: 'rgba(120,160,120,0.1)', label: 'Теорія' },
+  miss:      { symbol: '?!', color: '#ff9800', bg: 'rgba(255,152,0,0.15)',  label: 'Хиба' },
+  mistake:   { symbol: '?',  color: '#d4a017', bg: 'rgba(212,160,23,0.15)', label: 'Зівок' },
+  blunder:   { symbol: '??', color: '#c0392b', bg: 'rgba(192,57,43,0.15)', label: 'Груба' },
+};
+
+const ClassBadge = ({ cls }) => {
+  if (!cls || !MoveClass[cls]) return null;
+  const { symbol, color, bg, label } = MoveClass[cls];
+  return (
+    <span title={label} style={{
+      display:'inline-flex', alignItems:'center', justifyContent:'center',
+      width:18, height:18, borderRadius:'50%',
+      background: bg, color, fontSize: cls === 'brilliant' ? 9 : 10, fontWeight:700,
+      flexShrink:0, border:`1px solid ${color}55`,
+      cursor:'default',
+    }}>{symbol}</span>
+  );
+};
+
+// ─── EVAL CHART ──────────────────────────────────────────────────────────────
+const EvalChart = ({ moves, currentIdx, onSeek }) => {
+  const width = 320, height = 80;
+  const evals = moves.map(m => Math.max(-5, Math.min(5, m.eval || 0)));
+  const n = evals.length;
+  if (n < 2) return null;
+
+  const pts = evals.map((e, i) => {
+    const x = (i / (n - 1)) * width;
+    const y = height / 2 - (e / 5) * (height / 2 - 6);
+    return `${x},${y}`;
+  });
+
+  const fillAbove = `M${pts[0]} ` + pts.slice(1).map(p=>`L${p}`).join(' ') + ` L${width},${height/2} L0,${height/2} Z`;
+  const fillBelow = `M${pts[0]} ` + pts.slice(1).map(p=>`L${p}`).join(' ') + ` L${width},${height/2} L0,${height/2} Z`;
+
+  const curX = currentIdx >= 0 ? (currentIdx / (n-1)) * width : -1;
+
+  return (
+    <div style={{ position:'relative', cursor:'pointer' }} onClick={e => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const idx = Math.round((x / width) * (n - 1));
+      onSeek(Math.max(0, Math.min(n-1, idx)));
+    }}>
+      <svg width={width} height={height} style={{ display:'block', borderRadius:4, overflow:'hidden' }}>
+        <defs>
+          <clipPath id="above"><rect x="0" y="0" width={width} height={height/2}/></clipPath>
+          <clipPath id="below"><rect x="0" y={height/2} width={width} height={height/2}/></clipPath>
+        </defs>
+        <rect width={width} height={height} fill={T.bg3}/>
+        <line x1={0} y1={height/2} x2={width} y2={height/2} stroke={T.border} strokeWidth={1}/>
+        {/* White advantage */}
+        <path d={fillAbove} fill="rgba(232,220,200,0.85)" clipPath="url(#above)"/>
+        {/* Black advantage */}
+        <path d={fillBelow} fill="rgba(30,30,30,0.9)" clipPath="url(#below)"/>
+        {/* Line */}
+        <polyline points={pts.join(' ')} fill="none" stroke={T.greenLt} strokeWidth={1.5}/>
+        {/* Current position indicator */}
+        {curX >= 0 && <line x1={curX} y1={0} x2={curX} y2={height} stroke={T.greenMid} strokeWidth={1.5} strokeDasharray="3,2"/>}
+        {curX >= 0 && <circle cx={curX} cy={height/2 - (evals[currentIdx]/5)*(height/2-6)} r={4} fill={T.green} stroke={T.greenPl} strokeWidth={1.5}/>}
+      </svg>
+    </div>
+  );
+};
+
+// ─── MOVES LIST ──────────────────────────────────────────────────────────────
+const MovesList = ({ moves, currentIdx, onSelect }) => {
+  const pairs = [];
+  for (let i = 0; i < moves.length; i += 2) {
+    pairs.push({ num: Math.floor(i/2)+1, w: moves[i], b: moves[i+1], wi: i, bi: i+1 });
+  }
+
+  return (
+    <div style={{ overflowY:'auto', flex:1, padding:'8px 4px', display:'flex', flexDirection:'column', gap:2 }}>
+      {pairs.map(({ num, w, b, wi, bi }) => (
+        <div key={num} style={{ display:'flex', alignItems:'center', gap:2, borderRadius:4, overflow:'hidden' }}>
+          <span style={{ width:28, textAlign:'right', fontSize:11, color:T.faded, fontFamily:"'DM Mono',monospace", flexShrink:0, paddingRight:4 }}>{num}.</span>
+          {/* White move */}
+          <div onClick={() => onSelect(wi)} style={{
+            flex:1, padding:'4px 8px', borderRadius:3, cursor:'pointer',
+            background: currentIdx === wi ? T.green : 'transparent',
+            color: currentIdx === wi ? '#fff' : T.cream,
+            fontSize:13, fontFamily:"'DM Mono',monospace",
+            display:'flex', alignItems:'center', gap:4,
+            transition:'background 0.15s',
+          }}>
+            <span>{w.san}</span>
+            {w.class && <ClassBadge cls={w.class}/>}
+          </div>
+          {/* Black move */}
+          {b && (
+            <div onClick={() => onSelect(bi)} style={{
+              flex:1, padding:'4px 8px', borderRadius:3, cursor:'pointer',
+              background: currentIdx === bi ? T.green : 'transparent',
+              color: currentIdx === bi ? '#fff' : T.cream,
+              fontSize:13, fontFamily:"'DM Mono',monospace",
+              display:'flex', alignItems:'center', gap:4,
+              transition:'background 0.15s',
+            }}>
+              <span>{b.san}</span>
+              {b.class && <ClassBadge cls={b.class}/>}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// ─── ANALYSIS SCREEN ─────────────────────────────────────────────────────────
+const AnalysisScreen = ({ game, boardSize, pieceStyle = 'flat', onBack }) => {
+  const [currentIdx, setCurrentIdx] = React.useState(0);
+  const [flipped, setFlipped] = React.useState(false);
+
+  const currentMove = game.moves[currentIdx];
+  const fen = currentMove ? currentMove.fen : STARTING_FEN;
+  const evalVal = currentMove ? currentMove.eval : 0;
+
+  const goFirst = () => setCurrentIdx(0);
+  const goPrev = () => setCurrentIdx(i => Math.max(0, i-1));
+  const goNext = () => setCurrentIdx(i => Math.min(game.moves.length-1, i+1));
+  const goLast = () => setCurrentIdx(game.moves.length-1);
+
+  React.useEffect(() => {
+    const handler = e => {
+      if (e.key === 'ArrowLeft') goPrev();
+      if (e.key === 'ArrowRight') goNext();
+      if (e.key === 'Home') goFirst();
+      if (e.key === 'End') goLast();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  const progress = game.moves.length > 1 ? (currentIdx / (game.moves.length - 1)) * 100 : 0;
+
+  return (
+    <div className="analysis-layout" style={{ display:'flex', height:'100%', gap:0, overflowX:'hidden' }}>
+      {/* Left: Board area */}
+      <div className="analysis-board-area" style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:24, gap:16, flex:'0 0 auto' }}>
+        {/* Player info - Black */}
+        <PlayerBadge name={game.black} rating={2832} color="b" accuracy={game.accuracy.black} mistakes={game.mistakes.black} blunders={game.blunders.black}/>
+        {/* Board + eval bar */}
+        <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+          <EvalBar eval={evalVal} height={boardSize}/>
+          <ChessBoard fen={fen} flipped={flipped} size={boardSize} pieceStyle={pieceStyle}
+            lastMove={currentIdx > 0 ? {from:'e2',to:'e4'} : null}/>
+        </div>
+        {/* Player info - White */}
+        <PlayerBadge name={game.white} rating={2876} color="w" accuracy={game.accuracy.white} mistakes={game.mistakes.white} blunders={game.blunders.white}/>
+        {/* Controls */}
+        <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+          <NavBtn onClick={goFirst}><Icon d={Icons.first} size={14} stroke={T.cream}/></NavBtn>
+          <NavBtn onClick={goPrev}><Icon d={Icons.prev} size={14} stroke={T.cream}/></NavBtn>
+          <NavBtn onClick={goNext}><Icon d={Icons.next} size={14} stroke={T.cream}/></NavBtn>
+          <NavBtn onClick={goLast}><Icon d={Icons.last} size={14} stroke={T.cream}/></NavBtn>
+          <div style={{width:1, height:20, background:T.border, margin:'0 4px'}}/>
+          <NavBtn onClick={() => setFlipped(f=>!f)} title="Перевернути дошку">
+            <Icon d={Icons.flip} size={14} stroke={T.cream}/>
+          </NavBtn>
+        </div>
+        {/* Progress bar */}
+        <div style={{ width: boardSize + 34, height:3, background:T.border, borderRadius:2 }}>
+          <div style={{ width:`${progress}%`, height:'100%', background:`linear-gradient(90deg, ${T.green}, ${T.greenMid})`, borderRadius:2, transition:'width 0.2s' }}/>
+        </div>
+      </div>
+
+      {/* Right panel */}
+      <div className="analysis-right" style={{ flex:1, display:'flex', flexDirection:'column', borderLeft:`1px solid ${T.border}`, minWidth:0 }}>
+        {/* Game header */}
+        <div style={{ padding:'16px 20px', borderBottom:`1px solid ${T.border}`, background:T.bg2 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
+            <button onClick={onBack} style={{ background:'none', border:'none', cursor:'pointer', color:T.muted, padding:'2px 0', display:'flex', alignItems:'center', gap:4, fontSize:12, fontFamily:'DM Sans' }}>
+              <Icon d={Icons.prev} size={12} stroke={T.muted}/>
+              Назад
+            </button>
+          </div>
+          <div style={{ fontSize:13, fontWeight:600, color:T.cream, marginBottom:2 }}>
+            {game.white} — {game.black}
+          </div>
+          <div style={{ fontSize:11, color:T.muted }}>{game.event} · {game.date} · {game.opening}</div>
+          <div style={{ marginTop:10 }}>
+            <EvalChart moves={game.moves} currentIdx={currentIdx} onSeek={setCurrentIdx}/>
+          </div>
+        </div>
+
+        {/* Accuracy summary */}
+        <div style={{ display:'flex', gap:0, borderBottom:`1px solid ${T.border}` }}>
+          {[
+            { label:'Точність Б.', val:`${game.accuracy.white}%`, color:T.cream },
+            { label:'Точність Ч.', val:`${game.accuracy.black}%`, color:T.muted },
+            { label:'Помилки', val:game.mistakes.white + game.mistakes.black, color:T.amber },
+            { label:'Грубих', val:game.blunders.white + game.blunders.black, color:T.red },
+          ].map(({ label, val, color }) => (
+            <div key={label} style={{ flex:1, padding:'10px 14px', textAlign:'center', borderRight:`1px solid ${T.border}` }}>
+              <div style={{ fontSize:16, fontWeight:600, color, fontFamily:"'DM Mono',monospace" }}>{val}</div>
+              <div style={{ fontSize:10, color:T.faded, marginTop:2 }}>{label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Moves list */}
+        <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', padding:'8px 12px' }}>
+          <div style={{ fontSize:11, color:T.faded, marginBottom:6, fontWeight:500, letterSpacing:'0.05em', textTransform:'uppercase' }}>Ходи</div>
+        {/* Moves legend */}
+        <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:8 }}>
+          {Object.entries(MoveClass).map(([key, { symbol, color, bg, label }]) => (
+            <span key={key} style={{
+              display:'inline-flex', alignItems:'center', gap:4,
+              padding:'2px 7px 2px 4px', borderRadius:20,
+              background: bg, border:`1px solid ${color}33`,
+              fontSize:10, color, fontWeight:500,
+            }}>
+              <span style={{ fontWeight:700 }}>{symbol}</span>
+              {label}
+            </span>
+          ))}
+        </div>
+        <MovesList moves={game.moves} currentIdx={currentIdx} onSelect={setCurrentIdx}/>
+        </div>
+
+        {/* Commentary */}
+        {currentMove?.comment && (
+          <div style={{ padding:'12px 16px', borderTop:`1px solid ${T.border}`, background:T.bg2 }}>
+            <div style={{ fontSize:10, color:T.green, fontWeight:600, letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:6 }}>
+              💬 Коментар
+            </div>
+            <div style={{ fontSize:12, color:T.cream, lineHeight:1.6 }}>{currentMove.comment}</div>
+          </div>
+        )}
+
+        {/* Opening info */}
+        <div style={{ padding:'12px 16px', borderTop:`1px solid ${T.border}`, background:T.bg3 }}>
+          <div style={{ fontSize:10, color:T.faded, marginBottom:4 }}>Дебют</div>
+          <div style={{ fontSize:12, color:T.greenPl, fontWeight:500 }}>{game.opening}</div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const PlayerBadge = ({ name, rating, color, accuracy, mistakes, blunders }) => (
+  <div style={{ display:'flex', alignItems:'center', gap:10, width:'100%' }}>
+    <div style={{
+      width:32, height:32, borderRadius:6, flexShrink:0,
+      background: color === 'w' ? 'linear-gradient(135deg, #f0e8d0, #d4c49a)' : 'linear-gradient(135deg, #2a2a2a, #1a1a1a)',
+      border: `1px solid ${color === 'w' ? '#c9945a' : '#444'}`,
+      display:'flex', alignItems:'center', justifyContent:'center',
+      fontSize:14,
+    }}>
+      {color === 'w' ? '♔' : '♚'}
+    </div>
+    <div style={{ flex:1, minWidth:0 }}>
+      <div style={{ fontSize:13, fontWeight:600, color:T.cream, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{name}</div>
+      <div style={{ fontSize:11, color:T.faded }}>Rating {rating}</div>
+    </div>
+    <div style={{ display:'flex', gap:8, fontSize:11 }}>
+      <span style={{ color:T.greenPl, fontFamily:"'DM Mono',monospace" }}>{accuracy}%</span>
+      {mistakes > 0 && <span style={{ color:T.amber }}>?×{mistakes}</span>}
+      {blunders > 0 && <span style={{ color:T.red }}>??×{blunders}</span>}
+    </div>
+  </div>
+);
+
+const NavBtn = ({ onClick, children, title }) => (
+  <button onClick={onClick} title={title} style={{
+    width:34, height:34, display:'flex', alignItems:'center', justifyContent:'center',
+    background:T.bg3, border:`1px solid ${T.border}`, borderRadius:6,
+    cursor:'pointer', transition:'all 0.15s', color:T.cream,
+  }}
+    onMouseEnter={e=>{ e.currentTarget.style.background=T.bg4; e.currentTarget.style.borderColor=T.green; }}
+    onMouseLeave={e=>{ e.currentTarget.style.background=T.bg3; e.currentTarget.style.borderColor=T.border; }}
+  >{children}</button>
+);
+
+// ─── DASHBOARD ───────────────────────────────────────────────────────────────
+const Dashboard = ({ onAnalyze, onLibrary }) => {
+  const stats = [
+    { label:'Партій', value:'247', icon:Icons.library },
+    { label:'Точність', value:'87.3%', icon:Icons.chart },
+    { label:'Рейтинг', value:'1840', icon:Icons.trophy },
+    { label:'Серія', value:'12', icon:Icons.star },
+  ];
+
+  return (
+    <div style={{ flex:1, overflowY:'auto', padding:32 }}>
+      {/* Welcome */}
+      <div style={{ marginBottom:32 }}>
+        <h1 style={{ fontSize:28, fontWeight:600, color:T.cream, marginBottom:6 }}>Привіт, Олексій 👋</h1>
+        <p style={{ color:T.muted, fontSize:14 }}>Ваша статистика за останній місяць</p>
+      </div>
+
+      {/* Stats */}
+      <div className="dashboard-stats" style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:12, marginBottom:28 }}>
+        {stats.map(s => (
+          <div key={s.label} style={{ background:T.bg2, border:`1px solid ${T.border}`, borderRadius:10, padding:'18px 20px' }}>
+            <div style={{ marginBottom:8 }}><Icon d={s.icon} size={18} stroke={T.greenMid}/></div>
+            <div style={{ fontSize:24, fontWeight:700, color:T.cream, fontFamily:"'DM Mono',monospace", marginBottom:4 }}>{s.value}</div>
+            <div style={{ fontSize:12, color:T.muted }}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Import section */}
+      <div className="dashboard-import" style={{ background:T.bg2, border:`1px dashed ${T.border}`, borderRadius:10, padding:24, marginBottom:28, display:'flex', gap:16 }}>
+        <div style={{ flex:1 }}>
+          <div style={{ fontSize:14, fontWeight:600, color:T.cream, marginBottom:6 }}>Аналізувати партію</div>
+          <div style={{ fontSize:12, color:T.muted, marginBottom:14 }}>Вставте PGN або підключіть Lichess / Chess.com</div>
+          <div style={{ display:'flex', gap:10 }}>
+            <ImportBtn icon={Icons.upload} label="Вставити PGN" onClick={onAnalyze}/>
+            <ImportBtn icon={Icons.link} label="Lichess" onClick={onAnalyze}/>
+            <ImportBtn icon={Icons.link} label="Chess.com" onClick={onAnalyze}/>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Recent games */}
+      <div>
+        <div style={{ fontSize:14, fontWeight:600, color:T.cream, marginBottom:12 }}>Останні партії</div>
+        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+          {LIBRARY_GAMES.slice(0,4).map(g => (
+            <GameRow key={g.id} game={g} onClick={onAnalyze}/>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ImportBtn = ({ icon, label, onClick }) => (
+  <button onClick={onClick} style={{
+    display:'flex', alignItems:'center', gap:6,
+    background:T.bg3, border:`1px solid ${T.border}`, borderRadius:7,
+    padding:'8px 14px', cursor:'pointer', color:T.cream, fontSize:12,
+    fontFamily:'DM Sans', transition:'all 0.15s',
+  }}
+    onMouseEnter={e=>{ e.currentTarget.style.background=T.bg4; e.currentTarget.style.borderColor=T.green; }}
+    onMouseLeave={e=>{ e.currentTarget.style.background=T.bg3; e.currentTarget.style.borderColor=T.border; }}
+  >
+    <Icon d={icon} size={13} stroke={T.greenMid}/>
+    {label}
+  </button>
+);
+
+const GameRow = ({ game, onClick }) => (
+  <div onClick={onClick} style={{
+    display:'flex', alignItems:'center', gap:12, padding:'10px 14px',
+    background:T.bg2, border:`1px solid ${T.border}`, borderRadius:8,
+    cursor:'pointer', transition:'all 0.15s',
+  }}
+    onMouseEnter={e=>{ e.currentTarget.style.borderColor=T.green; e.currentTarget.style.background=T.bg3; }}
+    onMouseLeave={e=>{ e.currentTarget.style.borderColor=T.border; e.currentTarget.style.background=T.bg2; }}
+  >
+    <div style={{
+      width:36, height:36, borderRadius:6, background:`linear-gradient(135deg, ${T.green}, ${T.bg3})`,
+      display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, flexShrink:0,
+    }}>
+      {game.result === '1-0' ? '♔' : game.result === '0-1' ? '♚' : '♞'}
+    </div>
+    <div style={{ flex:1, minWidth:0 }}>
+      <div style={{ fontSize:13, fontWeight:500, color:T.cream, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+        {game.white} — {game.black}
+      </div>
+      <div style={{ fontSize:11, color:T.faded }}>{game.opening} · {game.moves} ходів</div>
+    </div>
+    <div style={{ display:'flex', gap:8, alignItems:'center', flexShrink:0 }}>
+      <span style={{ fontSize:11, fontFamily:"'DM Mono',monospace", color:T.greenPl }}>{game.accuracy}%</span>
+      <ResultBadge result={game.result}/>
+    </div>
+  </div>
+);
+
+const ResultBadge = ({ result }) => {
+  const cfg = result === '1-0' ? {bg:'rgba(76,175,80,0.2)', color:'#4caf50'} :
+               result === '0-1' ? {bg:'rgba(192,57,43,0.2)', color:T.red} :
+               {bg:T.bg4, color:T.muted};
+  return (
+    <span style={{ padding:'2px 8px', borderRadius:4, fontSize:11, fontFamily:"'DM Mono',monospace", background:cfg.bg, color:cfg.color, fontWeight:600 }}>
+      {result}
+    </span>
+  );
+};
+
+// ─── LIBRARY ─────────────────────────────────────────────────────────────────
+const Library = ({ onSelect }) => {
+  const [query, setQuery] = React.useState('');
+  const filtered = LIBRARY_GAMES.filter(g =>
+    [g.white, g.black, g.opening, g.event].some(s => s.toLowerCase().includes(query.toLowerCase()))
+  );
+
+  return (
+    <div style={{ flex:1, overflowY:'auto', padding:32 }}>
+      <div style={{ marginBottom:24 }}>
+        <h2 style={{ fontSize:22, fontWeight:600, color:T.cream, marginBottom:16 }}>Бібліотека партій</h2>
+        <div style={{ display:'flex', alignItems:'center', gap:8, background:T.bg2, border:`1px solid ${T.border}`, borderRadius:8, padding:'8px 14px' }}>
+          <Icon d={Icons.search} size={16} stroke={T.faded}/>
+          <input
+            value={query} onChange={e=>setQuery(e.target.value)}
+            placeholder="Пошук за гравцем, дебютом, турніром..."
+            style={{ background:'none', border:'none', outline:'none', color:T.cream, fontSize:13, flex:1, fontFamily:'DM Sans' }}
+          />
+        </div>
+      </div>
+      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+        {filtered.map(g => (
+          <div key={g.id} onClick={() => onSelect(g)} style={{
+            display:'flex', alignItems:'center', gap:14, padding:'14px 16px',
+            background:T.bg2, border:`1px solid ${T.border}`, borderRadius:10,
+            cursor:'pointer', transition:'all 0.15s',
+          }}
+            onMouseEnter={e=>{ e.currentTarget.style.borderColor=T.green; e.currentTarget.style.background=T.bg3; }}
+            onMouseLeave={e=>{ e.currentTarget.style.borderColor=T.border; e.currentTarget.style.background=T.bg2; }}
+          >
+            <div style={{ width:44, height:44, borderRadius:8, background:`linear-gradient(135deg,${T.green},${T.bg3})`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0 }}>
+              ♟
+            </div>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontSize:14, fontWeight:600, color:T.cream, marginBottom:3 }}>{g.white} — {g.black}</div>
+              <div style={{ fontSize:12, color:T.muted }}>{g.event} · {g.date}</div>
+              <div style={{ fontSize:11, color:T.faded, marginTop:2 }}>{g.opening} · {g.moves} ходів</div>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:6, flexShrink:0 }}>
+              <ResultBadge result={g.result}/>
+              <span style={{ fontSize:11, color:T.greenPl, fontFamily:"'DM Mono',monospace" }}>Точн. {g.accuracy}%</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ─── PROFILE ─────────────────────────────────────────────────────────────────
+const Profile = () => {
+  const months = ['Лют','Бер','Кві','Тра','Чер','Лип','Сер','Вер','Жов','Лис','Гру','Січ'];
+  const ratings = [1720,1745,1760,1752,1780,1795,1782,1810,1800,1825,1835,1840];
+
+  return (
+    <div style={{ flex:1, overflowY:'auto', padding:32 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:20, marginBottom:32 }}>
+        <div style={{
+          width:72, height:72, borderRadius:16, background:`linear-gradient(135deg, ${T.green}, ${T.bg3})`,
+          display:'flex', alignItems:'center', justifyContent:'center', fontSize:32,
+          border:`2px solid ${T.greenMid}`,
+        }}>♞</div>
+        <div>
+          <h2 style={{ fontSize:22, fontWeight:600, color:T.cream, marginBottom:4 }}>Олексій Коваль</h2>
+          <div style={{ fontSize:13, color:T.muted }}>@alexchess · Lichess · Chess.com</div>
+          <div style={{ display:'flex', gap:8, marginTop:8 }}>
+            {['Lichess', 'Chess.com'].map(p => (
+              <span key={p} style={{ padding:'3px 10px', background:T.bg3, border:`1px solid ${T.border}`, borderRadius:20, fontSize:11, color:T.greenPl }}>{p}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Rating chart */}
+      <div style={{ background:T.bg2, border:`1px solid ${T.border}`, borderRadius:10, padding:20, marginBottom:20 }}>
+        <div style={{ fontSize:14, fontWeight:600, color:T.cream, marginBottom:16 }}>Динаміка рейтингу</div>
+        <svg width="100%" height={120} viewBox={`0 0 ${months.length*60} 120`} preserveAspectRatio="none" style={{ display:'block' }}>
+          {(() => {
+            const W = months.length * 60, H = 120;
+            const minR = Math.min(...ratings) - 30, maxR = Math.max(...ratings) + 20;
+            const pts = ratings.map((r, i) => `${i/(ratings.length-1)*W},${H - ((r-minR)/(maxR-minR))*H*0.85 - 10}`);
+            const area = `M${pts[0]} ` + pts.slice(1).map(p=>`L${p}`).join(' ') + ` L${W},${H} L0,${H} Z`;
+            return <>
+              <defs>
+                <linearGradient id="rg" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={T.green} stopOpacity=".5"/>
+                  <stop offset="100%" stopColor={T.green} stopOpacity="0"/>
+                </linearGradient>
+              </defs>
+              <path d={area} fill="url(#rg)"/>
+              <polyline points={pts.join(' ')} fill="none" stroke={T.greenLt} strokeWidth={2}/>
+              {ratings.map((r,i) => (
+                <text key={i} x={i/(ratings.length-1)*W} y={H} textAnchor="middle" fontSize={9} fill={T.faded}>{months[i]}</text>
+              ))}
+              <text x={W} y={(() => { const r = ratings[ratings.length-1]; const minR2=Math.min(...ratings)-30, maxR2=Math.max(...ratings)+20; return H - ((r-minR2)/(maxR2-minR2))*H*0.85 - 10 - 6; })()} textAnchor="end" fontSize={11} fill={T.greenPl} fontFamily="'DM Mono', monospace">1840</text>
+            </>;
+          })()}
+        </svg>
+      </div>
+
+      {/* Opening stats */}
+      <div style={{ background:T.bg2, border:`1px solid ${T.border}`, borderRadius:10, padding:20 }}>
+        <div style={{ fontSize:14, fontWeight:600, color:T.cream, marginBottom:14 }}>Популярні дебюти</div>
+        {[
+          { name:'Іспанська партія', pct:35, win:62 },
+          { name:"Сицилійський захист", pct:28, win:58 },
+          { name:"Французький захист", pct:18, win:71 },
+          { name:"Захист Каро-Канн", pct:12, win:55 },
+        ].map(o => (
+          <div key={o.name} style={{ marginBottom:12 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
+              <span style={{ fontSize:12, color:T.cream }}>{o.name}</span>
+              <span style={{ fontSize:11, color:T.greenPl, fontFamily:"'DM Mono',monospace" }}>Перем. {o.win}%</span>
+            </div>
+            <div style={{ height:6, background:T.bg3, borderRadius:3 }}>
+              <div style={{ width:`${o.pct}%`, height:'100%', background:`linear-gradient(90deg,${T.green},${T.greenMid})`, borderRadius:3 }}/>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ─── SIDEBAR NAV (desktop) ───────────────────────────────────────────────────
+const Sidebar = ({ active, onNav }) => {
+  const items = [
+    { id:'dashboard', icon:Icons.home, label:'Дошка' },
+    { id:'analysis', icon:Icons.analysis, label:'Аналіз' },
+    { id:'library', icon:Icons.library, label:'Бібліотека' },
+    { id:'profile', icon:Icons.profile, label:'Профіль' },
+  ];
+
+  return (
+    <div className="desktop-sidebar" style={{
+      width:64, flexDirection:'column', alignItems:'center',
+      background:T.bg1, borderRight:`1px solid ${T.border}`,
+      padding:'16px 0', gap:4, flexShrink:0,
+    }}>
+      {/* Logo */}
+      <div style={{ width:40, height:40, borderRadius:10, background:`linear-gradient(135deg, ${T.green}, ${T.bg3})`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, marginBottom:20 }}>
+        ♟
+      </div>
+      {items.map(item => (
+        <button key={item.id} onClick={() => onNav(item.id)} title={item.label} style={{
+          width:44, height:44, borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center',
+          background: active === item.id ? T.green : 'transparent',
+          border: 'none', cursor:'pointer', transition:'all 0.2s',
+        }}
+          onMouseEnter={e=>{ if(active!==item.id) e.currentTarget.style.background=T.bg3; }}
+          onMouseLeave={e=>{ if(active!==item.id) e.currentTarget.style.background='transparent'; }}
+        >
+          <Icon d={item.icon} size={18} stroke={active === item.id ? '#fff' : T.muted}/>
+        </button>
+      ))}
+    </div>
+  );
+};
+
+// ─── BOTTOM NAV (mobile) ─────────────────────────────────────────────────────
+const BottomNav = ({ active, onNav }) => {
+  const items = [
+    { id:'dashboard', icon:Icons.home, label:'Дошка' },
+    { id:'analysis', icon:Icons.analysis, label:'Аналіз' },
+    { id:'library', icon:Icons.library, label:'Бібліотека' },
+    { id:'profile', icon:Icons.profile, label:'Профіль' },
+  ];
+  return (
+    <div className="mobile-nav" style={{
+      position:'fixed', bottom:0, left:0, right:0, zIndex:100,
+      background:T.bg1, borderTop:`1px solid ${T.border}`,
+      flexDirection:'row', alignItems:'stretch',
+      paddingBottom:'env(safe-area-inset-bottom, 0px)',
+    }}>
+      {items.map(item => (
+        <button key={item.id} onClick={() => onNav(item.id)} style={{
+          flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+          gap:4, padding:'10px 0 8px',
+          background: 'none', border:'none', cursor:'pointer',
+          color: active === item.id ? T.greenLt : T.faded,
+          transition:'color 0.15s',
+        }}>
+          <Icon d={item.icon} size={20} stroke={active === item.id ? T.greenLt : T.faded}/>
+          <span style={{ fontSize:10, fontFamily:'DM Sans', fontWeight: active === item.id ? 600 : 400 }}>{item.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+};
+
+// ─── TWEAKS ──────────────────────────────────────────────────────────────────
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "boardSize": 448,
+  "showEvalBar": true,
+  "showComments": true,
+  "theme": "forest",
+  "pieceStyle": "flat"
+}/*EDITMODE-END*/;
+
+// ─── APP ROOT ────────────────────────────────────────────────────────────────
+const App = () => {
+  const [screen, setScreen] = React.useState('dashboard');
+  const [selectedGame, setSelectedGame] = React.useState(SAMPLE_GAME);
+  const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+  const handleAnalyze = (game) => {
+    if (game) setSelectedGame(game);
+    setScreen('analysis');
+  };
+
+  const boardSize = tweaks.boardSize;
+
+  return (
+    <div style={{ display:'flex', height:'100vh', width:'100vw', overflow:'hidden', background:T.bg0 }}>
+      <Sidebar active={screen} onNav={setScreen}/>
+      <div style={{ flex:1, display:'flex', overflow:'hidden', paddingBottom:'var(--mobile-nav-h, 0px)' }}>
+        {screen === 'dashboard' && <Dashboard onAnalyze={() => handleAnalyze(null)} onLibrary={() => setScreen('library')}/>}
+        {screen === 'analysis' && <AnalysisScreen game={selectedGame} boardSize={boardSize} pieceStyle={tweaks.pieceStyle} onBack={() => setScreen('dashboard')}/>}
+        {screen === 'library' && <Library onSelect={g => handleAnalyze(g)}/>}
+        {screen === 'profile' && <Profile/>}
+      </div>
+      <BottomNav active={screen} onNav={setScreen}/>
+
+      <TweaksPanel title="Tweaks">
+        <TweakSlider label="Розмір дошки" min={320} max={560} step={8} value={tweaks.boardSize} onChange={v=>setTweak('boardSize',v)}/>
+        <TweakRadio label="Фігури" options={['flat','classic','minimal']} value={tweaks.pieceStyle} onChange={v=>setTweak('pieceStyle',v)}/>
+        <TweakToggle label="Eval bar" value={tweaks.showEvalBar} onChange={v=>setTweak('showEvalBar',v)}/>
+        <TweakToggle label="Коментарі" value={tweaks.showComments} onChange={v=>setTweak('showComments',v)}/>
+        <TweakRadio label="Тема" options={['forest','dark','olive']} value={tweaks.theme} onChange={v=>setTweak('theme',v)}/>
+      </TweaksPanel>
+    </div>
+  );
+};
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App/>);
+</script>
+</body>
+</html>

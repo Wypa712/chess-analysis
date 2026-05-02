@@ -1,0 +1,162 @@
+/* ── Desktop sidebar ── */
+.sidebar {
+  width: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  padding: 16px 0;
+  gap: 4px;
+  flex-shrink: 0;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+}
+
+.logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--color-green), var(--color-bg3));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  margin-bottom: 20px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.navItems {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+
+.navBtn {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.navBtn:hover {
+  background-color: var(--color-bg3);
+  color: var(--color-text);
+}
+
+.navBtnActive {
+  background-color: var(--color-green);
+  color: #fff;
+}
+
+.navBtnActive:hover {
+  background-color: var(--color-green-mid);
+  color: #fff;
+}
+
+.navBtn svg {
+  stroke: currentColor;
+}
+
+.userArea {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--color-border);
+}
+
+.signOutBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--color-text-faded);
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.signOutBtn:hover {
+  background-color: var(--color-bg3);
+  color: var(--color-text-muted);
+}
+
+/* ── Mobile bottom nav ── */
+.bottomNav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    display: none;
+  }
+
+  .bottomNav {
+    display: flex;
+    flex-direction: row;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background-color: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+.bottomItem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 0 8px;
+  color: var(--color-text-faded);
+  transition: color 0.15s;
+}
+
+.bottomItem:hover {
+  color: var(--color-text-muted);
+}
+
+.bottomItemActive {
+  color: var(--color-green-lt);
+}
+
+.bottomItemActive:hover {
+  color: var(--color-green-lt);
+}
+
+.bottomItem svg {
+  stroke: currentColor;
+}
+
+.bottomLabel {
+  font-size: 10px;
+  font-weight: 400;
+}
+
+.bottomItemActive .bottomLabel {
+  font-weight: 600;
+}
