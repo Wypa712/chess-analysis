@@ -1,0 +1,214 @@
+import { db } from "@/db";
+import { games } from "@/db/schema";
+
+type LichessPlayer = {
+  user?: { name: string; id: string };
+  rating?: number;
+  ratingDiff?: number;
+  aiLevel?: number;
+};
+
+type LichessClock = {
+  initial: number;
+  increment: number;
+  totalTime?: number;
+};
+
+type LichessGame = {
+  id: string;
+  rated: boolean;
+  variant: string;
+  speed: string;
+  perf: string;
+  createdAt: number;
+  lastMoveAt: number;
+  status: string;
+  players: { white: LichessPlayer; black: LichessPlayer };
+  winner?: "white" | "black";
+  opening?: { eco: string; name: string; ply: number };
+  moves?: string;
+  clock?: LichessClock;
+};
+
+type ImportOptions = {
+  limit?: number;
+  since?: number;
+};
+
+function mapSpeed(
+  speed: string
+): "bullet" | "blitz" | "rapid" | "classical" | "correspondence" | "unknown" {
+  switch (speed) {
+    case "ultraBullet":
+    case "bullet":
+      return "bullet";
+    case "blitz":
+      return "blitz";
+    case "rapid":
+      return "rapid";
+    case "classical":
+      return "classical";
+    case "correspondence":
+      return "correspondence";
+    default:
+      return "unknown";
+  }
+}
+
+function buildTimeControl(game: LichessGame): string {
+  if (game.clock) return `${game.clock.initial}+${game.clock.increment}`;
+  if (game.speed === "correspondence") return "correspondence";
+  return "-";
+}
+
+function buildPgn(game: LichessGame): string {
+  const white = game.players.white.user?.name ?? "?";
+  const black = game.players.black.user?.name ?? "?";
+  const whiteElo = game.players.white.rating ?? "?";
+  const blackElo = game.players.black.rating ?? "?";
+  const date = new Date(game.createdAt)
+    .toISOString()
+    .split("T")[0]
+    .replace(/-/g, ".");
+  const timeControl = buildTimeControl(game);
+
+  let result = "*";
+  if (game.winner === "white") result = "1-0";
+  else if (game.winner === "black") result = "0-1";
+  else if (
+    ["draw", "stalemate", "outoftime", "resign"].includes(game.status) &&
+    !game.winner
+  )
+    result = "1/2-1/2";
+
+  const headers = [
+    `[Event "${game.rated ? "Rated game" : "Casual game"}"]`,
+    `[Site "https://lichess.org/${game.id}"]`,
+    `[Date "${date}"]`,
+    `[White "${white}"]`,
+    `[Black "${black}"]`,
+    `[Result "${result}"]`,
+    `[WhiteElo "${whiteElo}"]`,
+    `[BlackElo "${blackElo}"]`,
+    `[TimeControl "${timeControl}"]`,
+    `[ECO "${game.opening?.eco ?? "?"}"]`,
+    `[Opening "${game.opening?.name ?? "?"}"]`,
+    `[Termination "${game.status}"]`,
+  ].join("\n");
+
+  const moveParts = (game.moves ?? "").trim().split(/\s+/).filter(Boolean);
+  let pgnMoves = "";
+  let moveNum = 1;
+  for (let i = 0; i < moveParts.length; i++) {
+    if (i % 2 === 0) pgnMoves += `${moveNum++}. ${moveParts[i]} `;
+    else pgnMoves += `${moveParts[i]} `;
+  }
+  pgnMoves += result;
+
+  return `${headers}\n\n${pgnMoves.trim()}`;
+}
+
+export async function importLichessGames(
+  chessAccountId: string,
+  username: string,
+  options: ImportOptions
+): Promise<{ imported: number; skipped: number }> {
+  const normalizedUsername = username.toLowerCase();
+
+  const url = new URL(
+    `https://lichess.org/api/games/user/${encodeURIComponent(username)}`
+  );
+  if (options.limit !== undefined) {
+    url.searchParams.set("max", String(options.limit));
+  }
+  if (options.since !== undefined) {
+    url.searchParams.set("since", String(options.since));
+  }
+  url.searchParams.set("opening", "true");
+  url.searchParams.set("moves", "true");
+  url.searchParams.set("clocks", "false");
+  url.searchParams.set("evals", "false");
+
+  const response = await fetch(url.toString(), {
+    headers: { Accept: "application/x-ndjson" },
+    signal: AbortSignal.timeout(20_000),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Lichess API error: ${response.status} ${response.statusText}`);
+  }
+
+  const text = await response.text();
+  const lines = text.trim().split("\n").filter(Boolean);
+
+  if (lines.length === 0) {
+    return { imported: 0, skipped: 0 };
+  }
+
+  const gamesToInsert = [];
+
+  for (const line of lines) {
+    let game: LichessGame;
+    try {
+      game = JSON.parse(line);
+    } catch {
+      continue;
+    }
+
+    // Skip aborted games
+    if (game.status === "aborted") continue;
+
+    const whiteId = game.players.white.user?.id ?? "";
+    const blackId = game.players.black.user?.id ?? "";
+
+    const isWhite = whiteId === normalizedUsername;
+    const isBlack = blackId === normalizedUsername;
+    if (!isWhite && !isBlack) continue;
+
+    const color = isWhite ? ("white" as const) : ("black" as const);
+    const playerData = isWhite ? game.players.white : game.players.black;
+    const opponentData = isWhite ? game.players.black : game.players.white;
+
+    let result: "win" | "loss" | "draw";
+    if (!game.winner) result = "draw";
+    else if (game.winner === color) result = "win";
+    else result = "loss";
+
+    const moveParts = (game.moves ?? "").trim().split(/\s+/).filter(Boolean);
+    const moveCount = Math.ceil(moveParts.length / 2);
+
+    gamesToInsert.push({
+      chessAccountId,
+      platformGameId: game.id,
+      sourceUrl: `https://lichess.org/${game.id}`,
+      pgn: buildPgn(game),
+      result,
+      color,
+      opponent: opponentData.user?.name ?? "AI",
+      opponentRating: opponentData.rating ?? null,
+      playerRating: playerData.rating ?? null,
+      openingName: game.opening?.name ?? null,
+      timeControl: buildTimeControl(game),
+      timeControlCategory: mapSpeed(game.speed),
+      rated: game.rated,
+      playedAt: new Date(game.createdAt),
+      moveCount,
+      rawMetadata: game as unknown as Record<string, unknown>,
+    });
+  }
+
+  if (gamesToInsert.length === 0) {
+    return { imported: 0, skipped: 0 };
+  }
+
+  const inserted = await db
+    .insert(games)
+    .values(gamesToInsert)
+    .onConflictDoNothing()
+    .returning({ id: games.id });
+
+  const imported = inserted.length;
+  const skipped = gamesToInsert.length - imported;
+
+  return { imported, skipped };
+}

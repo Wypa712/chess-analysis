@@ -1,0 +1,303 @@
+"use client";
+
+import { Chessboard } from "react-chessboard";
+import Link from "next/link";
+import styles from "./GameView.module.css";
+
+const BOARD_SIZE = 700;
+
+const SAMPLE_MOVES = [
+  { num: 1, white: "e4", black: "e5" },
+  { num: 2, white: "Nf3", black: "Nc6" },
+  { num: 3, white: "Bb5", black: "a6" },
+  { num: 4, white: "Ba4", black: "Nf6" },
+  { num: 5, white: "O-O", black: "Be7" },
+  { num: 6, white: "Re1", black: "b5" },
+  { num: 7, white: "Bb3", black: "d6" },
+  { num: 8, white: "c3", black: "O-O" },
+  { num: 9, white: "h3", black: "Nb8" },
+  { num: 10, white: "d4", black: "Nbd7" },
+];
+
+type GameData = {
+  id: string;
+  pgn: string;
+  result: "win" | "loss" | "draw";
+  color: "white" | "black";
+  opponent: string;
+  opponentRating: number | null;
+  playerRating: number | null;
+  openingName: string | null;
+  timeControl: string | null;
+  playedAt: string;
+  moveCount: number;
+};
+
+export function GameView({ game }: { game: GameData }) {
+  const userColor = game.color;
+  const opponentColor = userColor === "white" ? "black" : "white";
+
+  const resultLabel =
+    game.result === "win"
+      ? "Перемога"
+      : game.result === "loss"
+        ? "Поразка"
+        : "Нічия";
+
+  return (
+    <div className={styles.layout}>
+      {/* ── Left: board area ── */}
+      <div className={styles.boardArea}>
+        <PlayerBadge
+          name={game.opponent}
+          rating={game.opponentRating}
+          color={opponentColor}
+        />
+
+        <div className={styles.boardRow}>
+          <div
+            className={styles.evalBarPlaceholder}
+            style={{ height: BOARD_SIZE }}
+            title="Eval bar — Фаза 4"
+          />
+          <Chessboard
+            id="game-board"
+            position="start"
+            boardWidth={BOARD_SIZE}
+            boardOrientation={userColor}
+            arePiecesDraggable={false}
+            customBoardStyle={{
+              borderRadius: "4px",
+              boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
+            }}
+            customDarkSquareStyle={{ backgroundColor: "#2d5a27" }}
+            customLightSquareStyle={{ backgroundColor: "#d4e8d0" }}
+          />
+        </div>
+
+        <PlayerBadge
+          name="Ви"
+          rating={game.playerRating}
+          color={userColor}
+        />
+
+        <div className={styles.navControls}>
+          <button className={styles.navBtn} aria-label="Перший хід">
+            <FirstIcon />
+          </button>
+          <button className={styles.navBtn} aria-label="Попередній хід">
+            <PrevIcon />
+          </button>
+          <button className={styles.navBtn} aria-label="Наступний хід">
+            <NextIcon />
+          </button>
+          <button className={styles.navBtn} aria-label="Останній хід">
+            <LastIcon />
+          </button>
+          <div className={styles.navDivider} />
+          <button className={styles.navBtn} aria-label="Перевернути дошку">
+            <FlipIcon />
+          </button>
+        </div>
+      </div>
+
+      {/* ── Right: analysis panel ── */}
+      <div className={styles.analysisPanel}>
+        {/* Header */}
+        <div className={styles.panelHeader}>
+          <Link href="/dashboard" className={styles.backLink}>
+            <PrevIcon size={11} />
+            Назад
+          </Link>
+          <h1 className={styles.gameTitle}>
+            Ви — {game.opponent}
+          </h1>
+          <div className={styles.gameMeta}>
+            {game.openingName ?? "Дебют невідомий"}
+            {game.timeControl ? ` · ${game.timeControl}` : ""}
+            {" · "}
+            {formatDate(game.playedAt)}
+          </div>
+          <div className={styles.resultRow}>
+            <span className={`${styles.resultBadge} ${styles[game.result]}`}>
+              {resultLabel}
+            </span>
+            <span className={styles.moveCount}>{game.moveCount} ходів</span>
+          </div>
+          <div
+            className={styles.evalChartPlaceholder}
+            title="Граф оцінки — Фаза 4"
+          />
+        </div>
+
+        {/* Accuracy strip */}
+        <div className={styles.accuracyStrip}>
+          {(
+            [
+              { label: "Точність Б.", value: "–" },
+              { label: "Точність Ч.", value: "–" },
+              { label: "Помилки", value: "–" },
+              { label: "Грубих", value: "–" },
+            ] as const
+          ).map((cell) => (
+            <div key={cell.label} className={styles.accuracyCell}>
+              <span className={styles.accuracyValue}>{cell.value}</span>
+              <span className={styles.accuracyLabel}>{cell.label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Moves */}
+        <div className={styles.movesSection}>
+          <div className={styles.movesLabel}>Ходи</div>
+          <div className={styles.movesList}>
+            {SAMPLE_MOVES.map((pair) => (
+              <div key={pair.num} className={styles.movePair}>
+                <span className={styles.moveNum}>{pair.num}.</span>
+                <span className={styles.moveCell}>{pair.white}</span>
+                {pair.black && (
+                  <span className={styles.moveCell}>{pair.black}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Opening footer */}
+        <div className={styles.openingFooter}>
+          <span className={styles.openingLabel}>Дебют</span>
+          <span className={styles.openingValue}>
+            {game.openingName ?? "–"}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function PlayerBadge({
+  name,
+  rating,
+  color,
+}: {
+  name: string;
+  rating: number | null;
+  color: "white" | "black";
+}) {
+  return (
+    <div className={styles.playerBadge}>
+      <div
+        className={`${styles.playerIcon} ${
+          color === "white" ? styles.playerIconWhite : styles.playerIconBlack
+        }`}
+      >
+        {color === "white" ? "♔" : "♚"}
+      </div>
+      <div className={styles.playerInfo}>
+        <span className={styles.playerName}>{name}</span>
+        {rating !== null && (
+          <span className={styles.playerRating}>{rating}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Icons ─────────────────────────────────────────────────────────────────────
+
+function FirstIcon() {
+  return (
+    <svg
+      width={18}
+      height={18}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M19 20L9 12l10-8v16z M5 19V5" />
+    </svg>
+  );
+}
+
+function PrevIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M15 18l-6-6 6-6" />
+    </svg>
+  );
+}
+
+function NextIcon() {
+  return (
+    <svg
+      width={18}
+      height={18}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M9 18l6-6-6-6" />
+    </svg>
+  );
+}
+
+function LastIcon() {
+  return (
+    <svg
+      width={18}
+      height={18}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M5 4l10 8-10 8V4z M19 5v14" />
+    </svg>
+  );
+}
+
+function FlipIcon() {
+  return (
+    <svg
+      width={18}
+      height={18}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M7 16V4m0 0L3 8m4-4l4 4 M17 8v12m0 0l4-4m-4 4l-4-4" />
+    </svg>
+  );
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("uk-UA", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
