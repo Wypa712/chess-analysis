@@ -11,7 +11,9 @@ const BOARD_ROW_GAP = 10;
 const ANALYSIS_PANEL_MIN_WIDTH = 280;
 const LAYOUT_GAP = 24;
 
-const SAMPLE_MOVES = [
+type MovePair = { num: number; white: string; black?: string };
+
+const SAMPLE_MOVES: MovePair[] = [
   { num: 1, white: "e4", black: "e5" },
   { num: 2, white: "Nf3", black: "Nc6" },
   { num: 3, white: "Bb5", black: "a6" },
@@ -45,6 +47,7 @@ export function GameView({ game }: { game: GameData }) {
   const layoutRef = useRef<HTMLDivElement>(null);
   const boardAreaRef = useRef<HTMLDivElement>(null);
   const [boardSize, setBoardSize] = useState(MAX_BOARD_SIZE);
+  const [currentMove, setCurrentMove] = useState(-1);
 
   useEffect(() => {
     const layoutEl = layoutRef.current;
@@ -115,20 +118,20 @@ export function GameView({ game }: { game: GameData }) {
         />
 
         <div className={styles.navControls}>
-          <button className={styles.navBtn} aria-label="Перший хід">
+          <button type="button" className={styles.navBtn} aria-label="Перший хід">
             <FirstIcon />
           </button>
-          <button className={styles.navBtn} aria-label="Попередній хід">
+          <button type="button" className={styles.navBtn} aria-label="Попередній хід">
             <PrevIcon />
           </button>
-          <button className={styles.navBtn} aria-label="Наступний хід">
+          <button type="button" className={styles.navBtn} aria-label="Наступний хід">
             <NextIcon />
           </button>
-          <button className={styles.navBtn} aria-label="Останній хід">
+          <button type="button" className={styles.navBtn} aria-label="Останній хід">
             <LastIcon />
           </button>
           <div className={styles.navDivider} />
-          <button className={styles.navBtn} aria-label="Перевернути дошку">
+          <button type="button" className={styles.navBtn} aria-label="Перевернути дошку">
             <FlipIcon />
           </button>
         </div>
@@ -165,14 +168,12 @@ export function GameView({ game }: { game: GameData }) {
 
         {/* Accuracy strip */}
         <div className={styles.accuracyStrip}>
-          {(
-            [
-              { label: "Точність Б.", value: "–" },
-              { label: "Точність Ч.", value: "–" },
-              { label: "Помилки", value: "–" },
-              { label: "Грубих", value: "–" },
-            ] as const
-          ).map((cell) => (
+          {[
+            { label: "Точність Б.", value: "–" },
+            { label: "Точність Ч.", value: "–" },
+            { label: "Помилки", value: "–" },
+            { label: "Грубих", value: "–" },
+          ].map((cell) => (
             <div key={cell.label} className={styles.accuracyCell}>
               <span className={styles.accuracyValue}>{cell.value}</span>
               <span className={styles.accuracyLabel}>{cell.label}</span>
@@ -184,15 +185,29 @@ export function GameView({ game }: { game: GameData }) {
         <div className={styles.movesSection}>
           <div className={styles.movesLabel}>Ходи</div>
           <div className={styles.movesList}>
-            {SAMPLE_MOVES.map((pair) => (
-              <div key={pair.num} className={styles.movePair}>
-                <span className={styles.moveNum}>{pair.num}.</span>
-                <span className={styles.moveCell}>{pair.white}</span>
-                {pair.black && (
-                  <span className={styles.moveCell}>{pair.black}</span>
-                )}
-              </div>
-            ))}
+            {SAMPLE_MOVES.map((pair) => {
+              const whiteIdx = (pair.num - 1) * 2;
+              const blackIdx = whiteIdx + 1;
+              return (
+                <div key={pair.num} className={styles.movePair}>
+                  <span className={styles.moveNum}>{pair.num}.</span>
+                  <span
+                    className={`${styles.moveCell} ${currentMove === whiteIdx ? styles.moveCellActive : ""}`}
+                    onClick={() => setCurrentMove(whiteIdx)}
+                  >
+                    {pair.white}
+                  </span>
+                  {pair.black && (
+                    <span
+                      className={`${styles.moveCell} ${currentMove === blackIdx ? styles.moveCellActive : ""}`}
+                      onClick={() => setCurrentMove(blackIdx)}
+                    >
+                      {pair.black}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 

@@ -19,6 +19,6 @@ export default async function GamePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await params;
+  const { id: _id } = await params;
   return <GameView game={MOCK_GAME} />;
 }

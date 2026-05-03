@@ -45,6 +45,7 @@ https://api.chess.com/pub/player/{user}/games/{year}/{month}
 - Імпортувати тільки вибраний період і вибрану кількість найновіших партій.
 - Перша версія має підтримувати 25 / 50 / 100 партій.
 - Потрібно перевірити throttling і поведінку API при повторних імпортах.
+- ELO-графік будується з `games.player_rating`; rating-history API Chess.com не використовується.
 
 ### Lichess
 
@@ -59,6 +60,7 @@ https://lichess.org/api/games/user/{user}
 - Відповідь приходить як NDJSON-стрим.
 - Імпортувати тільки вибраний період і вибрану кількість партій.
 - Next.js API route має акуратно обробляти streaming.
+- ELO-графік будується з `games.player_rating` — той самий механізм, що і для Chess.com; `rating-history` API Lichess не використовується.
 
 ### LLM
 
