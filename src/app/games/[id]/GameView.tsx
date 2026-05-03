@@ -2,9 +2,14 @@
 
 import { Chessboard } from "react-chessboard";
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import styles from "./GameView.module.css";
 
-const BOARD_SIZE = 700;
+const MAX_BOARD_SIZE = 700;
+const EVAL_BAR_WIDTH = 24;
+const BOARD_ROW_GAP = 10;
+const ANALYSIS_PANEL_MIN_WIDTH = 280;
+const LAYOUT_GAP = 24;
 
 const SAMPLE_MOVES = [
   { num: 1, white: "e4", black: "e5" },
@@ -37,6 +42,34 @@ export function GameView({ game }: { game: GameData }) {
   const userColor = game.color;
   const opponentColor = userColor === "white" ? "black" : "white";
 
+  const layoutRef = useRef<HTMLDivElement>(null);
+  const boardAreaRef = useRef<HTMLDivElement>(null);
+  const [boardSize, setBoardSize] = useState(MAX_BOARD_SIZE);
+
+  useEffect(() => {
+    const layoutEl = layoutRef.current;
+    const boardAreaEl = boardAreaRef.current;
+    if (!layoutEl || !boardAreaEl) return;
+
+    const compute = () => {
+      const isMobile = window.matchMedia("(max-width: 768px)").matches;
+      const style = getComputedStyle(boardAreaEl);
+      const paddingX = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+      const layoutWidth = layoutEl.clientWidth;
+
+      const containerWidth = isMobile
+        ? layoutWidth
+        : layoutWidth - ANALYSIS_PANEL_MIN_WIDTH - LAYOUT_GAP;
+
+      const available = containerWidth - paddingX - EVAL_BAR_WIDTH - BOARD_ROW_GAP;
+      setBoardSize(Math.min(Math.max(available, 200), MAX_BOARD_SIZE));
+    };
+
+    const observer = new ResizeObserver(compute);
+    observer.observe(layoutEl);
+    return () => observer.disconnect();
+  }, []);
+
   const resultLabel =
     game.result === "win"
       ? "Перемога"
@@ -45,9 +78,9 @@ export function GameView({ game }: { game: GameData }) {
         : "Нічия";
 
   return (
-    <div className={styles.layout}>
+    <div className={styles.layout} ref={layoutRef}>
       {/* ── Left: board area ── */}
-      <div className={styles.boardArea}>
+      <div className={styles.boardArea} ref={boardAreaRef}>
         <PlayerBadge
           name={game.opponent}
           rating={game.opponentRating}
@@ -57,13 +90,13 @@ export function GameView({ game }: { game: GameData }) {
         <div className={styles.boardRow}>
           <div
             className={styles.evalBarPlaceholder}
-            style={{ height: BOARD_SIZE }}
+            style={{ height: boardSize }}
             title="Eval bar — Фаза 4"
           />
           <Chessboard
             id="game-board"
             position="start"
-            boardWidth={BOARD_SIZE}
+            boardWidth={boardSize}
             boardOrientation={userColor}
             arePiecesDraggable={false}
             customBoardStyle={{

@@ -137,7 +137,7 @@
 
 .analysisPanel {
   flex: 1;
-  min-width: 0;
+  min-width: 280px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -374,17 +374,27 @@
     flex-direction: column;
     height: auto;
     overflow: visible;
+    gap: 0;
   }
 
   .boardArea {
     border-right: none;
     border-bottom: 1px solid var(--color-border);
     overflow: visible;
-    padding: 14px 16px;
+    padding: 12px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .boardRow {
+    width: 100%;
   }
 
   .analysisPanel {
     overflow: visible;
+    border-left: none;
+    border-top: none;
+    width: 100%;
   }
 
   .movesSection {
