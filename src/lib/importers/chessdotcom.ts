@@ -146,7 +146,9 @@ async function getArchiveMonths(
     signal: AbortSignal.timeout(15_000),
   });
 
-  if (response.status === 404) return [];
+  if (response.status === 404) {
+    throw new Error("Chess.com user not found");
+  }
   if (!response.ok) {
     throw new Error(
       `Chess.com API error: ${response.status} ${response.statusText}`
@@ -162,12 +164,37 @@ async function getArchiveMonths(
     .reverse();
 }
 
+async function assertChessComUserExists(normalizedUsername: string) {
+  const url = `https://api.chess.com/pub/player/${encodeURIComponent(
+    normalizedUsername
+  )}`;
+
+  const response = await fetch(url, {
+    headers: { "User-Agent": "chess-analysis-app/1.0" },
+    signal: AbortSignal.timeout(15_000),
+  });
+
+  if (response.status === 404) {
+    throw new Error("Chess.com user not found");
+  }
+  if (!response.ok) {
+    throw new Error(
+      `Chess.com API error: ${response.status} ${response.statusText}`
+    );
+  }
+}
+
 export async function importChessComGames(
   chessAccountId: string,
   username: string,
   options: ImportOptions
 ): Promise<{ imported: number; skipped: number }> {
   const normalizedUsername = username.toLowerCase();
+
+  if (options.since !== undefined) {
+    await assertChessComUserExists(normalizedUsername);
+  }
+
   const months =
     options.since !== undefined
       ? getMonthRange(options.since)
@@ -208,8 +235,9 @@ export async function importChessComGames(
     collected.push(...filtered);
   }
 
-  const toProcess =
-    options.limit === undefined ? collected : collected.slice(0, options.limit);
+  const MAX_GAMES_PER_IMPORT = 500;
+  const cap = options.limit ?? MAX_GAMES_PER_IMPORT;
+  const toProcess = collected.slice(0, cap);
 
   if (toProcess.length === 0) {
     return { imported: 0, skipped: 0 };

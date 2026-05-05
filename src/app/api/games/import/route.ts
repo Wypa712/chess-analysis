@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { chessAccounts } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { importLichessGames } from "@/lib/importers/lichess";
 import { importChessComGames } from "@/lib/importers/chessdotcom";
 
@@ -72,21 +72,46 @@ export async function POST(req: NextRequest) {
       ? { limit: limit as number }
       : { since: Date.now() - (days as number) * 24 * 60 * 60 * 1000 };
 
-  const [chessAccount] = await db
-    .insert(chessAccounts)
-    .values({
-      userId,
-      platform,
-      username: trimmedUsername,
-      normalizedUsername,
-    })
-    .onConflictDoUpdate({
-      target: [chessAccounts.userId, chessAccounts.platform, chessAccounts.normalizedUsername],
-      set: { username: trimmedUsername },
-    })
-    .returning();
+  let chessAccount: { id: string } | null = null;
+  let shouldCleanupAccountOnFailure = false;
 
   try {
+    const existingAccounts = await db
+      .select({ id: chessAccounts.id })
+      .from(chessAccounts)
+      .where(
+        and(
+          eq(chessAccounts.userId, userId),
+          eq(chessAccounts.platform, platform),
+          eq(chessAccounts.normalizedUsername, normalizedUsername)
+        )
+      )
+      .limit(1);
+
+    shouldCleanupAccountOnFailure = existingAccounts.length === 0;
+
+    [chessAccount] = await db
+      .insert(chessAccounts)
+      .values({
+        userId,
+        platform,
+        username: trimmedUsername,
+        normalizedUsername,
+      })
+      .onConflictDoUpdate({
+        target: [
+          chessAccounts.userId,
+          chessAccounts.platform,
+          chessAccounts.normalizedUsername,
+        ],
+        set: { username: trimmedUsername },
+      })
+      .returning({ id: chessAccounts.id });
+
+    if (!chessAccount) {
+      throw new Error("Failed to create chess account");
+    }
+
     let result: { imported: number; skipped: number };
 
     if (platform === "lichess") {
@@ -110,7 +135,26 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(result);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Import failed";
+    if (shouldCleanupAccountOnFailure && chessAccount) {
+      try {
+        await db
+          .delete(chessAccounts)
+          .where(
+            and(
+              eq(chessAccounts.id, chessAccount.id),
+              eq(chessAccounts.userId, userId),
+              isNull(chessAccounts.lastSyncedAt)
+            )
+          );
+      } catch (cleanupErr) {
+        console.error("Failed to clean up failed import account", cleanupErr);
+      }
+    }
+
+    console.error("[import] failed:", err);
+    const raw = err instanceof Error ? err.message : "";
+    const isExternalApiError = /^(Chess\.com|Lichess) API error:/.test(raw);
+    const message = isExternalApiError ? raw : "Import failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

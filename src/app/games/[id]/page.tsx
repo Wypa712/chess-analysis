@@ -1,24 +1,46 @@
+import { notFound } from "next/navigation";
+import { auth } from "@/auth";
+import { db } from "@/db";
+import { chessAccounts, games } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
 import { GameView } from "./GameView";
-
-const MOCK_GAME = {
-  id: "preview",
-  pgn: "",
-  result: "win" as const,
-  color: "white" as const,
-  opponent: "Супротивник",
-  opponentRating: 1150,
-  playerRating: 1080,
-  openingName: "Іспанська партія",
-  timeControl: "10+0",
-  playedAt: new Date("2026-05-01").toISOString(),
-  moveCount: 38,
-};
 
 export default async function GamePage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id: _id } = await params;
-  return <GameView game={MOCK_GAME} />;
+  const [session, { id }] = await Promise.all([auth(), params]);
+  if (!session?.user?.id) notFound();
+
+  const rows = await db
+    .select({
+      id: games.id,
+      pgn: games.pgn,
+      result: games.result,
+      color: games.color,
+      opponent: games.opponent,
+      opponentRating: games.opponentRating,
+      playerRating: games.playerRating,
+      openingName: games.openingName,
+      timeControl: games.timeControl,
+      playedAt: games.playedAt,
+      moveCount: games.moveCount,
+    })
+    .from(games)
+    .innerJoin(chessAccounts, eq(games.chessAccountId, chessAccounts.id))
+    .where(and(eq(games.id, id), eq(chessAccounts.userId, session.user.id)))
+    .limit(1);
+
+  if (rows.length === 0) notFound();
+
+  const row = rows[0];
+  return (
+    <GameView
+      game={{
+        ...row,
+        playedAt: row.playedAt.toISOString(),
+      }}
+    />
+  );
 }

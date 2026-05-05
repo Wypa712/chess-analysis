@@ -2,7 +2,7 @@
 
 .layout {
   display: flex;
-  height: 100%;
+  height: 100vh;
   overflow: hidden;
   gap: 24px;
 }
@@ -10,40 +10,129 @@
 /* ── Left: board area ────────────────────────────────────────────────────── */
 
 .boardArea {
-  flex: 0 0 auto;
+  flex: 11 1 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 20px 24px;
   gap: 14px;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .boardRow {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
 }
 
-/* Eval bar — placeholder until Phase 4 */
-.evalBarPlaceholder {
-  width: 24px;
+/* ── Eval bar ────────────────────────────────────────────────────────────── */
+
+.evalBarWrap {
   flex-shrink: 0;
-  background-color: var(--color-bg3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  position: relative;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
 }
 
-.evalBarPlaceholder::after {
-  content: "";
+.evalBar {
+  flex: 1;
+  width: 24px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.evalBarValueLabel {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  color: var(--color-text-muted);
+  letter-spacing: -0.3px;
+  line-height: 1;
+}
+
+.evalBarPending .evalBar {
+  opacity: 0.72;
+}
+
+.evalBarPending .evalBarValueLabel {
+  color: var(--color-green-pl);
+}
+
+.evalBarBlack {
+  flex: 1;
+  background: #1a1a1a;
+  transition: flex 0.45s ease;
+}
+
+.evalBarWhite {
+  flex-shrink: 0;
+  background: #e8dcc8;
+  transition: height 0.45s ease;
+}
+
+.evalBarLabel {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 50%;
-  background-color: rgba(212, 232, 208, 0.06);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  letter-spacing: -0.5px;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  padding: 2px 1px;
+  pointer-events: none;
+}
+
+.evalBarLabelTop {
+  bottom: 50%;
+}
+
+.evalBarLabelBottom {
+  top: 50%;
+}
+
+/* ── Board wrapper + overlay ─────────────────────────────────────────────── */
+
+.boardWrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.boardOverlayIcon {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  pointer-events: none;
+  z-index: 30;
+  /* top-right corner: protrudes upward, slightly to the right */
+  transform: translate(-40%, -60%);
+  background: var(--icon-bg);
+  color: #fff;
+  border: 2px solid var(--icon-color);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.5),
+    0 2px 6px rgba(0, 0, 0, 0.6);
+  animation: overlayPop 0.12s ease;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+@keyframes overlayPop {
+  from { transform: translate(-40%, -60%) scale(0.5); opacity: 0; }
+  to   { transform: translate(-40%, -60%) scale(1);   opacity: 1; }
 }
 
 /* ── Player badge ────────────────────────────────────────────────────────── */
@@ -82,6 +171,7 @@
 .playerInfo {
   display: flex;
   flex-direction: column;
+  flex: 1;
   min-width: 0;
 }
 
@@ -98,6 +188,29 @@
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--color-text-faded);
+}
+
+.playerStats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.playerAccuracy {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-green-pl);
+}
+
+.playerMistakes {
+  font-size: 11px;
+  color: var(--color-warning);
+}
+
+.playerBlunders {
+  font-size: 11px;
+  color: var(--color-danger);
 }
 
 /* ── Nav controls ────────────────────────────────────────────────────────── */
@@ -121,9 +234,14 @@
   transition: background-color 0.12s ease, border-color 0.12s ease;
 }
 
-.navBtn:hover {
+.navBtn:hover:not(:disabled) {
   background-color: var(--color-bg4);
   border-color: var(--color-green);
+}
+
+.navBtn:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 .navDivider {
@@ -133,11 +251,117 @@
   margin: 0 2px;
 }
 
+/* ── Analyze button ──────────────────────────────────────────────────────── */
+
+.analyzeWrap {
+  width: 100%;
+}
+
+.analyzeBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, var(--color-green), var(--color-green-mid));
+  border: 1px solid var(--color-green-mid);
+  border-radius: var(--radius-md);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.analyzeBtn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.analyzeBtn:active {
+  transform: translateY(0);
+}
+
+.analyzeProgress {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.analyzeProgressLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+}
+
+.progressTrack {
+  width: 100%;
+  height: 4px;
+  background: var(--color-bg3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-green), var(--color-green-mid));
+  border-radius: 2px;
+  transition: width 0.15s linear;
+}
+
+.analyzeDone {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-green-pl);
+  font-weight: 500;
+}
+
+.analyzeDoneCheck {
+  font-size: 14px;
+  color: var(--color-success);
+}
+
+.analyzeError {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--color-danger);
+  font-weight: 500;
+}
+
+.rerunBtn {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--color-text-faded);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease;
+  font-family: var(--font-sans);
+}
+
+.rerunBtn:hover {
+  color: var(--color-text);
+  border-color: var(--color-green);
+}
+
 /* ── Right: analysis panel ───────────────────────────────────────────────── */
 
 .analysisPanel {
-  flex: 1;
+  flex: 10 1 0;
   min-width: 280px;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -218,8 +442,23 @@
   color: var(--color-text-faded);
 }
 
-/* Eval chart — placeholder until Phase 4 */
-.evalChartPlaceholder {
+/* ── Eval chart ──────────────────────────────────────────────────────────── */
+
+.evalChartWrap {
+  margin-top: 4px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.evalChartSvg {
+  display: block;
+  width: 100%;
+  height: auto;
+  cursor: crosshair;
+  border-radius: var(--radius-sm);
+}
+
+.evalChartEmpty {
   height: 80px;
   background-color: var(--color-bg3);
   border: 1px solid var(--color-border);
@@ -229,7 +468,7 @@
   overflow: hidden;
 }
 
-.evalChartPlaceholder::after {
+.evalChartEmpty::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -241,7 +480,7 @@
   );
 }
 
-/* Accuracy strip */
+/* ── Accuracy strip ──────────────────────────────────────────────────────── */
 
 .accuracyStrip {
   flex-shrink: 0;
@@ -276,62 +515,101 @@
   white-space: nowrap;
 }
 
-/* Moves section */
+/* ── Moves section ───────────────────────────────────────────────────────── */
 
 .movesSection {
-  flex: 1;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  padding: 10px 12px 0;
 }
 
-.movesLabel {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--color-text-faded);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 6px;
+.movesToggle {
+  width: 100%;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: background-color 0.1s ease;
+}
+
+.movesToggle:hover {
+  background-color: var(--color-bg3);
 }
 
 .movesList {
-  flex: 1;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding-bottom: 8px;
+  gap: 1px;
+  padding: 0 12px 8px;
+}
+
+.moveClassBadge {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  background: var(--badge-bg);
+  color: #fff;
+  margin-left: auto;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
 }
 
 .movePair {
   display: flex;
-  align-items: center;
+  align-items: stretch;
+  flex: 0 0 auto;
   gap: 2px;
   border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
 .moveNum {
-  width: 28px;
+  width: 30px;
   text-align: right;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--color-text-faded);
   flex-shrink: 0;
   padding-right: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 .moveCell {
+  appearance: none;
   flex: 1;
-  padding: 4px 8px;
+  min-width: 0;
+  padding: 6px 10px;
+  border: none;
   border-radius: 3px;
+  background: transparent;
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 14px;
+  line-height: 1.25;
+  font-weight: 500;
   color: var(--color-text);
   cursor: pointer;
   transition: background-color 0.1s ease;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 5px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  text-align: left;
 }
 
 .moveCell:hover {
@@ -343,7 +621,119 @@
   color: #fff;
 }
 
-/* Opening footer */
+.moveCell:focus-visible {
+  outline: 1px solid var(--color-green-lt);
+  outline-offset: -1px;
+}
+
+.moveSan {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Key moments accordion ───────────────────────────────────────────────── */
+
+.keyMoments {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.keyMomentsToggle {
+  width: 100%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: background-color 0.1s ease;
+}
+
+.keyMomentsToggle:hover {
+  background-color: var(--color-bg3);
+}
+
+.keyMomentsLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-faded);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.keyMomentsArrow {
+  font-size: 20px;
+  color: var(--color-text-muted);
+  transition: transform 0.2s ease;
+  display: inline-block;
+  line-height: 1;
+}
+
+.keyMomentsArrowOpen {
+  transform: rotate(90deg);
+  color: var(--color-green-lt);
+}
+
+.keyMomentsList {
+  padding: 2px 0 6px;
+}
+
+.keyMomentRow {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 0;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+  font-family: var(--font-mono);
+}
+
+.keyMomentRow:hover {
+  background-color: var(--color-bg3);
+}
+
+.keyMomentNum {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-green-mid);
+  flex-shrink: 0;
+  min-width: 30px;
+  text-align: right;
+}
+
+.keyMomentDesc {
+  min-width: 0;
+  font-size: 10px;
+  line-height: 1.25;
+  font-weight: 500;
+  color: var(--color-text);
+  flex: 1;
+}
+
+.keyMomentGo {
+  font-size: 14px;
+  color: var(--color-text-faded);
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+
+.keyMomentRow:hover .keyMomentGo {
+  opacity: 1;
+}
+
+/* ── Opening footer ──────────────────────────────────────────────────────── */
 
 .openingFooter {
   flex-shrink: 0;
@@ -380,7 +770,8 @@
   .boardArea {
     border-right: none;
     border-bottom: 1px solid var(--color-border);
-    overflow: visible;
+    overflow-y: auto;
+    overflow-x: hidden;
     padding: 12px;
     width: 100%;
     box-sizing: border-box;
@@ -391,17 +782,641 @@
   }
 
   .analysisPanel {
-    overflow: visible;
+    overflow: hidden;
     border-left: none;
     border-top: none;
     width: 100%;
+    height: 70vh;
   }
 
-  .movesSection {
-    overflow: visible;
+  .tabContent {
+    overflow-y: auto;
   }
 
-  .movesList {
-    overflow-y: visible;
-  }
+}
+
+/* ── Explore mode ─────────────────────────────────────────────────────────── */
+
+.navBtnActive {
+  background: var(--color-green);
+  color: #fff;
+}
+
+.exploreSlot {
+  width: 100%;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.exploreBreadcrumb {
+  width: 100%;
+  height: 32px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 0 10px;
+  background: var(--color-bg2);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.exploreBreadcrumbLabel {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--color-green-mid);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  flex-shrink: 0;
+  padding-right: 4px;
+  border-right: 1px solid var(--color-border);
+}
+
+.exploreMoveTrail {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  cursor: grab;
+  user-select: none;
+}
+
+.exploreMoveTrail::-webkit-scrollbar {
+  display: none;
+}
+
+.exploreBreadcrumbMove {
+  flex: 0 0 auto;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  padding: 0 3px;
+  cursor: pointer;
+  line-height: 1;
+  white-space: nowrap;
+  transition: color 0.1s ease;
+  position: relative;
+}
+
+.exploreBreadcrumbMove::after {
+  content: "›";
+  margin-left: 4px;
+  color: var(--color-text-faded);
+  font-family: var(--font-sans);
+  font-size: 11px;
+}
+
+.exploreBreadcrumbMove:last-child {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.exploreBreadcrumbMove:last-child::after {
+  display: none;
+}
+
+.exploreBreadcrumbMove:hover {
+  color: var(--color-green-pl);
+}
+
+.exploreAnalyzing {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--color-text-faded);
+  font-style: italic;
+  padding-left: 2px;
+}
+
+.exploreExitBtn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  border-left: 1px solid var(--color-border);
+  color: var(--color-text-faded);
+  font-size: 11px;
+  font-family: var(--font-sans);
+  padding: 0 0 0 10px;
+  margin-left: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.12s ease;
+}
+
+.exploreExitBtn:hover {
+  color: var(--color-text);
+}
+
+/* ── Phase accuracy row (below eval chart) ───────────────────────────────── */
+
+.phaseAccuracyGrid {
+  display: grid;
+  grid-template-columns: auto 1fr 1fr 1fr;
+  gap: 2px 4px;
+  padding: 4px 0 2px;
+  margin-left: 28px;
+  width: calc(100% - 28px);
+  align-items: center;
+}
+
+.phaseAccuracyHeader {
+  font-size: 7px;
+  font-family: var(--font-mono);
+  color: rgba(255, 255, 255, 0.28);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: center;
+}
+
+.phaseAccuracyPlayer {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding-right: 4px;
+}
+
+.phaseDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.phaseDotLight {
+  background: rgba(232, 220, 200, 0.85);
+}
+
+.phaseDotDark {
+  background: rgba(55, 55, 55, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.phasePlayerLabel {
+  font-size: 7px;
+  font-family: var(--font-mono);
+  color: rgba(255, 255, 255, 0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.phaseAccuracyVal {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  text-align: center;
+}
+
+.phaseAccuracyValUser {
+  color: var(--color-green-lt);
+}
+
+.phaseAccuracyValOpp {
+  color: rgba(255, 255, 255, 0.42);
+}
+
+/* ── Explore candidates panel (right panel) ──────────────────────────────── */
+
+.exploreCandidatesPanel {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg2);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.exploreCandidatesTitle {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--color-green-mid);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.exploreCandidatesList {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.exploreCandidateRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.exploreCandidateRank {
+  color: var(--color-text-faded);
+  width: 14px;
+  flex-shrink: 0;
+}
+
+.exploreCandidateSan {
+  color: var(--color-text);
+  font-weight: 600;
+  min-width: 44px;
+}
+
+.exploreCandidateEval {
+  font-size: 11px;
+}
+
+.exploreCandidatesEmpty {
+  font-size: 11px;
+  color: var(--color-text-faded);
+  font-style: italic;
+}
+
+/* ── Tab bar ──────────────────────────────────────────────────────────────── */
+
+.tabBar {
+  flex-shrink: 0;
+  display: flex;
+  background-color: var(--color-bg2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tabItem {
+  flex: 1;
+  padding: 9px 8px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  color: var(--color-text-faded);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.tabItem:hover {
+  color: var(--color-text-muted);
+}
+
+.tabItemActive {
+  color: var(--color-green-lt);
+  border-bottom-color: var(--color-green);
+}
+
+/* ── Tab content ──────────────────────────────────────────────────────────── */
+
+.tabContent {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── LLM empty state ─────────────────────────────────────────────────────── */
+
+.llmEmptyState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 24px;
+  text-align: center;
+}
+
+.llmEmptyIcon {
+  font-size: 28px;
+  color: var(--color-text-faded);
+  opacity: 0.4;
+}
+
+.llmEmptyText {
+  font-size: 12px;
+  color: var(--color-text-faded);
+  line-height: 1.55;
+  max-width: 200px;
+}
+
+/* ── LLM Analysis section ────────────────────────────────────────────────── */
+
+.llmSection {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--color-border);
+}
+
+.llmSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+}
+
+.llmSectionTitle {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-faded);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.llmAnalyzeBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--color-green);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+  white-space: nowrap;
+}
+
+.llmAnalyzeBtn:hover {
+  opacity: 0.88;
+}
+
+.llmAnalyzeBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.llmAnalyzingRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.llmSpinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-top-color: var(--color-green-lt);
+  border-radius: 50%;
+  animation: llmSpin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes llmSpin {
+  to { transform: rotate(360deg); }
+}
+
+.llmDoneRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.llmDoneCheck {
+  font-size: 13px;
+  color: var(--color-success);
+}
+
+.llmDoneLabel {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  flex: 1;
+}
+
+.llmReanalyzeBtn {
+  padding: 4px 10px;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  color: var(--color-text-faded);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: border-color 0.1s ease, color 0.1s ease;
+  white-space: nowrap;
+}
+
+.llmReanalyzeBtn:hover {
+  border-color: var(--color-green-mid);
+  color: var(--color-text);
+}
+
+.llmWarning {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0 12px 8px;
+  padding: 7px 10px;
+  background: rgba(201, 148, 90, 0.08);
+  border: 1px solid rgba(201, 148, 90, 0.2);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  color: var(--color-gold);
+  line-height: 1.4;
+}
+
+.llmWarningIcon {
+  flex-shrink: 0;
+  font-size: 11px;
+  margin-top: 1px;
+}
+
+/* LLM result body */
+
+.llmBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding-bottom: 8px;
+}
+
+.llmGeneralAssessment {
+  padding: 6px 14px 10px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--color-text);
+}
+
+/* Phase accordions */
+
+.llmPhaseAccordion {
+  border-top: 1px solid var(--color-border);
+}
+
+.llmAccordionToggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: background-color 0.1s ease;
+}
+
+.llmAccordionToggle:hover {
+  background: var(--color-bg3);
+}
+
+.llmAccordionLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.llmAccordionArrow {
+  font-size: 18px;
+  color: var(--color-text-faded);
+  transition: transform 0.18s ease;
+  display: inline-block;
+  line-height: 1;
+}
+
+.llmAccordionArrowOpen {
+  transform: rotate(90deg);
+  color: var(--color-green-lt);
+}
+
+.llmAccordionBody {
+  padding: 0 14px 10px;
+}
+
+.llmAccordionText {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--color-text);
+  margin: 0 0 6px;
+}
+
+.llmAccordionList {
+  margin: 0;
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.llmAccordionListItem {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+}
+
+/* Critical moments */
+
+.llmCriticalMoments {
+  border-top: 1px solid var(--color-border);
+  padding: 8px 0 4px;
+}
+
+.llmCriticalTitle {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-faded);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0 12px 6px;
+}
+
+.llmCriticalRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 5px 14px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+  transition: background-color 0.1s ease;
+}
+
+.llmCriticalRow:hover {
+  background: var(--color-bg3);
+}
+
+.llmCriticalMove {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-green-lt);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  transition: text-decoration-color 0.1s ease;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.llmCriticalMove:hover {
+  text-decoration-color: var(--color-green-lt);
+}
+
+.llmCriticalDesc {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Recommendations */
+
+.llmRecommendations {
+  border-top: 1px solid var(--color-border);
+  padding: 8px 0 8px;
+}
+
+.llmRecommendationsTitle {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-faded);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0 12px 6px;
+}
+
+.llmRecommendationItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 5px 14px;
+}
+
+.llmRecommendationNum {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-green-mid);
+  min-width: 18px;
+}
+
+.llmRecommendationContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.llmRecommendationTitle {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 2px;
+}
+
+.llmRecommendationDesc {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-text-muted);
 }

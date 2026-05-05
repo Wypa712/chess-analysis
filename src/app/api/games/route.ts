@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { chessAccounts, games } from "@/db/schema";
-import { eq, and, desc, gte, lte, inArray, type SQL } from "drizzle-orm";
+import { chessAccounts, engineAnalyses, games } from "@/db/schema";
+import { STOCKFISH_PROFILE_KEY } from "@/lib/chess/engine-analysis";
+import { eq, and, desc, inArray, type SQL } from "drizzle-orm";
 
 const PAGE_SIZE = 20;
 const VALID_PLATFORMS = ["chess_com", "lichess"] as const;
@@ -32,13 +33,6 @@ function parsePage(value: string | null) {
   return Number.isInteger(page) && page > 0 ? page : 1;
 }
 
-function parseDateParam(value: string | null) {
-  if (!value) return null;
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -50,8 +44,6 @@ export async function GET(req: NextRequest) {
   const platform = searchParams.get("platform"); // "chess_com" | "lichess"
   const timeControlCategory = searchParams.get("timeControlCategory");
   const result = searchParams.get("result"); // "win" | "loss" | "draw"
-  const from = searchParams.get("from"); // ISO date string
-  const to = searchParams.get("to"); // ISO date string
 
   if (platform && !includes(VALID_PLATFORMS, platform)) {
     return NextResponse.json({ error: "Invalid platform" }, { status: 400 });
@@ -67,21 +59,6 @@ export async function GET(req: NextRequest) {
   }
   if (result && !includes(VALID_RESULTS, result)) {
     return NextResponse.json({ error: "Invalid result" }, { status: 400 });
-  }
-
-  const fromDate = parseDateParam(from);
-  const toDate = parseDateParam(to);
-  if (from && !fromDate) {
-    return NextResponse.json({ error: "Invalid from date" }, { status: 400 });
-  }
-  if (to && !toDate) {
-    return NextResponse.json({ error: "Invalid to date" }, { status: 400 });
-  }
-  if (fromDate && toDate && fromDate > toDate) {
-    return NextResponse.json(
-      { error: "from date must be before to date" },
-      { status: 400 }
-    );
   }
 
   const userId = session.user.id;
@@ -117,25 +94,19 @@ export async function GET(req: NextRequest) {
   const accountIds = userAccounts.map((a) => a.id);
 
   // Build where conditions
-  const conditions: SQL[] = [inArray(games.chessAccountId, accountIds)];
+  const baseConditions: SQL[] = [inArray(games.chessAccountId, accountIds)];
 
   if (timeControlCategoryFilter) {
-    conditions.push(
-      eq(games.timeControlCategory, timeControlCategoryFilter)
-    );
-  }
-  if (resultFilter) {
-    conditions.push(eq(games.result, resultFilter));
-  }
-  if (fromDate) {
-    conditions.push(gte(games.playedAt, fromDate));
-  }
-  if (toDate) {
-    conditions.push(lte(games.playedAt, toDate));
+    baseConditions.push(eq(games.timeControlCategory, timeControlCategoryFilter));
   }
 
+  // summaryWhere excludes result filter so the breakdown always shows all three types
+  const summaryWhere = and(...baseConditions);
+
+  const conditions = resultFilter
+    ? [...baseConditions, eq(games.result, resultFilter)]
+    : baseConditions;
   const where = and(...conditions);
-  const summaryWhere = inArray(games.chessAccountId, accountIds);
   const offset = (page - 1) * PAGE_SIZE;
 
   const [rows, countRows, wins, draws, losses] = await Promise.all([
@@ -157,9 +128,17 @@ export async function GET(req: NextRequest) {
         moveCount: games.moveCount,
         chessAccountId: games.chessAccountId,
         platform: chessAccounts.platform,
+        engineAnalysisId: engineAnalyses.id,
       })
       .from(games)
       .innerJoin(chessAccounts, eq(games.chessAccountId, chessAccounts.id))
+      .leftJoin(
+        engineAnalyses,
+        and(
+          eq(engineAnalyses.gameId, games.id),
+          eq(engineAnalyses.profileKey, STOCKFISH_PROFILE_KEY)
+        )
+      )
       .where(where)
       .orderBy(desc(games.playedAt))
       .limit(PAGE_SIZE)
@@ -171,12 +150,15 @@ export async function GET(req: NextRequest) {
   ]);
 
   return NextResponse.json({
-    games: rows,
+    games: rows.map(({ engineAnalysisId, ...game }) => ({
+      ...game,
+      engineAnalysisStatus: engineAnalysisId ? "done" : "not_started",
+    })),
     total: countRows,
     page,
     pageSize: PAGE_SIZE,
     summary: {
-      total: wins + draws + losses,
+      total: countRows,
       wins,
       draws,
       losses,

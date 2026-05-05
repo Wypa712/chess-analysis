@@ -8,6 +8,13 @@
       "when": 1777756955834,
       "tag": "0000_easy_human_robot",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1777843428740,
+      "tag": "0001_align_auth_schema",
+      "breakpoints": true
     }
   ]
 }

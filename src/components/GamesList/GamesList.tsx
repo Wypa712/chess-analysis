@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import styles from "./GamesList.module.css";
 
@@ -19,6 +19,7 @@ type Game = {
   moveCount: number;
   sourceUrl: string | null;
   platform: "chess_com" | "lichess";
+  engineAnalysisStatus: "done" | "not_started";
 };
 
 type Summary = {
@@ -64,12 +65,6 @@ function resultLabel(r: Game["result"]) {
   return "Нічия";
 }
 
-function scoreLabel(game: Game) {
-  if (game.result === "draw") return "½-½";
-  if (game.color === "white") return game.result === "win" ? "1-0" : "0-1";
-  return game.result === "win" ? "0-1" : "1-0";
-}
-
 function platformLabel(platform: Game["platform"]) {
   return platform === "chess_com" ? "Chess.com" : "Lichess";
 }
@@ -89,6 +84,10 @@ function formatDate(iso: string) {
   });
 }
 
+function engineStatusLabel(status: Game["engineAnalysisStatus"]) {
+  return status === "done" ? "Engine: готово" : "Engine: не запущено";
+}
+
 export function GamesList({
   refreshKey,
   onSummary,
@@ -104,6 +103,11 @@ export function GamesList({
   const [timeControlCategory, setTimeControlCategory] = useState("");
   const [result, setResult] = useState("");
 
+  // Keep a ref to onSummary so the effect doesn't re-run when an unstable
+  // function reference is passed from a parent that forgot useCallback.
+  const onSummaryRef = useRef(onSummary);
+  useEffect(() => { onSummaryRef.current = onSummary; }, [onSummary]);
+
   useEffect(() => {
     const controller = new AbortController();
     const params = new URLSearchParams({ page: String(page) });
@@ -114,7 +118,7 @@ export function GamesList({
     async function fetchGames() {
       setLoading(true);
       setError(false);
-      onSummary?.({ total: 0, wins: 0, draws: 0, losses: 0 }, true);
+      onSummaryRef.current?.({ total: 0, wins: 0, draws: 0, losses: 0 }, true);
 
       try {
         const res = await fetch(`/api/games?${params}`, {
@@ -123,14 +127,16 @@ export function GamesList({
         if (res.ok) {
           const json: GamesResponse = await res.json();
           setData(json);
-          onSummary?.(json.summary, false);
+          onSummaryRef.current?.(json.summary, false);
         } else {
+          setData(null);
           setError(true);
+          onSummaryRef.current?.({ total: 0, wins: 0, draws: 0, losses: 0 }, false);
         }
       } catch (err) {
         if ((err as Error).name !== "AbortError") {
           setError(true);
-          onSummary?.({ total: 0, wins: 0, draws: 0, losses: 0 }, false);
+          onSummaryRef.current?.({ total: 0, wins: 0, draws: 0, losses: 0 }, false);
         }
       } finally {
         if (!controller.signal.aborted) setLoading(false);
@@ -140,7 +146,8 @@ export function GamesList({
     fetchGames();
 
     return () => controller.abort();
-  }, [page, platform, timeControlCategory, result, refreshKey, onSummary]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, platform, timeControlCategory, result, refreshKey]);
 
   function updatePlatform(value: string) {
     setPage(1);
@@ -248,7 +255,9 @@ export function GamesList({
                 </div>
 
                 <div className={styles.statuses}>
-                  <span className={styles.statusBadge}>Engine: не запущено</span>
+                  <span className={styles.statusBadge}>
+                    {engineStatusLabel(game.engineAnalysisStatus)}
+                  </span>
                   <span className={styles.statusBadge}>LLM: не запущено</span>
                 </div>
               </Link>

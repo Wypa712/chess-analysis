@@ -226,7 +226,7 @@ LLM-аналіз вибірки з 5-30 партій.
 - primary key: `id`;
 - foreign key: `user_id` -> `users.id`;
 - index: (`user_id`, `created_at` desc);
-- check: `array_length(game_ids, 1) between 5 and 30`.
+- check: `cardinality(game_ids) between 5 and 30`.
 
 Нотатка: `game_ids uuid[]` простіший для v1, але не дає FK на кожен id. Якщо потрібна суворіша цілісність, можна пізніше замінити на join table `group_analysis_games`.
 
@@ -323,6 +323,10 @@ type EngineAnalysisJsonV1 = {
     eval?: {
       type: "cp" | "mate";
       value: number;
+    };
+    bestMove?: {
+      san?: string;
+      uci: string;
     };
   }>;
 };

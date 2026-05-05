@@ -33,8 +33,8 @@
 - NextAuth.js v5 використовує JWT strategy; не створювати таблицю `auth_sessions`.
 - Без анонімного імпорту або аналізу у v1.
 - Chess.com і Lichess входять у v1.
-- Import options: 25 / 50 / 100 партій і 7 / 30 / 90 днів.
-- Defaults: 25 партій і 7 днів.
+- Import options: режим за кількістю 25 / 50 / 100 найновіших партій або режим за періодом 7 / 30 / 90 днів.
+- Defaults: режим за кількістю, 25 партій.
 - Без full lifetime import у v1.
 - UI і LLM-аналіз українською для v1.
 - LLM responses мають бути strict JSON.

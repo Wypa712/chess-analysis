@@ -8,6 +8,7 @@ import {
   timestamp,
   jsonb,
   index,
+  primaryKey,
   uniqueIndex,
   unique,
   check,
@@ -67,12 +68,13 @@ export const users = pgTable(
 export const authAccounts = pgTable(
   "auth_accounts",
   {
-    userId: uuid("userId")
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     type: text("type").notNull(),
     provider: text("provider").notNull(),
-    providerAccountId: text("providerAccountId").notNull(),
+    providerAccountId: text("provider_account_id").notNull(),
     refresh_token: text("refresh_token"),
     access_token: text("access_token"),
     expires_at: integer("expires_at"),
@@ -80,6 +82,13 @@ export const authAccounts = pgTable(
     scope: text("scope"),
     id_token: text("id_token"),
     session_state: text("session_state"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(now),
   },
   (t) => [
     unique("auth_accounts_provider_account_unique").on(
@@ -98,6 +107,10 @@ export const authVerificationTokens = pgTable(
     expires: timestamp("expires", { withTimezone: true }).notNull(),
   },
   (t) => [
+    primaryKey({
+      name: "auth_verification_tokens_identifier_token_pk",
+      columns: [t.identifier, t.token],
+    }),
     unique("auth_verification_tokens_token_unique").on(t.token),
   ]
 );
@@ -256,6 +269,10 @@ export const groupAnalyses = pgTable(
   },
   (t) => [
     index("group_analyses_user_created_idx").on(t.userId, t.createdAt),
+    check(
+      "group_analyses_game_ids_count",
+      sql`cardinality(${t.gameIds}) BETWEEN 5 AND 30`
+    ),
   ]
 );
 

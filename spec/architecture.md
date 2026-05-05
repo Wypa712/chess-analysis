@@ -12,7 +12,8 @@
 | Auth | NextAuth.js v5 | GitHub OAuth для v1 |
 | Шахова логіка | chess.js | Парсинг PGN і валідація ходів |
 | Шахова дошка | react-chessboard | UI дошки |
-| Engine | stockfish.js WASM | Аналіз у браузері |
+| Engine | stockfish npm v16 (WASM) | Аналіз у браузері через Web Worker |
+| Eval graph | Власний SVG | Без chart-бібліотек; ~80 рядків, клікабельний |
 | LLM | Gemini Flash 2.0 | Groq llama-3.3-70b-versatile як fallback |
 | Деплой | Vercel | Нативна підтримка Next.js |
 
@@ -42,8 +43,7 @@ https://api.chess.com/pub/player/{user}/games/{year}/{month}
 
 Нотатки реалізації:
 
-- Імпортувати тільки вибраний період і вибрану кількість найновіших партій.
-- Перша версія має підтримувати 25 / 50 / 100 партій.
+- Імпорт має два режими: 25 / 50 / 100 найновіших партій або партії за останні 7 / 30 / 90 днів.
 - Потрібно перевірити throttling і поведінку API при повторних імпортах.
 - ELO-графік будується з `games.player_rating`; rating-history API Chess.com не використовується.
 
@@ -58,7 +58,7 @@ https://lichess.org/api/games/user/{user}
 Нотатки реалізації:
 
 - Відповідь приходить як NDJSON-стрим.
-- Імпортувати тільки вибраний період і вибрану кількість партій.
+- Імпорт має два режими: 25 / 50 / 100 найновіших партій або партії за останні 7 / 30 / 90 днів.
 - Next.js API route має акуратно обробляти streaming.
 - ELO-графік будується з `games.player_rating` — той самий механізм, що і для Chess.com; `rating-history` API Lichess не використовується.
 
@@ -83,7 +83,7 @@ llama-3.3-70b-versatile
 ```text
 /                              стартова сторінка; авторизованих веде в dashboard
 /auth/login                    GitHub login
-/dashboard                     список партій, фільтри, імпорт
+/dashboard                     список партій, базові фільтри, імпорт
 /games/[id]                    дошка, engine review, LLM-аналіз однієї партії
 /profile                       метрики гравця і накопичувальне LLM-зведення
 /api/auth/[...nextauth]        NextAuth.js routes
@@ -119,7 +119,7 @@ game_analyses
   id, game_id, llm_model, prompt_tokens, created_at, analysis_json
 
 group_analyses
-  id, user_id, game_ids (int[]), llm_model, created_at, analysis_json
+  id, user_id, game_ids (uuid[]), llm_model, created_at, analysis_json
 
 player_summaries
   id, user_id, generated_at, games_count, analysis_json
@@ -130,7 +130,7 @@ player_summaries
 ### Потік імпорту
 
 1. Користувач входить у систему.
-2. Користувач вибирає платформу, нікнейм, кількість партій і період.
+2. Користувач вибирає платформу, нікнейм і режим імпорту: за кількістю або за періодом.
 3. API завантажує партії з Chess.com або Lichess.
 4. API нормалізує партії у локальну схему.
 5. Наявні партії пропускаються через `platform_game_id`.
@@ -174,6 +174,16 @@ NEXT_PUBLIC_APP_URL
 ```
 
 `GROQ_API_KEY` є опціональним, доки не реалізовано fallback.
+
+## Stockfish WASM — нотатки реалізації
+
+- Пакет: `stockfish` npm v16. Містить готові `.wasm` файли для браузера.
+- `.wasm` файл копіюється в `public/` через `postinstall`-скрипт або `next.config.js` `webpack.plugins`.
+- Движок запускається у Web Worker (`new Worker('/stockfish.wasm')`), щоб не блокувати UI.
+- Хук `useStockfish` керує ініціалізацією, чергою UCI-команд і парсингом відповідей.
+- Full-game review використовує окремий worker із послідовною чергою позицій; explore mode використовує окремий latest-only worker, який скасовує попередній position analysis при новому ході варіанту.
+- Depth і time defaults визначаються після performance spike в Етапі 2 Фази 4.
+- Eval graph реалізується власним SVG без chart-бібліотек: `<polyline>` + hover + клік → перехід до ходу.
 
 ## Архітектурні ризики
 
