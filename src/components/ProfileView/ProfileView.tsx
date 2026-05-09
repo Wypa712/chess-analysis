@@ -55,17 +55,23 @@ export function ProfileView({ user }: Props) {
   const [filterDays, setFilterDays] = useState<7 | 30 | 90>(validDays);
 
   const [stats, setStats] = useState<ProfileStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [refetching, setRefetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [groupAnalysis, setGroupAnalysis] = useState<GroupAnalysisRow | null>(null);
   const [groupLoading, setGroupLoading] = useState(false);
   const [groupReanalyzing, setGroupReanalyzing] = useState(false);
+  const [groupError, setGroupError] = useState<string | null>(null);
 
   // Fetch profile stats
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true);
+    if (stats) {
+      setRefetching(true);
+    } else {
+      setInitialLoading(true);
+    }
     setError(null);
 
     const params = new URLSearchParams({
@@ -80,16 +86,19 @@ export function ProfileView({ user }: Props) {
       })
       .then((data: ProfileStats) => {
         setStats(data);
-        setLoading(false);
+        setInitialLoading(false);
+        setRefetching(false);
       })
       .catch((err) => {
         if (err.name !== "AbortError") {
           setError("Не вдалося завантажити статистику");
-          setLoading(false);
+          setInitialLoading(false);
+          setRefetching(false);
         }
       });
 
     return () => controller.abort();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterMode, filterCount, filterDays]);
 
   // Fetch group analysis
@@ -121,26 +130,69 @@ export function ProfileView({ user }: Props) {
 
   async function handleGroupAnalyze() {
     setGroupReanalyzing(true);
+    setGroupError(null);
     try {
       const res = await fetch("/api/analysis/group", { method: "POST" });
+      const data = await res.json();
       if (!res.ok) {
-        const data = await res.json();
-        alert(data.error ?? "Не вдалося запустити аналіз");
+        if (res.status === 429) {
+          setGroupError("Ліміт запитів вичерпано — зачекайте хвилину перед повторним аналізом.");
+        } else if (res.status === 502 || res.status === 503) {
+          setGroupError("Помилка сервера — спробуйте пізніше");
+        } else {
+          setGroupError(data.error ?? "Не вдалося запустити аналіз");
+        }
         return;
       }
-      const data = await res.json();
       setGroupAnalysis(data.analysis);
     } catch {
-      alert("Не вдалося запустити аналіз");
+      setGroupError("Не вдалося отримати відповідь. Перевірте з'єднання.");
     } finally {
       setGroupReanalyzing(false);
     }
   }
 
-  if (loading || !stats) {
+  if (initialLoading || (!stats && !error)) {
     return (
       <div className={styles.page}>
-        <div className={styles.loading}>Завантаження...</div>
+        {/* Hero skeleton */}
+        <div className={styles.skeletonHero}>
+          <div className={styles.skeletonAvatar} />
+          <div className={styles.skeletonHeroLines}>
+            <div className={styles.skeletonLine} style={{ width: "40%" }} />
+            <div className={styles.skeletonLine} style={{ width: "60%", opacity: 0.6 }} />
+          </div>
+        </div>
+        {/* Filters bar — static, no skeleton needed */}
+        <div className={styles.filtersBar} aria-hidden="true" style={{ pointerEvents: "none", opacity: 0.4 }}>
+          <div className={styles.filterGroup}>
+            <button type="button" className={styles.filterModeBtn}>За кількістю</button>
+            <button type="button" className={styles.filterModeBtn}>За періодом</button>
+          </div>
+        </div>
+        {/* Stats row skeleton */}
+        <div className={styles.skeletonStatsRow}>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className={styles.skeletonCard}>
+              <div className={styles.skeletonLine} style={{ width: "50%" }} />
+              <div className={styles.skeletonLine} style={{ width: "100%", height: 18 }} />
+              <div className={styles.skeletonLine} style={{ width: "80%", opacity: 0.6 }} />
+              <div className={styles.skeletonLine} style={{ width: "65%", opacity: 0.4 }} />
+            </div>
+          ))}
+        </div>
+        {/* Openings card skeleton */}
+        <div className={styles.skeletonCard}>
+          <div className={styles.skeletonLine} style={{ width: "30%" }} />
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className={styles.skeletonLine} style={{ width: `${75 - i * 8}%`, opacity: 1 - i * 0.12 }} />
+          ))}
+        </div>
+        {/* ELO chart skeleton */}
+        <div className={styles.skeletonCard}>
+          <div className={styles.skeletonLine} style={{ width: "35%" }} />
+          <div className={styles.skeletonLine} style={{ width: "100%", height: 130 }} />
+        </div>
       </div>
     );
   }
@@ -152,6 +204,8 @@ export function ProfileView({ user }: Props) {
       </div>
     );
   }
+
+  if (!stats) return null;
 
   if (stats.totalGames < 5) {
     return (
@@ -207,7 +261,7 @@ export function ProfileView({ user }: Props) {
           <div className={styles.heroAccounts}>
             {stats.accounts.map((acc) => (
               <span
-                key={acc.platform}
+                key={`${acc.platform}-${acc.username}`}
                 className={`${styles.platformBadge} ${acc.platform === "chess_com" ? styles.badgeCC : styles.badgeLI}`}
               >
                 {acc.platform === "chess_com" ? "Chess.com" : "Lichess"}
@@ -270,7 +324,7 @@ export function ProfileView({ user }: Props) {
       </section>
 
       {/* ── Stats row ── */}
-      <div className={styles.statsRow}>
+      <div className={`${styles.statsRow} ${refetching ? styles.refetching : ""}`}>
         {/* WDL */}
         <div className={styles.card}>
           <h3 className={styles.cardTitle}>Результати</h3>
@@ -355,7 +409,7 @@ export function ProfileView({ user }: Props) {
       </div>
 
       {/* ── Openings ── */}
-      <section className={styles.card}>
+      <section className={`${styles.card} ${refetching ? styles.refetching : ""}`}>
         <h3 className={styles.cardTitle}>Дебюти (топ-5)</h3>
         <div className={styles.openingsList}>
           <div className={styles.openingHeader}>
@@ -378,7 +432,7 @@ export function ProfileView({ user }: Props) {
       </section>
 
       {/* ── ELO chart ── */}
-      <section className={styles.card}>
+      <section className={`${styles.card} ${refetching ? styles.refetching : ""}`}>
         <h3 className={styles.cardTitle}>Динаміка рейтингу</h3>
         <EloChartPlaceholder
           ccData={eloHistory.chess_com}
@@ -404,11 +458,24 @@ export function ProfileView({ user }: Props) {
             {groupReanalyzing ? "Аналізуємо…" : "Аналізувати останні 30 партій"}
           </button>
         </div>
-        {groupLoading ? (
+        {groupError && (
+          <div className={styles.groupError}>
+            <span className={styles.groupErrorText}>{groupError}</span>
+            <button
+              type="button"
+              className={styles.groupAnalyzeBtn}
+              onClick={handleGroupAnalyze}
+              disabled={groupReanalyzing}
+            >
+              {groupReanalyzing ? "Аналізуємо…" : "Спробувати ще раз"}
+            </button>
+          </div>
+        )}
+        {!groupError && groupLoading ? (
           <div className={styles.groupEmpty}>
             <p className={styles.groupEmptyTitle}>Завантаження...</p>
           </div>
-        ) : groupAnalysis ? (
+        ) : !groupError && groupAnalysis ? (
           <GroupAnalysisPanel
             analysis={groupAnalysis.analysisJson}
             gameCount={groupAnalysis.gameIds.length}
@@ -416,15 +483,24 @@ export function ProfileView({ user }: Props) {
             onReanalyze={handleGroupAnalyze}
             reanalyzing={groupReanalyzing}
           />
-        ) : (
+        ) : !groupError ? (
           <div className={styles.groupEmpty}>
             <div className={styles.groupEmptyIcon}>◈</div>
             <p className={styles.groupEmptyTitle}>Груповий аналіз ще не запускався</p>
             <p className={styles.groupEmptyHint}>
               Після аналізу тут з&apos;являться повторювані закономірності, слабкості і план дій
             </p>
+            <button
+              type="button"
+              className={styles.groupAnalyzeBtn}
+              style={{ marginTop: "1rem" }}
+              onClick={handleGroupAnalyze}
+              disabled={groupReanalyzing}
+            >
+              {groupReanalyzing ? "Аналізуємо…" : "Запустити аналіз"}
+            </button>
           </div>
-        )}
+        ) : null}
       </section>
     </div>
   );

@@ -68,69 +68,65 @@ export function LlmAnalysis({
   // ── Recommendations tab ────────────────────────────────────────────────────
 
   if (view === "recommendations") {
-    if (llmStatus === "idle") {
-      return (
-        <div className={styles.llmEmptyState}>
-          <span className={styles.llmEmptyIcon}>◈</span>
-          <span className={styles.llmEmptyText}>
-            Перейдіть на вкладку «Аналіз» і запустіть аналіз партії
-          </span>
-        </div>
-      );
-    }
-
-    if (llmStatus === "analyzing") {
-      return (
-        <div className={styles.llmEmptyState}>
-          <span className={styles.llmSpinner} />
-          <span className={styles.llmEmptyText}>Аналізуємо…</span>
-        </div>
-      );
-    }
-
-    if (llmStatus === "error") {
-      return (
-        <div className={styles.llmEmptyState}>
-          <span className={styles.llmEmptyIcon}>✕</span>
-          <span className={styles.llmEmptyText}>
-            {llmError ?? "Не вдалося отримати аналіз. Спробуйте ще раз."}
-          </span>
-        </div>
-      );
-    }
-
-    if (llmStatus === "done" && llmAnalysis) {
-      if (llmAnalysis.recommendations.length === 0) {
-        return (
+    return (
+      <div aria-live="polite" aria-atomic="true">
+        {llmStatus === "idle" && (
           <div className={styles.llmEmptyState}>
             <span className={styles.llmEmptyIcon}>◈</span>
-            <span className={styles.llmEmptyText}>Рекомендацій не знайдено.</span>
+            <span className={styles.llmEmptyText}>
+              Перейдіть на вкладку «Аналіз» і запустіть аналіз партії
+            </span>
           </div>
-        );
-      }
-      return (
-        <div className={styles.llmRecommendations}>
-          {sortedRecommendations.map((rec, i) => (
-            <div key={i} className={styles.llmRecommendationItem}>
-              <span className={styles.llmRecommendationNum}>{i + 1}.</span>
-              <div className={styles.llmRecommendationContent}>
-                <div className={styles.llmRecommendationTitle}>{rec.title}</div>
-                <div className={styles.llmRecommendationDesc}>{rec.description}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      );
-    }
+        )}
 
-    return null;
+        {llmStatus === "analyzing" && (
+          <div className={styles.llmEmptyState}>
+            <span className={styles.llmSpinner} />
+            <span className={styles.llmEmptyText}>Аналізуємо…</span>
+          </div>
+        )}
+
+        {llmStatus === "error" && (
+          <div className={styles.llmEmptyState}>
+            <span className={styles.llmEmptyIcon}>✕</span>
+            <span className={styles.llmEmptyText}>
+              {llmError ?? "Не вдалося отримати аналіз."}
+            </span>
+            <button type="button" className={styles.llmAnalyzeBtn} onClick={onAnalyze}>
+              Спробувати ще раз
+            </button>
+          </div>
+        )}
+
+        {llmStatus === "done" && llmAnalysis && (
+          llmAnalysis.recommendations.length === 0 ? (
+            <div className={styles.llmEmptyState}>
+              <span className={styles.llmEmptyIcon}>◈</span>
+              <span className={styles.llmEmptyText}>Рекомендацій не знайдено.</span>
+            </div>
+          ) : (
+            <div className={styles.llmRecommendations}>
+              {sortedRecommendations.map((rec, i) => (
+                <div key={i} className={styles.llmRecommendationItem}>
+                  <span className={styles.llmRecommendationNum}>{i + 1}.</span>
+                  <div className={styles.llmRecommendationContent}>
+                    <div className={styles.llmRecommendationTitle}>{rec.title}</div>
+                    <div className={styles.llmRecommendationDesc}>{rec.description}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        )}
+      </div>
+    );
   }
 
   // ── Analysis tab ───────────────────────────────────────────────────────────
 
   return (
     <div className={styles.llmSection}>
-      <div className={styles.llmSectionHeader}>
+      <div className={styles.llmSectionHeader} aria-live="polite" aria-atomic="true">
         {llmStatus === "idle" && !stockfishRunning && hasEngineAnalysis && (
           <button
             type="button"

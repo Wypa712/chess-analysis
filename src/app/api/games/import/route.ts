@@ -5,6 +5,7 @@ import { chessAccounts } from "@/db/schema";
 import { eq, and, isNull, sql } from "drizzle-orm";
 import { importLichessGames } from "@/lib/importers/lichess";
 import { importChessComGames } from "@/lib/importers/chessdotcom";
+import { ImportError } from "@/lib/importers/errors";
 
 const VALID_LIMITS = [25, 50, 100] as const;
 const VALID_DAYS = [7, 30, 90] as const;
@@ -174,9 +175,45 @@ export async function POST(req: NextRequest) {
     }
 
     console.error("[import] failed:", err);
-    const raw = err instanceof Error ? err.message : "";
-    const isExternalApiError = /^(Chess\.com|Lichess) API error:/.test(raw);
-    const message = isExternalApiError ? raw : "Import failed";
-    return NextResponse.json({ error: message }, { status: 500 });
+
+    const platformName = platform === "chess_com" ? "Chess.com" : "Lichess";
+
+    if (err instanceof ImportError) {
+      const messages = {
+        user_not_found: `Гравця "${trimmedUsername}" не знайдено на ${platformName}`,
+        rate_limited: `${platformName} обмежує запити. Спробуйте через кілька хвилин`,
+        api_error: `Помилка сервера ${platformName}. Спробуйте пізніше`,
+        network_error: `Не вдалося підключитися до ${platformName}. Перевірте з'єднання`,
+      };
+      const httpStatus = {
+        user_not_found: 404,
+        rate_limited: 429,
+        api_error: 502,
+        network_error: 503,
+      };
+      return NextResponse.json(
+        { error: messages[err.code], code: err.code },
+        { status: httpStatus[err.code] }
+      );
+    }
+
+    if (
+      err instanceof TypeError ||
+      (err instanceof DOMException &&
+        (err.name === "TimeoutError" || err.name === "AbortError"))
+    ) {
+      return NextResponse.json(
+        {
+          error: `Не вдалося підключитися до ${platformName}. Перевірте з'єднання`,
+          code: "network_error",
+        },
+        { status: 503 }
+      );
+    }
+
+    return NextResponse.json(
+      { error: "Помилка імпорту. Спробуйте пізніше", code: "api_error" },
+      { status: 500 }
+    );
   }
 }

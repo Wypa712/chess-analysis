@@ -176,21 +176,147 @@
 - Доданий `@vitejs/plugin-react` + `jsdom` + `@testing-library/react` для React-тестів
 - Exported helpers з importers для testability
 
-### Фаза 9 — Полірування і деплой (2 дні)
+### Фаза 9 — Полірування і деплой
 
-- [ ] **[9-1]** Стани завантаження
-- [ ] **[9-2]** Empty states
-- [ ] **[9-3]** Обробка помилок імпорту
-- [ ] **[9-4]** Обробка LLM-помилок + retry UI
+Розбита на 4 етапи. Кожен етап залишає застосунок у робочому стані.
+
+---
+
+#### Етап 9.1 — UX-полірування (loading, empty states, error UI)
+
+**Мета:** Всі видимі стани UI покриті — завантаження, порожні дані, помилки з конкретними повідомленнями.
+
+- [x] **[9-1]** Стани завантаження ✅
+  - GamesList: 8 skeleton рядків з `@keyframes skeletonPulse`, відповідають grid структурі `.gameRow`
+  - ProfileView: повний skeleton лейаут (hero, filters, 3 stats cards, openings, ELO chart)
+  - GameView (LLM/engine): вже мав spinner і progress bar — залишено без змін
+  - CSS `@keyframes` pulse в `GamesList.module.css` і `ProfileView.module.css`, без бібліотек
+
+- [x] **[9-2]** Empty states ✅
+  - Dashboard: 0 партій після фільтрів → кнопка "Скинути фільтри" (GamesList.tsx)
+  - Dashboard: 0 імпортованих партій взагалі → іконка + текст + підказка про форму вище
+  - Profile: < 5 партій → existing empty state ✅ вже було
+  - GameView: `games/[id]` з невалідним id → кастомна `not-found.tsx` з кнопкою назад
+  - GroupAnalysis на `/profile`: кнопка "Запустити аналіз" прямо в empty state
+
+- [x] **[9-3]** Обробка помилок імпорту ✅
+  - `ImportError` клас з кодом (`user_not_found`, `rate_limited`, `api_error`, `network_error`) у `lib/importers/errors.ts`
+  - Chess.com 404 → "Гравця `{username}` не знайдено на Chess.com"; 429 → "Chess.com обмежує запити..."
+  - Lichess 404/429 → аналогічно
+  - Мережева помилка (TypeError/TimeoutError) → "Не вдалося підключитись. Перевірте з'єднання"
+  - `/api/games/import` повертає `{ error: string, code: string }` з відповідним HTTP-статусом (404/429/502/503)
+  - Inline error у ImportForm — без toast ✅
+
+- [x] **[9-4]** Обробка LLM-помилок + retry UI ✅
+  - `handleLlmAnalyze` (GameView.tsx): 429 → "Аналіз недоступний — ліміт запитів вичерпано", 503 → "Сервіс аналізу тимчасово недоступний", інші → "Помилка сервера — спробуйте пізніше", мережева помилка → "Не вдалося отримати відповідь. Перевірте з'єднання."
+  - `LlmAnalysis` рекомендації (вкладка "Поради"): додано кнопку "Спробувати ще раз" у стан error
+  - `ProfileView`: `groupError` стан замість `alert()`, inline помилка з кнопкою "Спробувати ще раз"
+  - `ProfileView.module.css`: `.groupError` + `.groupErrorText` стилі
+
+---
+
+#### Етап 9.2 — Backend-надійність (retry, дедуплікація, health)
+
+**Мета:** API витримує тимчасові збої Groq, не дублює group analyses, має health endpoint.
+
 - [ ] **[9-5]** Retry з exponential backoff для Groq
+  - Реалізувати утиліту `lib/retry.ts`: `retryWithBackoff(fn, maxRetries, baseDelayMs)`
+  - Параметри: `maxRetries = 3`, `baseDelayMs = 1000`, cap `~4000ms` (1s → 2s → 4s, разом 3 retry після першої спроби)
+  - Retryable: HTTP 429, HTTP 503, `fetch` network error (`TypeError`)
+  - Non-retryable: HTTP 400, 401, 403, 404, невалідний JSON
+  - Застосувати до Groq-виклику в `/api/games/[id]/analyze` і `/api/analysis/group`
+  - AbortController timeout — єдиний shared deadline для всіх спроб: один AbortController створюється до першої спроби і не скидається між retry; якщо загальний timeout спливає — поточна спроба переривається і retry не продовжуються
+  - Перевірка: логувати `attempt N` у консоль сервера (прибрати перед production)
+
 - [ ] **[9-6]** `inputHash` для дедуплікації group analyses
-- [ ] **[9-7]** Sentry integration
+  - Міграція БД: додати колонку `input_hash TEXT` до таблиці `group_analyses` (nullable для зворотної сумісності); одночасно створити індекс `CREATE INDEX group_analyses_user_hash_idx ON group_analyses(user_id, input_hash)` — підтримує запит `WHERE user_id = ? AND input_hash = ?` без full-table scan
+  - Генерація хешу: `SHA-256(sorted game_ids joined by ',')` — використати `crypto` (Node built-in)
+  - Логіка в `/api/analysis/group` POST:
+    1. Обчислити `inputHash` перед запитом до Groq
+    2. `SELECT * FROM group_analyses WHERE user_id = ? AND input_hash = ? ORDER BY created_at DESC LIMIT 1`
+    3. Якщо знайдено → повернути кешований результат з `{ cached: true }`
+    4. Якщо ні → запустити Groq, зберегти з `input_hash`
+  - Drizzle: оновити схему `drizzle/schema.ts` — додати поле `inputHash` і `index("group_analyses_user_hash_idx").on(table.userId, table.inputHash)`, запустити `drizzle-kit generate` + `migrate`
+  - Перевірка: два однакових запити → другий повертає без виклику Groq
+  
+  ------
+
 - [ ] **[9-8]** `/api/health` endpoint
+  - `GET /api/health` — публічний, без auth
+  - Перевіряє: підключення до БД (`SELECT 1`), наявність ключових env vars
+  - Відповідь: `{ status: "ok" | "degraded", db: "ok" | "error", env: "ok" | "missing_vars", ts: ISO8601 }`
+  - HTTP 200 якщо `status: "ok"`, HTTP 503 якщо `status: "degraded"`
+  - Реалізація: `app/api/health/route.ts`, тайм-аут на DB ping — 3s
+  - Перевірка: `curl /api/health` → `{"status":"ok",...}`
+
+-----
+
+#### Етап 9.3 — Observability (Sentry)
+
+**Мета:** Продуктові помилки автоматично логуються у Sentry — без PII.
+
+- [ ] **[9-7]** Sentry integration
+  - Встановити: `@sentry/nextjs` (перевірити сумісність з Next.js 15)
+  - Файли конфігурації: `sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`
+  - `next.config.js`: wrap з `withSentryConfig`, вимкнути source map upload якщо немає платного плану
+  - Env var: `SENTRY_DSN` → додати в `.env.example`, документувати в Vercel env vars
+  - Capture points:
+    - `/api/games/import` — помилки Chess.com/Lichess fetch
+    - `/api/games/[id]/analyze` — Groq failures після вичерпання retry
+    - `/api/analysis/group` — аналогічно
+    - Client-side: глобальний error boundary або Next.js `error.tsx`
+  - **Не логувати:** PGN, analysis_json, user email, game content — тільки error type + route
+  - `beforeSend` hook: sanitize `event.extra` і `event.contexts`
+  - Перевірка: навмисно кинути помилку в dev → подія з'являється у Sentry dashboard
+
+---
+
+#### Етап 9.4 — Деплой (staging → production)
+
+**Мета:** Застосунок задеплоєний на Vercel, smoke tests пройшли, production живий.
+
 - [ ] **[9-9]** Production env vars (Vercel)
+  - Перелік всіх змінних з `architecture.md` + `SENTRY_DSN`:
+    - `DATABASE_URL` — Neon production connection string
+    - `AUTH_SECRET` — згенерувати `openssl rand -base64 32`
+    - `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` — production GitHub OAuth App
+    - `GROQ_API_KEY`
+    - `NEXT_PUBLIC_APP_URL` — production domain (наприклад `https://chess-analysis.vercel.app`)
+    - `SENTRY_DSN`
+  - Vercel dashboard: Settings → Environment Variables → Production
+  - Оновити `.env.example` з усіма ключами (без значень)
+  - Перевірити: staging preview build підтягує правильні змінні
+
 - [ ] **[9-10]** Neon production database
+  - Neon dashboard: створити production branch (окремо від dev/main branch)
+  - Запустити Drizzle migrations: `drizzle-kit migrate` проти production `DATABASE_URL`
+  - Верифікувати через `/api/health` → `"db": "ok"`
+  - Перевірити що dev migrations не залишили test-даних
+
 - [ ] **[9-11]** Vercel staging deploy
+  - Push до `main` → автоматичний Vercel preview або staging URL
+  - Перевірити: усі env vars є, `/api/health` → ok, авторизація через GitHub працює
+  - Перевірити: `next build` без TypeScript помилок (має бути 0 після Фази 7C)
+
 - [ ] **[9-12]** Smoke tests (імпорт → аналіз → профіль)
+  - Manual checklist на staging URL:
+    1. [ ] Авторизація через GitHub → редирект на dashboard
+    2. [ ] Імпорт 25 партій з Chess.com (реальний нікнейм)
+    3. [ ] Імпорт 25 партій з Lichess (реальний нікнейм)
+    4. [ ] Відкрити партію → Stockfish аналіз запускається, eval bar рухається
+    5. [ ] LLM аналіз однієї партії → відповідь приходить, JSON рендериться
+    6. [ ] Груповий аналіз на `/profile` → результат відображається
+    7. [ ] Профіль → WDL chart, stats cards, ELO-графік заповнені реальними даними
+    8. [ ] Повторний груповий аналіз → повертає кешований (`cached: true`)
+    9. [ ] Неіснуючий нікнейм при імпорті → конкретне повідомлення про помилку
+    10. [ ] `/api/health` → `{"status":"ok"}`
+  - Критерій: всі 10 пунктів пройшли
+
 - [ ] **[9-13]** Production deploy
+  - Передумова: Етап 9.4 smoke tests пройшли повністю
+  - Vercel: promote staging → production (або merge до `main` якщо auto-deploy)
+  - Верифікувати production URL: auth, import, `/api/health`
+  - Нотатка: після деплою моніторити Sentry dashboard 30 хв
 
 ---
 

@@ -13,6 +13,9 @@ export default async function GamePage({
   const [session, { id }] = await Promise.all([auth(), params]);
   if (!session?.user?.id) notFound();
 
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!UUID_RE.test(id)) notFound();
+
   const rows = await db
     .select({
       id: games.id,

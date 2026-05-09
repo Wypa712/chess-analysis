@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import { games } from "@/db/schema";
+import { ImportError } from "./errors";
 
 type LichessPlayer = {
   user?: { name: string; id: string };
@@ -212,8 +213,20 @@ export async function importLichessGames(
     signal: idleController.signal,
   });
 
+  if (response.status === 404) {
+    clearTimeout(idleTimer);
+    clearTimeout(maxTimer);
+    throw new ImportError("user_not_found", "Lichess user not found");
+  }
+  if (response.status === 429) {
+    clearTimeout(idleTimer);
+    clearTimeout(maxTimer);
+    throw new ImportError("rate_limited", "Lichess rate limited");
+  }
   if (!response.ok) {
-    throw new Error(`Lichess API error: ${response.status} ${response.statusText}`);
+    clearTimeout(idleTimer);
+    clearTimeout(maxTimer);
+    throw new ImportError("api_error", `Lichess API error: ${response.status}`);
   }
 
   let imported = 0;

@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import { games } from "@/db/schema";
+import { ImportError } from "./errors";
 
 type ChessComPlayer = {
   rating: number;
@@ -104,26 +105,6 @@ export function countMovesFromPgn(pgn: string): number {
   return Math.ceil(tokens.length / 2);
 }
 
-// Returns list of YYYY/MM strings between since and now, newest first
-function getMonthRange(since: number): Array<{ year: number; month: number }> {
-  const months: Array<{ year: number; month: number }> = [];
-  const now = new Date();
-  const sinceDate = new Date(since);
-
-  const endYear = now.getFullYear();
-  const endMonth = now.getMonth() + 1;
-  const startYear = sinceDate.getFullYear();
-  const startMonth = sinceDate.getMonth() + 1;
-
-  for (let y = endYear; y >= startYear; y--) {
-    const mStart = y === startYear ? startMonth : 1;
-    const mEnd = y === endYear ? endMonth : 12;
-    for (let m = mEnd; m >= mStart; m--) {
-      months.push({ year: y, month: m });
-    }
-  }
-  return months;
-}
 
 function parseArchiveUrl(url: string): { year: number; month: number } | null {
   const match = url.match(/\/games\/(\d{4})\/(\d{2})$/);
@@ -148,12 +129,13 @@ async function getArchiveMonths(
   });
 
   if (response.status === 404) {
-    throw new Error("Chess.com user not found");
+    throw new ImportError("user_not_found", "Chess.com user not found");
+  }
+  if (response.status === 429) {
+    throw new ImportError("rate_limited", "Chess.com rate limited");
   }
   if (!response.ok) {
-    throw new Error(
-      `Chess.com API error: ${response.status} ${response.statusText}`
-    );
+    throw new ImportError("api_error", `Chess.com API error: ${response.status}`);
   }
 
   const data: ChessComArchivesResponse = await response.json();
@@ -165,26 +147,6 @@ async function getArchiveMonths(
     .reverse();
 }
 
-async function assertChessComUserExists(normalizedUsername: string) {
-  const url = `https://api.chess.com/pub/player/${encodeURIComponent(
-    normalizedUsername
-  )}`;
-
-  const response = await fetch(url, {
-    headers: { "User-Agent": "chess-analysis-app/1.0" },
-    signal: AbortSignal.timeout(15_000),
-  });
-
-  if (response.status === 404) {
-    throw new Error("Chess.com user not found");
-  }
-  if (!response.ok) {
-    throw new Error(
-      `Chess.com API error: ${response.status} ${response.statusText}`
-    );
-  }
-}
-
 export async function importChessComGames(
   chessAccountId: string,
   username: string,
@@ -192,14 +154,19 @@ export async function importChessComGames(
 ): Promise<{ imported: number; skipped: number }> {
   const normalizedUsername = username.toLowerCase();
 
-  if (options.since !== undefined) {
-    await assertChessComUserExists(normalizedUsername);
-  }
+  const allMonths = await getArchiveMonths(normalizedUsername);
 
   const months =
     options.since !== undefined
-      ? getMonthRange(options.since)
-      : await getArchiveMonths(normalizedUsername);
+      ? allMonths.filter(({ year, month }) => {
+          const sinceDate = new Date(options.since!);
+          return (
+            year > sinceDate.getFullYear() ||
+            (year === sinceDate.getFullYear() &&
+              month >= sinceDate.getMonth() + 1)
+          );
+        })
+      : allMonths;
 
   const collected: ChessComGame[] = [];
 
@@ -217,8 +184,11 @@ export async function importChessComGames(
     });
 
     if (response.status === 404) continue;
+    if (response.status === 429) {
+      throw new ImportError("rate_limited", "Chess.com rate limited");
+    }
     if (!response.ok) {
-      throw new Error(`Chess.com API error: ${response.status} ${response.statusText}`);
+      throw new ImportError("api_error", `Chess.com API error: ${response.status}`);
     }
 
     const data: ChessComArchiveResponse = await response.json();

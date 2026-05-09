@@ -1,0 +1,23 @@
+.link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0.5rem 1.25rem;
+  background: transparent;
+  border: 1px solid var(--color-green-mid);
+  border-radius: var(--radius-sm);
+  color: var(--color-green-lt);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.link:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--color-green-lt);
+}
+
+.link:focus-visible {
+  outline: 2px solid var(--color-green-lt);
+  outline-offset: 2px;
+}

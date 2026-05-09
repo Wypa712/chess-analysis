@@ -430,6 +430,11 @@
   background: var(--color-green-mid);
 }
 
+.groupAnalyzeBtn:focus-visible {
+  outline: 2px solid var(--color-green-lt);
+  outline-offset: 2px;
+}
+
 .groupEmpty {
   display: flex;
   flex-direction: column;
@@ -437,6 +442,72 @@
   gap: 8px;
   padding: 32px 0 20px;
   text-align: center;
+}
+
+/* ── Skeleton ── */
+
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+.skeletonBox {
+  background-color: var(--color-bg3);
+  border-radius: var(--radius-sm);
+  animation: skeletonPulse 1.4s ease-in-out infinite;
+}
+
+.skeletonHero {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.skeletonAvatar {
+  composes: skeletonBox;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  flex-shrink: 0;
+}
+
+.skeletonHeroLines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.skeletonLine {
+  composes: skeletonBox;
+  height: 12px;
+  border-radius: 4px;
+}
+
+.skeletonCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.skeletonStatsRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+}
+
+.refetching {
+  opacity: 0.5;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
 }
 
 .loading,
@@ -517,6 +588,24 @@
   max-width: 420px;
 }
 
+.groupError {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(180, 60, 60, 0.08);
+  border: 1px solid rgba(180, 60, 60, 0.25);
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+.groupErrorText {
+  font-size: 13px;
+  color: #e07070;
+  line-height: 1.5;
+}
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .page {
@@ -542,7 +631,8 @@
     font-size: 22px;
   }
 
-  .statsRow {
+  .statsRow,
+  .skeletonStatsRow {
     grid-template-columns: 1fr;
   }
 

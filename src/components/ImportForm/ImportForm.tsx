@@ -39,21 +39,28 @@ export function ImportForm({ onImported }: { onImported?: () => void }) {
         }),
       });
 
-      const data = await res.json();
-
       if (!res.ok) {
-        setError(data.error ?? "Помилка імпорту");
-      } else {
-        setResult(data);
-        onImported?.();
+        let msg = "Помилка імпорту";
+        try {
+          const data = await res.json();
+          msg = data.error ?? msg;
+        } catch {
+          // non-JSON error body — use default message
+        }
+        setError(msg);
+        return;
       }
+
+      const data = await res.json();
+      setResult(data);
+      onImported?.();
     } catch (error) {
       if (error instanceof TypeError) {
-        setError("Не вдалося підключитися до сервера");
+        setError("Не вдалося підключитись. Перевірте з'єднання");
       } else if (error instanceof SyntaxError) {
         setError("Некоректна відповідь сервера");
       } else {
-        setError("Помилка імпорту");
+        setError("Помилка імпорту. Спробуйте пізніше");
       }
     } finally {
       setLoading(false);

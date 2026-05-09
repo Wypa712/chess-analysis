@@ -318,16 +318,29 @@ export function GameView({ game }: { game: GameData }) {
     setLlmError(null);
     try {
       const res = await fetch(`/api/games/${game.id}/analyze`, { method: "POST" });
+      if (!res.ok) {
+        let msg: string;
+        if (res.status === 429) {
+          msg = "Аналіз недоступний — ліміт запитів вичерпано. Зачекайте 30 секунд.";
+        } else if (res.status === 503) {
+          msg = "Сервіс аналізу тимчасово недоступний. Спробуйте пізніше.";
+        } else {
+          msg = "Помилка сервера — спробуйте пізніше";
+        }
+        setLlmError(msg);
+        setLlmStatus("error");
+        return;
+      }
       const data = await res.json();
-      if (!res.ok || !data?.analysis || !isLlmGameAnalysisV1(data.analysis)) {
-        setLlmError(data?.error ?? null);
+      if (!data?.analysis || !isLlmGameAnalysisV1(data.analysis)) {
+        setLlmError("Помилка сервера — спробуйте пізніше");
         setLlmStatus("error");
         return;
       }
       setLlmAnalysis(data.analysis);
       setLlmStatus("done");
     } catch {
-      setLlmError("Мережева помилка. Спробуйте ще раз.");
+      setLlmError("Не вдалося отримати відповідь. Перевірте з'єднання.");
       setLlmStatus("error");
     }
   }, [game.id]);

@@ -40,7 +40,13 @@ export async function GET(req: NextRequest) {
     .from(chessAccounts)
     .where(eq(chessAccounts.userId, userId));
 
-  const accounts = accountRows.map(({ platform, username }) => ({ platform, username }));
+  const accountsAll = accountRows.map(({ platform, username }) => ({ platform, username }));
+  const seen = new Set<string>();
+  const accounts = accountsAll.filter(({ platform }) => {
+    if (seen.has(platform)) return false;
+    seen.add(platform);
+    return true;
+  });
   const accountIdList = accountRows.map((a) => a.id);
 
   if (accountIdList.length === 0) {

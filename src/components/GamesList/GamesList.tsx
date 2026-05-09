@@ -164,6 +164,14 @@ export function GamesList({
     setResult(value);
   }
 
+  function resetFilters() {
+    setPage(1);
+    setPlatform("");
+    setTimeControlCategory("");
+    setResult("");
+  }
+
+  const hasActiveFilters = platform !== "" || timeControlCategory !== "" || result !== "";
   const totalPages = data ? Math.ceil(data.total / data.pageSize) : 0;
 
   return (
@@ -198,7 +206,26 @@ export function GamesList({
         </div>
       </div>
 
-      {loading && <div className={styles.loading}>Завантаження…</div>}
+      {loading && !data && (
+        <div className={styles.rows}>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className={styles.skeletonRow}>
+              <div className={styles.skeletonIcon} />
+              <div className={styles.skeletonMain}>
+                <div className={styles.skeletonLine} style={{ width: "55%" }} />
+                <div className={styles.skeletonLine} style={{ width: "75%", opacity: 0.6 }} />
+              </div>
+              <div className={styles.skeletonSide}>
+                <div className={styles.skeletonLine} style={{ width: 60 }} />
+                <div className={styles.skeletonLine} style={{ width: 48, opacity: 0.6 }} />
+              </div>
+              <div className={styles.skeletonStatuses}>
+                <div className={styles.skeletonLine} style={{ width: 90, height: 20, borderRadius: 4 }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {!loading && error && (
         <div className={styles.empty}>
@@ -207,18 +234,35 @@ export function GamesList({
         </div>
       )}
 
-      {!loading && !error && data?.games.length === 0 && (
+      {!loading && !error && data?.games.length === 0 && hasActiveFilters && (
         <div className={styles.empty}>
           <p className={styles.emptyTitle}>Партій не знайдено</p>
           <p className={styles.emptyText}>
-            Спробуйте змінити фільтри або імпортуйте нові партії
+            Жодна партія не відповідає обраним фільтрам
+          </p>
+          <button
+            type="button"
+            className={styles.emptyBtn}
+            onClick={resetFilters}
+          >
+            Скинути фільтри
+          </button>
+        </div>
+      )}
+
+      {!loading && !error && data?.games.length === 0 && !hasActiveFilters && (
+        <div className={styles.empty}>
+          <div className={styles.emptyIcon} aria-hidden="true">♟</div>
+          <p className={styles.emptyTitle}>Партій ще немає</p>
+          <p className={styles.emptyText}>
+            Імпортуйте партії з Chess.com або Lichess за допомогою форми вище
           </p>
         </div>
       )}
 
-      {!loading && !error && data && data.games.length > 0 && (
+      {!error && data && data.games.length > 0 && (
         <>
-          <div className={styles.rows}>
+          <div className={`${styles.rows} ${loading ? styles.refetching : ""}`}>
             {data.games.map((game) => (
               <Link key={game.id} href={`/games/${game.id}`} className={styles.gameRow}>
                 <div className={styles.pieceMark}>

@@ -69,6 +69,62 @@
 
 /* Loading / empty */
 
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+.skeletonBox {
+  background-color: var(--color-bg3);
+  border-radius: var(--radius-sm);
+  animation: skeletonPulse 1.4s ease-in-out infinite;
+}
+
+.skeletonRow {
+  display: grid;
+  grid-template-columns: 36px minmax(180px, 1fr) minmax(110px, auto) minmax(210px, auto);
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 64px;
+  padding: 0.625rem 0.875rem;
+  background-color: var(--color-bg2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.skeletonIcon {
+  composes: skeletonBox;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+}
+
+.skeletonMain {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.skeletonLine {
+  composes: skeletonBox;
+  height: 12px;
+  border-radius: 4px;
+}
+
+.skeletonSide {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.375rem;
+}
+
+.skeletonStatuses {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .loading {
   color: var(--color-text-muted);
   font-size: 0.875rem;
@@ -88,6 +144,12 @@
   text-align: center;
 }
 
+.emptyIcon {
+  font-size: 2rem;
+  opacity: 0.3;
+  line-height: 1;
+}
+
 .emptyTitle {
   font-size: 0.9375rem;
   font-weight: 600;
@@ -98,6 +160,35 @@
   font-size: 0.8125rem;
   color: var(--color-text-muted);
   max-width: 360px;
+}
+
+.emptyBtn {
+  margin-top: 0.25rem;
+  padding: 0.5rem 1.125rem;
+  background: transparent;
+  border: 1px solid var(--color-green-mid);
+  border-radius: var(--radius-sm);
+  color: var(--color-green-lt);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.emptyBtn:hover {
+  background: rgba(76, 175, 120, 0.1);
+}
+
+.emptyBtn:focus-visible {
+  outline: 2px solid var(--color-green-lt);
+  outline-offset: 2px;
+}
+
+.refetching {
+  opacity: 0.45;
+  pointer-events: none;
+  transition: opacity 0.15s;
 }
 
 /* Rows */
@@ -364,7 +455,8 @@
 }
 
 @media (max-width: 1100px) {
-  .gameRow {
+  .gameRow,
+  .skeletonRow {
     grid-template-columns: 36px minmax(180px, 1fr) minmax(100px, auto);
   }
 
@@ -389,7 +481,8 @@
     width: 100%;
   }
 
-  .gameRow {
+  .gameRow,
+  .skeletonRow {
     grid-template-columns: 36px minmax(0, 1fr);
     align-items: start;
   }
