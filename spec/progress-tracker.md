@@ -2,9 +2,9 @@
 
 ## 📊 Поточний статус
 
-**Завершено:** Фази 1–6.1, Фаза 7A, Фаза 7.0, Фаза 7B, Фаза 7C  
-**Поточна фаза:** Фаза 8 — Тести критичної логіки (1 день)  
-**Наступна фаза:** Фаза 9 — Полірування + деплой (2 дні)  
+**Завершено:** Фази 1–6.1, Фаза 7A, Фаза 7.0, Фаза 7B, Фаза 7C, Фаза 8  
+**Поточна фаза:** Фаза 9 — Полірування + деплой (2 дні)  
+**Наступна фаза:** Production  
 **Останнє ревью:** 2026-05-07 — Загальна оцінка **5.3/10**
 
 ---
@@ -166,12 +166,15 @@
 
 ## 🧪 Майбутні фази
 
-### Фаза 8 — Тести критичної логіки (1 день)
+### Фаза 8 — Тести критичної логіки ✅ ЗАВЕРШЕНО
 
-- [ ] **[8-1]** Unit-тести `lib/chess/engine-analysis.ts`
-- [ ] **[8-2]** Unit-тести `lib/importers/`
-- [ ] **[8-3]** Integration тести API routes (MSW для Groq)
-- [ ] **[8-4]** Component тести (EvalSection, ExplorePanel, LlmTabsPanel)
+- [x] **[8-1]** Unit-тести `lib/chess/engine-analysis.ts` (isEngineAnalysisJsonV1, evalToCentipawns, evalToPawns — 31 тест)
+- [x] **[8-2]** Unit-тести `lib/importers/` (mapTimeClass, extractPlatformGameId, extractOpeningFromPgn, extractResultFromPlayerResult, countMovesFromPgn, mapSpeed, buildTimeControl, buildPgn, normalizeLichessGame — 48 тестів)
+- [x] **[8-3]** Integration тести API routes з vi.mock для Groq (analyze GET/POST, group GET/POST — 19 тестів)
+- [x] **[8-4]** Component smoke тести (EvalSection, ExplorePanel, LlmTabsPanel — 10 тестів)
+- Усього: 108 тестів пройшли ✅
+- Доданий `@vitejs/plugin-react` + `jsdom` + `@testing-library/react` для React-тестів
+- Exported helpers з importers для testability
 
 ### Фаза 9 — Полірування і деплой (2 дні)
 

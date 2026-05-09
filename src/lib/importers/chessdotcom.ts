@@ -39,7 +39,7 @@ type ImportOptions = {
   since?: number;
 };
 
-function mapTimeClass(
+export function mapTimeClass(
   timeClass: string
 ): "bullet" | "blitz" | "rapid" | "classical" | "correspondence" | "unknown" {
   switch (timeClass) {
@@ -58,13 +58,14 @@ function mapTimeClass(
   }
 }
 
-function extractPlatformGameId(url: string): string {
+export function extractPlatformGameId(url: string): string {
   // e.g. https://www.chess.com/game/live/12345678
   const match = url.match(/\/game\/(?:live|daily)\/(\d+)/);
-  return match ? match[1] : url;
+  if (!match) throw new Error(`Cannot extract game ID from URL: ${url}`);
+  return match[1];
 }
 
-function extractOpeningFromPgn(pgn: string): string | null {
+export function extractOpeningFromPgn(pgn: string): string | null {
   const match = pgn.match(/\[ECOUrl\s+"[^"]*\/([^"/]+)"\]/);
   if (match) {
     return match[1].replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -73,7 +74,7 @@ function extractOpeningFromPgn(pgn: string): string | null {
   return openingMatch ? openingMatch[1] : null;
 }
 
-function extractResultFromPlayerResult(
+export function extractResultFromPlayerResult(
   playerResult: string
 ): "win" | "loss" | "draw" {
   if (playerResult === "win") return "win";
@@ -91,7 +92,7 @@ function extractResultFromPlayerResult(
   return "loss";
 }
 
-function countMovesFromPgn(pgn: string): number {
+export function countMovesFromPgn(pgn: string): number {
   const moveSection = pgn
     .replace(/\[[^\]]*\]/g, "")
     .replace(/\{[^}]*\}/g, "")
@@ -252,7 +253,12 @@ export async function importChessComGames(
     const opponentData = isWhite ? game.black : game.white;
 
     const result = extractResultFromPlayerResult(playerData.result);
-    const platformGameId = extractPlatformGameId(game.url);
+    let platformGameId: string;
+    try {
+      platformGameId = extractPlatformGameId(game.url);
+    } catch {
+      continue;
+    }
     const openingName = extractOpeningFromPgn(game.pgn);
     const moveCount = countMovesFromPgn(game.pgn);
 

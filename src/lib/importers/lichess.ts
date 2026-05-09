@@ -39,7 +39,7 @@ type GameInsert = typeof games.$inferInsert;
 
 const INSERT_BATCH_SIZE = 50;
 
-function mapSpeed(
+export function mapSpeed(
   speed: string
 ): "bullet" | "blitz" | "rapid" | "classical" | "correspondence" | "unknown" {
   switch (speed) {
@@ -59,7 +59,7 @@ function mapSpeed(
   }
 }
 
-function buildTimeControl(game: LichessGame): string {
+export function buildTimeControl(game: LichessGame): string {
   if (game.clock) return `${game.clock.initial}+${game.clock.increment}`;
   if (game.speed === "correspondence") return "correspondence";
   return "-";
@@ -69,7 +69,7 @@ function sanitizePgnString(s: string): string {
   return s.replace(/"/g, "'").replace(/\\/g, "/");
 }
 
-function buildPgn(game: LichessGame): string {
+export function buildPgn(game: LichessGame): string {
   const white = sanitizePgnString(game.players.white.user?.name ?? "?");
   const black = sanitizePgnString(game.players.black.user?.name ?? "?");
   const whiteElo = game.players.white.rating ?? "?";
@@ -118,7 +118,7 @@ function buildPgn(game: LichessGame): string {
   return `${headers}\n\n${pgnMoves.trim()}`;
 }
 
-function normalizeLichessGame(
+export function normalizeLichessGame(
   game: LichessGame,
   chessAccountId: string,
   normalizedUsername: string
