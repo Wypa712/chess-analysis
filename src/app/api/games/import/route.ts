@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { chessAccounts } from "@/db/schema";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, sql } from "drizzle-orm";
 import { importLichessGames } from "@/lib/importers/lichess";
 import { importChessComGames } from "@/lib/importers/chessdotcom";
 
@@ -39,6 +39,9 @@ export async function POST(req: NextRequest) {
   if (typeof username !== "string" || !username.trim()) {
     return NextResponse.json({ error: "Username required" }, { status: 400 });
   }
+  if (username.trim().length > 50) {
+    return NextResponse.json({ error: "Username too long" }, { status: 400 });
+  }
   if (!VALID_IMPORT_MODES.includes(importMode as ImportMode)) {
     return NextResponse.json(
       { error: "importMode must be count or days" },
@@ -65,6 +68,25 @@ export async function POST(req: NextRequest) {
   }
 
   const userId = session.user.id;
+
+  const recentImport = await db
+    .select({ id: chessAccounts.id })
+    .from(chessAccounts)
+    .where(
+      and(
+        eq(chessAccounts.userId, userId),
+        sql`${chessAccounts.lastSyncedAt} > NOW() - INTERVAL '60 seconds'`
+      )
+    )
+    .limit(1);
+
+  if (recentImport.length > 0) {
+    return NextResponse.json(
+      { error: "Зачекайте хвилину між імпортами" },
+      { status: 429 }
+    );
+  }
+
   const trimmedUsername = (username as string).trim();
   const normalizedUsername = trimmedUsername.toLowerCase();
   const importOptions =

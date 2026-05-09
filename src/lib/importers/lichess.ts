@@ -201,9 +201,15 @@ export async function importLichessGames(
   url.searchParams.set("clocks", "false");
   url.searchParams.set("evals", "false");
 
+  const IDLE_MS = 30_000;
+  const MAX_MS = 300_000; // 5 minutes absolute cap regardless of idle resets
+  const idleController = new AbortController();
+  let idleTimer = setTimeout(() => idleController.abort(), IDLE_MS);
+  const maxTimer = setTimeout(() => idleController.abort(), MAX_MS);
+
   const response = await fetch(url.toString(), {
     headers: { Accept: "application/x-ndjson" },
-    signal: AbortSignal.timeout(20_000),
+    signal: idleController.signal,
   });
 
   if (!response.ok) {
@@ -246,6 +252,8 @@ export async function importLichessGames(
 
   if (!response.body) {
     const text = await response.text();
+    clearTimeout(idleTimer);
+    clearTimeout(maxTimer);
     for (const line of text.split("\n")) {
       await processLine(line);
     }
@@ -261,6 +269,9 @@ export async function importLichessGames(
     const { value, done } = await reader.read();
     if (done) break;
 
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => idleController.abort(), IDLE_MS);
+
     buffer += decoder.decode(value, { stream: true });
     const lines = buffer.split("\n");
     buffer = lines.pop() ?? "";
@@ -270,6 +281,8 @@ export async function importLichessGames(
     }
   }
 
+  clearTimeout(idleTimer);
+  clearTimeout(maxTimer);
   buffer += decoder.decode();
   if (buffer.trim()) {
     await processLine(buffer);
