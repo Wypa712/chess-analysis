@@ -5,6 +5,7 @@ import { chessAccounts, engineAnalyses, gameAnalyses, games, groupAnalyses } fro
 import { eq, and, inArray, desc, sql } from "drizzle-orm";
 import Groq from "groq-sdk";
 import { isGroupAnalysisJsonV1, type GroupAnalysisJsonV1 } from "@/lib/llm/types";
+import { retryWithBackoff } from "@/lib/retry";
 
 const LLM_MODEL = "llama-3.3-70b-versatile";
 const MIN_GAMES = 5;
@@ -120,22 +121,24 @@ export async function POST(req: NextRequest) {
   let promptTokens: number | undefined;
   let completionTokens: number | undefined;
 
-  // P0-2: AbortController so the HTTP request is cancelled on timeout
+  // Shared AbortController — one deadline for all retry attempts
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 45_000);
   try {
-    const completion = await groq.chat.completions.create(
-      {
-        model: LLM_MODEL,
-        messages: [
-          { role: "system", content: GROUP_SYSTEM_PROMPT },
-          { role: "user", content: prompt },
-        ],
-        temperature: 0.3,
-        max_tokens: 2048,
-        response_format: { type: "json_object" },
-      },
-      { signal: controller.signal }
+    const completion = await retryWithBackoff(() =>
+      groq!.chat.completions.create(
+        {
+          model: LLM_MODEL,
+          messages: [
+            { role: "system", content: GROUP_SYSTEM_PROMPT },
+            { role: "user", content: prompt },
+          ],
+          temperature: 0.3,
+          max_tokens: 2048,
+          response_format: { type: "json_object" },
+        },
+        { signal: controller.signal }
+      )
     );
 
     const rawText = completion.choices[0]?.message?.content ?? "";

@@ -6,6 +6,7 @@ import { eq, and, desc, sql } from "drizzle-orm";
 import Groq from "groq-sdk";
 import { isLlmGameAnalysisV1, type LlmGameAnalysisV1 } from "@/lib/llm/types";
 import type { EngineAnalysisJsonV1 } from "@/lib/chess/engine-analysis";
+import { retryWithBackoff } from "@/lib/retry";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -190,28 +191,30 @@ export async function POST(
   let promptTokens: number | undefined;
   let completionTokens: number | undefined;
 
-  // P0-2: AbortController so the HTTP request is cancelled on timeout
+  // Shared AbortController — one deadline for all retry attempts
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 25_000);
   try {
-    const completion = await groq.chat.completions.create(
-      {
-        model: LLM_MODEL,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userMessage },
-        ],
-        temperature: 0.3,
-        max_tokens: 2048,
-        response_format: { type: "json_object" },
-      },
-      { signal: controller.signal }
+    const completion = await retryWithBackoff(() =>
+      groq!.chat.completions.create(
+        {
+          model: LLM_MODEL,
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: userMessage },
+          ],
+          temperature: 0.3,
+          max_tokens: 2048,
+          response_format: { type: "json_object" },
+        },
+        { signal: controller.signal }
+      )
     );
     rawText = completion.choices[0]?.message?.content ?? "";
     promptTokens = completion.usage?.prompt_tokens;
     completionTokens = completion.usage?.completion_tokens;
   } catch (err) {
-    const isAbort = err instanceof Error && (err.name === "AbortError" || err.message.includes("abort"));
+    const isAbort = err instanceof Error && (err.name === "AbortError" || err.message.toLowerCase().includes("abort"));
     console.error("[LLM] generateContent failed:", err);
     return NextResponse.json(
       { error: isAbort ? "LLM timeout" : "LLM request failed" },

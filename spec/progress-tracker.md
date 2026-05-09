@@ -219,14 +219,11 @@
 
 **Мета:** API витримує тимчасові збої Groq, не дублює group analyses, має health endpoint.
 
-- [ ] **[9-5]** Retry з exponential backoff для Groq
-  - Реалізувати утиліту `lib/retry.ts`: `retryWithBackoff(fn, maxRetries, baseDelayMs)`
-  - Параметри: `maxRetries = 3`, `baseDelayMs = 1000`, cap `~4000ms` (1s → 2s → 4s, разом 3 retry після першої спроби)
-  - Retryable: HTTP 429, HTTP 503, `fetch` network error (`TypeError`)
-  - Non-retryable: HTTP 400, 401, 403, 404, невалідний JSON
-  - Застосувати до Groq-виклику в `/api/games/[id]/analyze` і `/api/analysis/group`
-  - AbortController timeout — єдиний shared deadline для всіх спроб: один AbortController створюється до першої спроби і не скидається між retry; якщо загальний timeout спливає — поточна спроба переривається і retry не продовжуються
-  - Перевірка: логувати `attempt N` у консоль сервера (прибрати перед production)
+- [x] **[9-5]** Retry з exponential backoff для Groq ✅
+  - `lib/retry.ts`: `retryWithBackoff(fn, { maxRetries=3, baseDelayMs=1000 })`
+  - Delay cap 4000ms (1s → 2s → 4s); retryable: 429, 503, TypeError; non-retryable: AbortError, решта
+  - Підключено до `/api/games/[id]/analyze` і `/api/analysis/group`
+  - AbortController shared — один deadline для всіх спроб
 
 - [ ] **[9-6]** `inputHash` для дедуплікації group analyses
   - Міграція БД: додати колонку `input_hash TEXT` до таблиці `group_analyses` (nullable для зворотної сумісності); одночасно створити індекс `CREATE INDEX group_analyses_user_hash_idx ON group_analyses(user_id, input_hash)` — підтримує запит `WHERE user_id = ? AND input_hash = ?` без full-table scan
@@ -240,6 +237,7 @@
   - Перевірка: два однакових запити → другий повертає без виклику Groq
   
   ------
+  
 
 - [ ] **[9-8]** `/api/health` endpoint
   - `GET /api/health` — публічний, без auth
