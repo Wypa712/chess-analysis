@@ -179,7 +179,7 @@ NEXT_PUBLIC_APP_URL
 
 - Пакет: `stockfish` npm v16. Містить готові `.wasm` файли для браузера.
 - `.wasm` файл копіюється в `public/` через `postinstall`-скрипт або `next.config.js` `webpack.plugins`.
-- Движок запускається у Web Worker (`new Worker('/stockfish.wasm')`), щоб не блокувати UI.
+- Движок запускається у Web Worker (`new Worker('/stockfish-18-single.js')`), щоб не блокувати UI. Web Worker повинен отримати JS-обгортку, яка завантажує відповідний .wasm файл.
 - Хук `useStockfish` керує ініціалізацією, чергою UCI-команд і парсингом відповідей.
 - Full-game review використовує окремий worker із послідовною чергою позицій; explore mode використовує окремий latest-only worker, який скасовує попередній position analysis при новому ході варіанту.
 - Depth і time defaults визначаються після performance spike в Етапі 2 Фази 4.

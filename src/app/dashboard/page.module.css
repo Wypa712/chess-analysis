@@ -58,14 +58,18 @@
 
 .statWin {
   background-color: var(--color-success);
+  border-radius: 50%;
 }
 
 .statDraw {
   background-color: var(--color-gold);
+  border-radius: 2px;
 }
 
 .statLoss {
   background-color: var(--color-danger);
+  border-radius: 5px;
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
 }
 
 .statValue {

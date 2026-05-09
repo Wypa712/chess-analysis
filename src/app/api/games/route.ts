@@ -158,7 +158,7 @@ export async function GET(req: NextRequest) {
     page,
     pageSize: PAGE_SIZE,
     summary: {
-      total: countRows,
+      total: wins + draws + losses,
       wins,
       draws,
       losses,

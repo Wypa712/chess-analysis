@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import styles from "./GamesList.module.css";
 
@@ -84,8 +84,8 @@ function formatDate(iso: string) {
   });
 }
 
-function engineStatusLabel(status: Game["engineAnalysisStatus"]) {
-  return status === "done" ? "Engine: готово" : "Engine: не запущено";
+function analysisStatusLabel(status: Game["engineAnalysisStatus"]) {
+  return status === "done" ? "Проаналізовано" : "Не проаналізовано";
 }
 
 export function GamesList({
@@ -255,10 +255,9 @@ export function GamesList({
                 </div>
 
                 <div className={styles.statuses}>
-                  <span className={styles.statusBadge}>
-                    {engineStatusLabel(game.engineAnalysisStatus)}
+                  <span className={`${styles.statusBadge} ${game.engineAnalysisStatus === "done" ? styles.statusBadgeDone : ""}`}>
+                    {analysisStatusLabel(game.engineAnalysisStatus)}
                   </span>
-                  <span className={styles.statusBadge}>LLM: не запущено</span>
                 </div>
               </Link>
             ))}
@@ -267,6 +266,7 @@ export function GamesList({
           {totalPages > 1 && (
             <div className={styles.pagination}>
               <button
+                type="button"
                 className={styles.pageBtn}
                 disabled={page <= 1}
                 aria-label="Попередня сторінка"
@@ -278,6 +278,7 @@ export function GamesList({
                 {page} / {totalPages}
               </span>
               <button
+                type="button"
                 className={styles.pageBtn}
                 disabled={page >= totalPages}
                 aria-label="Наступна сторінка"

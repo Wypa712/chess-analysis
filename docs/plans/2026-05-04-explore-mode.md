@@ -125,6 +125,7 @@ function handleBreadcrumbClick(moveIndex: number) {
   const chess = new Chess(baseFen === "start" ? undefined : baseFen);
   const movesToReplay = explorationMoves.slice(0, moveIndex + 1);
   for (const m of movesToReplay) {
+    // promotion: "q" — обмеження: завжди ферзь; UI-вибір фігури не реалізований
     chess.move({ from: m.from, to: m.to, promotion: "q" });
   }
   setExplorationChess(chess);
@@ -141,6 +142,7 @@ async function handleExploreDrop(
   const chessCopy = new Chess(explorationChess.fen());
   let move;
   try {
+    // promotion: "q" — обмеження: завжди ферзь; UI-вибір фігури не реалізований
     move = chessCopy.move({ from: sourceSquare, to: targetSquare, promotion: "q" });
   } catch {
     return false;
@@ -210,7 +212,7 @@ function handleKey(e: KeyboardEvent) {
 }, [totalMoves, exploreMode, handleExitExplore]);
 ```
 
-Щоб не було stale closure, загорнути `handleExitExplore` у `useCallback`:
+Щоб не було stale closure, загорнути `handleExitExplore` у `useCallback`. **Важливо:** визначати `handleExitExplore` у коді ДО `goFirst`/`goPrev`/`goNext`/`goLast` і keyboard `useEffect`:
 ```ts
 const handleExitExplore = useCallback(() => {
   setExploreMode(false);
@@ -219,6 +221,10 @@ const handleExitExplore = useCallback(() => {
   setExploreEvalResult(null);
   setExploreAnalyzing(false);
 }, []);
+
+// Потім нижче:
+const goFirst = () => { if (exploreMode) handleExitExplore(); setCurrentMove(-1); };
+// ...goNext, goPrev, goLast аналогічно
 ```
 
 **Перевірка:** навігація стрілками та кнопками при active explore mode виходить з explore і навігує.

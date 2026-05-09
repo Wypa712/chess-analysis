@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 
-export default async function GamesLayout({
+export default async function ProfileLayout({
   children,
 }: {
   children: React.ReactNode;

@@ -141,7 +141,7 @@
       },
       "policies": {},
       "checkConstraints": {},
-      "isRLSEnabled": false
+      "isRLSEnabled": true
     },
     "public.auth_verification_tokens": {
       "name": "auth_verification_tokens",
@@ -155,7 +155,7 @@
         },
         "token": {
           "name": "token",
-          "type": "text",
+          "type": "varchar(64)",
           "primaryKey": false,
           "notNull": true
         },
@@ -188,7 +188,7 @@
       },
       "policies": {},
       "checkConstraints": {},
-      "isRLSEnabled": false
+      "isRLSEnabled": true
     },
     "public.chess_accounts": {
       "name": "chess_accounts",
@@ -1107,7 +1107,7 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
-      "isRLSEnabled": false
+      "isRLSEnabled": true
     }
   },
   "enums": {

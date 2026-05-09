@@ -3,6 +3,7 @@ import {
   pgEnum,
   uuid,
   text,
+  varchar,
   integer,
   boolean,
   timestamp,
@@ -103,7 +104,7 @@ export const authVerificationTokens = pgTable(
   "auth_verification_tokens",
   {
     identifier: text("identifier").notNull(),
-    token: text("token").notNull(),
+    token: varchar("token", { length: 64 }).notNull(),
     expires: timestamp("expires", { withTimezone: true }).notNull(),
   },
   (t) => [

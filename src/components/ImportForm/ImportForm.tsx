@@ -47,8 +47,14 @@ export function ImportForm({ onImported }: { onImported?: () => void }) {
         setResult(data);
         onImported?.();
       }
-    } catch {
-      setError("Не вдалося підключитися до сервера");
+    } catch (error) {
+      if (error instanceof TypeError) {
+        setError("Не вдалося підключитися до сервера");
+      } else if (error instanceof SyntaxError) {
+        setError("Некоректна відповідь сервера");
+      } else {
+        setError("Помилка імпорту");
+      }
     } finally {
       setLoading(false);
     }

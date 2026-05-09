@@ -39,6 +39,7 @@ function analysisMatchesGame(analysis: EngineAnalysisJsonV1, pgn: string) {
 
   return parsed.positions.every((position, i) => {
     const move = analysis.moves[i];
+    if (!move) return false;
     const color = position.color === "w" ? "white" : "black";
 
     return (

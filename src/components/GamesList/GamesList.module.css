@@ -283,6 +283,47 @@
   white-space: nowrap;
 }
 
+.statusBadgeDone {
+  color: var(--color-green-lt);
+  border-color: var(--color-green-mid);
+}
+
+/* Group analysis */
+
+.groupAnalyzeBtn {
+  padding: 6px 14px;
+  background: transparent;
+  border: 1px solid var(--color-green-mid);
+  border-radius: var(--radius-sm);
+  color: var(--color-green-lt);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.12s ease, color 0.12s ease;
+  align-self: flex-end;
+}
+
+.groupAnalyzeBtn:hover:not(:disabled) {
+  background: rgba(76, 175, 120, 0.1);
+}
+
+.groupAnalyzeBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.groupError {
+  padding: 10px 14px;
+  background: rgba(224, 85, 85, 0.08);
+  border: 1px solid rgba(224, 85, 85, 0.3);
+  border-radius: var(--radius-sm);
+  color: #e08080;
+  font-size: 0.8125rem;
+  margin-top: 8px;
+}
+
 /* Pagination */
 
 .pagination {

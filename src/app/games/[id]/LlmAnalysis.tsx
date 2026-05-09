@@ -1,61 +1,39 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo } from "react";
+import type { LlmGameAnalysisV1 } from "@/lib/llm/types";
 import styles from "./GameView.module.css";
-
-export type LlmGameAnalysisV1 = {
-  version: 1;
-  language: "uk";
-  generalAssessment: string;
-  opening: {
-    summary: string;
-    keyMistakes: string[];
-  };
-  middlegame: {
-    summary: string;
-    tacticalMisses: string[];
-    positionalIssues: string[];
-  };
-  endgame: {
-    reached: boolean;
-    summary?: string;
-  };
-  criticalMoments: Array<{
-    moveNumber: number;
-    color?: "white" | "black";
-    move?: string;
-    description: string;
-    recommendation: string;
-  }>;
-  recommendations: Array<{
-    title: string;
-    description: string;
-    priority: 1 | 2 | 3;
-  }>;
-};
 
 export type LlmStatus = "idle" | "analyzing" | "done" | "error";
 
 export function LlmAnalysis({
   view,
   hasEngineAnalysis,
+  stockfishRunning,
   llmStatus,
+  llmError,
   llmAnalysis,
+  openPhases,
   onAnalyze,
   onSeekMainline,
+  onTogglePhase,
 }: {
   view: "analysis" | "recommendations";
   hasEngineAnalysis: boolean;
+  stockfishRunning: boolean;
   llmStatus: LlmStatus;
+  llmError?: string | null;
   llmAnalysis: LlmGameAnalysisV1 | null;
+  openPhases: Record<string, boolean>;
   onAnalyze: () => void;
   onSeekMainline: (ply: number) => void;
+  onTogglePhase: (key: string) => void;
 }) {
-  const [openPhases, setOpenPhases] = useState<Record<string, boolean>>({});
 
-  function togglePhase(key: string) {
-    setOpenPhases((prev) => ({ ...prev, [key]: !prev[key] }));
-  }
+  const sortedRecommendations = useMemo(() => {
+    if (!llmAnalysis) return [];
+    return [...llmAnalysis.recommendations].sort((a, b) => a.priority - b.priority);
+  }, [llmAnalysis]);
 
   const phaseConfigs = llmAnalysis
     ? [
@@ -115,26 +93,32 @@ export function LlmAnalysis({
         <div className={styles.llmEmptyState}>
           <span className={styles.llmEmptyIcon}>✕</span>
           <span className={styles.llmEmptyText}>
-            Не вдалося отримати аналіз. Спробуйте ще раз.
+            {llmError ?? "Не вдалося отримати аналіз. Спробуйте ще раз."}
           </span>
         </div>
       );
     }
 
-    if (llmStatus === "done" && llmAnalysis && llmAnalysis.recommendations.length > 0) {
+    if (llmStatus === "done" && llmAnalysis) {
+      if (llmAnalysis.recommendations.length === 0) {
+        return (
+          <div className={styles.llmEmptyState}>
+            <span className={styles.llmEmptyIcon}>◈</span>
+            <span className={styles.llmEmptyText}>Рекомендацій не знайдено.</span>
+          </div>
+        );
+      }
       return (
         <div className={styles.llmRecommendations}>
-          {[...llmAnalysis.recommendations]
-            .sort((a, b) => a.priority - b.priority)
-            .map((rec, i) => (
-              <div key={i} className={styles.llmRecommendationItem}>
-                <span className={styles.llmRecommendationNum}>{i + 1}.</span>
-                <div className={styles.llmRecommendationContent}>
-                  <div className={styles.llmRecommendationTitle}>{rec.title}</div>
-                  <div className={styles.llmRecommendationDesc}>{rec.description}</div>
-                </div>
+          {sortedRecommendations.map((rec, i) => (
+            <div key={i} className={styles.llmRecommendationItem}>
+              <span className={styles.llmRecommendationNum}>{i + 1}.</span>
+              <div className={styles.llmRecommendationContent}>
+                <div className={styles.llmRecommendationTitle}>{rec.title}</div>
+                <div className={styles.llmRecommendationDesc}>{rec.description}</div>
               </div>
-            ))}
+            </div>
+          ))}
         </div>
       );
     }
@@ -147,7 +131,7 @@ export function LlmAnalysis({
   return (
     <div className={styles.llmSection}>
       <div className={styles.llmSectionHeader}>
-        {llmStatus === "idle" && (
+        {llmStatus === "idle" && !stockfishRunning && hasEngineAnalysis && (
           <button
             type="button"
             className={styles.llmAnalyzeBtn}
@@ -155,6 +139,13 @@ export function LlmAnalysis({
           >
             Аналізувати партію
           </button>
+        )}
+
+        {llmStatus === "idle" && stockfishRunning && (
+          <div className={styles.llmAnalyzingRow}>
+            <span className={styles.llmSpinner} />
+            Очікуємо Stockfish…
+          </div>
         )}
 
         {llmStatus === "analyzing" && (
@@ -189,20 +180,17 @@ export function LlmAnalysis({
         )}
       </div>
 
-      {llmStatus === "idle" && !hasEngineAnalysis && (
+      {llmStatus === "idle" && !hasEngineAnalysis && !stockfishRunning && (
         <div className={styles.llmWarning}>
           <span className={styles.llmWarningIcon}>⚠</span>
-          <span>
-            Stockfish-аналіз відсутній. Результат буде менш точним — без
-            даних про ключові моменти та точність ходів.
-          </span>
+          <span>Натисніть «Запустити аналіз» — LLM-аналіз запуститься автоматично після Stockfish.</span>
         </div>
       )}
 
       {llmStatus === "error" && (
         <div className={styles.llmWarning}>
           <span className={styles.llmWarningIcon}>✕</span>
-          <span>Не вдалося отримати аналіз. Спробуйте ще раз.</span>
+          <span>{llmError ?? "Не вдалося отримати аналіз. Спробуйте ще раз."}</span>
         </div>
       )}
 
@@ -217,7 +205,7 @@ export function LlmAnalysis({
               <button
                 type="button"
                 className={styles.llmAccordionToggle}
-                onClick={() => togglePhase(phase.key)}
+                onClick={() => onTogglePhase(phase.key)}
                 aria-expanded={!!openPhases[phase.key]}
               >
                 <span className={styles.llmAccordionLabel}>{phase.label}</span>
@@ -255,10 +243,11 @@ export function LlmAnalysis({
                     type="button"
                     className={styles.llmCriticalMove}
                     onClick={() => {
+                      // ply is 0-indexed position index; -1 = start (valid for seekMainline)
                       const ply = cm.color === "black"
                         ? cm.moveNumber * 2 - 1
                         : cm.moveNumber * 2 - 2;
-                      onSeekMainline(ply);
+                      onSeekMainline(Math.max(-1, ply - 1));
                     }}
                     title="Перейти до позиції"
                   >

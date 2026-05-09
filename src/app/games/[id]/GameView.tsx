@@ -15,69 +15,9 @@ import {
   type EngineEval,
   type MoveClassification,
 } from "@/lib/chess/engine-analysis";
-import { LlmAnalysis, type LlmGameAnalysisV1, type LlmStatus } from "./LlmAnalysis";
+import { LlmAnalysis, type LlmStatus } from "./LlmAnalysis";
+import { isLlmGameAnalysisV1, type LlmGameAnalysisV1 } from "@/lib/llm/types";
 import styles from "./GameView.module.css";
-
-const MOCK_LLM_ANALYSIS: LlmGameAnalysisV1 = {
-  version: 1,
-  language: "uk",
-  generalAssessment:
-    "Партія показала хорошу гру у дебюті, але в мідлгеймі виникли проблеми з координацією фігур. Вирішальна помилка відбулась на 22-му ході, після якої позиція стала програшною.",
-  opening: {
-    summary:
-      "Дебют зіграно впевнено — ви дотримувались принципів розвитку і контролю центру. Перші 10 ходів пройшли без суттєвих відхилень від теорії.",
-    keyMistakes: [
-      "Хід 7...h6 витратив темп без очевидної необхідності.",
-      "На 9-му ході краще було розвинути коня на f6, а не відразу атакувати пішака.",
-    ],
-  },
-  middlegame: {
-    summary:
-      "Мідлгейм виявився найскладнішою частиною партії. Після рокіровки виникла напружена позиція, де кожен хід мав велике значення.",
-    tacticalMisses: [
-      "На 18-му ході пропущена тактична комбінація з жертвою коня.",
-      "Хід 22...Rxd4 був грубим прорахунком — ферзь противника отримав вирішальне поле.",
-    ],
-    positionalIssues: [
-      "Слон на f8 так і не зіграв активної ролі протягом партії.",
-      "Пішаки ферзевого флангу стали слабкістю після розміну на c5.",
-    ],
-  },
-  endgame: { reached: false },
-  criticalMoments: [
-    {
-      moveNumber: 18,
-      color: "white",
-      move: "Nxe5",
-      description: "Противник пропустив виграшну жертву коня. Після Nxe5 ваша позиція ставала переможною.",
-      recommendation: "Тренуйте розпізнавання жертв фігур на відкритих вертикалях.",
-    },
-    {
-      moveNumber: 22,
-      color: "black",
-      move: "Rxd4",
-      description: "Цей хід поставив ферзя противника на ідеальне поле e7 з подвійним ударом.",
-      recommendation: "Перед взяттям матеріалу завжди перевіряйте відповіді суперника.",
-    },
-  ],
-  recommendations: [
-    {
-      title: "Тактика: жертви фігур",
-      description: "Регулярно розв'язуйте задачі на жертви фігур — особливо коня і слона за пішаки у відкритих позиціях.",
-      priority: 1,
-    },
-    {
-      title: "Розрахунок варіантів",
-      description: "Перед кожним взяттям матеріалу прораховуйте мінімум 2 відповіді суперника.",
-      priority: 1,
-    },
-    {
-      title: "Активність слонів",
-      description: "Стежте, щоб обидва слони мали відкриті діагоналі. Пасивний слон f8 суттєво ослабив вашу гру.",
-      priority: 2,
-    },
-  ],
-};
 
 const MAX_BOARD_SIZE = 760;
 const EVAL_BAR_WIDTH = 24;
@@ -85,7 +25,7 @@ const BOARD_ROW_GAP = 10;
 const DESKTOP_BOARD_AREA_RATIO = 0.52;
 const DESKTOP_VERTICAL_CHROME = 290;
 
-type MovePair = { num: number; white: string; black?: string };
+type MovePair = { num: number; white: string | undefined; black?: string };
 type ExploreMove = { san: string; from: string; to: string; uci: string };
 
 type GameData = {
@@ -163,7 +103,9 @@ export function GameView({ game }: { game: GameData }) {
   const [exploreAnalyzing, setExploreAnalyzing] = useState(false);
   const [activeTab, setActiveTab] = useState<"moves" | "analysis" | "advice">("moves");
   const [llmStatus, setLlmStatus] = useState<LlmStatus>("idle");
+  const [llmError, setLlmError] = useState<string | null>(null);
   const [llmAnalysis, setLlmAnalysis] = useState<LlmGameAnalysisV1 | null>(null);
+  const [llmOpenPhases, setLlmOpenPhases] = useState<Record<string, boolean>>({});
 
   const { analyzeGame, analyzeSinglePosition, terminate } = useStockfish();
 
@@ -183,6 +125,19 @@ export function GameView({ game }: { game: GameData }) {
       .catch(() => {});
   }, [game.id]);
 
+  // Load cached LLM analysis on mount
+  useEffect(() => {
+    fetch(`/api/games/${game.id}/analyze`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.analysis && isLlmGameAnalysisV1(data.analysis)) {
+          setLlmAnalysis(data.analysis);
+          setLlmStatus("done");
+        }
+      })
+      .catch(() => {});
+  }, [game.id]);
+
   const movePairs = useMemo<MovePair[]>(() => {
     if (!parsed) return [];
     const pairs: MovePair[] = [];
@@ -190,7 +145,13 @@ export function GameView({ game }: { game: GameData }) {
       if (pos.color === "w") {
         pairs.push({ num: pos.moveNumber, white: pos.san });
       } else {
-        pairs[pairs.length - 1].black = pos.san;
+        // Handle black-first moves or continuation
+        if (pairs.length === 0) {
+          // Black move without prior white move - create new pair with undefined white
+          pairs.push({ num: pos.moveNumber, white: undefined, black: pos.san });
+        } else {
+          pairs[pairs.length - 1].black = pos.san;
+        }
       }
     }
     return pairs;
@@ -299,6 +260,18 @@ export function GameView({ game }: { game: GameData }) {
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
+      // Ignore events from text inputs and editable elements
+      const target = e.target as HTMLElement;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        target.contentEditable === "true" ||
+        target.getAttribute("role") === "textbox"
+      ) {
+        return;
+      }
+
       if (e.key === "ArrowLeft") {
         e.preventDefault();
         exitExploreIfActive();
@@ -355,6 +328,25 @@ export function GameView({ game }: { game: GameData }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const handleLlmAnalyze = useCallback(async () => {
+    setLlmStatus("analyzing");
+    setLlmError(null);
+    try {
+      const res = await fetch(`/api/games/${game.id}/analyze`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok || !data?.analysis || !isLlmGameAnalysisV1(data.analysis)) {
+        setLlmError(data?.error ?? null);
+        setLlmStatus("error");
+        return;
+      }
+      setLlmAnalysis(data.analysis);
+      setLlmStatus("done");
+    } catch {
+      setLlmError("Мережева помилка. Спробуйте ще раз.");
+      setLlmStatus("error");
+    }
+  }, [game.id]);
+
   const handleStartAnalysis = useCallback(async () => {
     if (!parsed) return;
     exitExploreIfActive();
@@ -380,6 +372,8 @@ export function GameView({ game }: { game: GameData }) {
 
       setAnalysis(result);
       setAnalysisState("done");
+      // Only auto-trigger LLM if it hasn't run yet for this game
+      if (llmStatus === "idle") void handleLlmAnalyze();
     } catch (error) {
       setAnalysisError(
         error instanceof Error
@@ -388,15 +382,7 @@ export function GameView({ game }: { game: GameData }) {
       );
       setAnalysisState("error");
     }
-  }, [analyzeGame, parsed, game.id, game.color, exitExploreIfActive]);
-
-  const handleLlmAnalyze = useCallback(() => {
-    setLlmStatus("analyzing");
-    setTimeout(() => {
-      setLlmAnalysis(MOCK_LLM_ANALYSIS);
-      setLlmStatus("done");
-    }, 2000);
-  }, []);
+  }, [analyzeGame, parsed, game.id, game.color, exitExploreIfActive, handleLlmAnalyze]);
 
   const runExploreAnalysis = useCallback(async (fen: string) => {
     const requestId = ++exploreAnalysisRequestRef.current;
@@ -930,10 +916,14 @@ export function GameView({ game }: { game: GameData }) {
             <LlmAnalysis
               view="analysis"
               hasEngineAnalysis={analysisState === "done"}
+              stockfishRunning={analysisState === "loading"}
               llmStatus={llmStatus}
+              llmError={llmError}
               llmAnalysis={llmAnalysis}
+              openPhases={llmOpenPhases}
               onAnalyze={handleLlmAnalyze}
               onSeekMainline={seekMainline}
+              onTogglePhase={(key) => setLlmOpenPhases((prev) => ({ ...prev, [key]: !prev[key] }))}
             />
           )}
 
@@ -941,10 +931,14 @@ export function GameView({ game }: { game: GameData }) {
             <LlmAnalysis
               view="recommendations"
               hasEngineAnalysis={analysisState === "done"}
+              stockfishRunning={analysisState === "loading"}
               llmStatus={llmStatus}
+              llmError={llmError}
               llmAnalysis={llmAnalysis}
+              openPhases={llmOpenPhases}
               onAnalyze={handleLlmAnalyze}
               onSeekMainline={seekMainline}
+              onTogglePhase={(key) => setLlmOpenPhases((prev) => ({ ...prev, [key]: !prev[key] }))}
             />
           )}
         </div>
@@ -1050,6 +1044,19 @@ function EvalChart({
   const n = evals.length;
   const zeroY = CHART_H / 2;
 
+  // P2-21: memoize curve computation — must be before any early return (Rules of Hooks)
+  const { pts, linePath, fillPath } = useMemo(() => {
+    if (n < 2) return { pts: [], linePath: "", fillPath: "" };
+    const p: Array<[number, number]> = evals.map((e, i) => [
+      AXIS_W + (i / (n - 1)) * CHART_CONTENT_W,
+      evalToChartY(e),
+    ]);
+    const lp = smoothCurvePath(p);
+    const fp = lp + ` L${p[n - 1][0].toFixed(1)},${zeroY} L${p[0][0].toFixed(1)},${zeroY} Z`;
+    return { pts: p, linePath: lp, fillPath: fp };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [evals]);
+
   if (n < 2) {
     return (
       <div
@@ -1058,16 +1065,6 @@ function EvalChart({
       />
     );
   }
-
-  const pts: Array<[number, number]> = evals.map((e, i) => [
-    AXIS_W + (i / (n - 1)) * CHART_CONTENT_W,
-    evalToChartY(e),
-  ]);
-
-  const linePath = smoothCurvePath(pts);
-  const fillPath =
-    linePath +
-    ` L${pts[n - 1][0].toFixed(1)},${zeroY} L${pts[0][0].toFixed(1)},${zeroY} Z`;
 
   const curX =
     currentIndex >= 0 && currentIndex < n

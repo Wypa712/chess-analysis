@@ -3,6 +3,7 @@
 .layout {
   display: flex;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   gap: 24px;
 }
@@ -48,7 +49,7 @@
 }
 
 .evalBarValueLabel {
-  font-size: 9px;
+  font-size: 10px;
   font-family: var(--font-mono);
   font-weight: 500;
   color: var(--color-text-muted);
@@ -80,7 +81,7 @@
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 9px;
+  font-size: 10px;
   font-family: var(--font-mono);
   font-weight: 500;
   letter-spacing: -0.5px;
@@ -541,6 +542,11 @@
   background-color: var(--color-bg3);
 }
 
+.movesToggle:focus-visible {
+  outline: 1px solid var(--color-green-lt);
+  outline-offset: -1px;
+}
+
 .movesList {
   display: flex;
   flex-direction: column;
@@ -657,6 +663,11 @@
 
 .keyMomentsToggle:hover {
   background-color: var(--color-bg3);
+}
+
+.keyMomentsToggle:focus-visible {
+  outline: 1px solid var(--color-green-lt);
+  outline-offset: -1px;
 }
 
 .keyMomentsLabel {
@@ -841,13 +852,19 @@
   gap: 0;
   overflow-x: auto;
   overflow-y: hidden;
-  scrollbar-width: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
   cursor: grab;
   user-select: none;
 }
 
 .exploreMoveTrail::-webkit-scrollbar {
-  display: none;
+  height: 2px;
+}
+
+.exploreMoveTrail::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 1px;
 }
 
 .exploreBreadcrumbMove {
@@ -926,7 +943,7 @@
 }
 
 .phaseAccuracyHeader {
-  font-size: 7px;
+  font-size: 10px;
   font-family: var(--font-mono);
   color: rgba(255, 255, 255, 0.28);
   text-transform: uppercase;
@@ -958,7 +975,7 @@
 }
 
 .phasePlayerLabel {
-  font-size: 7px;
+  font-size: 10px;
   font-family: var(--font-mono);
   color: rgba(255, 255, 255, 0.45);
   text-transform: uppercase;
@@ -1270,6 +1287,11 @@
 
 .llmAccordionToggle:hover {
   background: var(--color-bg3);
+}
+
+.llmAccordionToggle:focus-visible {
+  outline: 1px solid var(--color-green-lt);
+  outline-offset: -1px;
 }
 
 .llmAccordionLabel {
