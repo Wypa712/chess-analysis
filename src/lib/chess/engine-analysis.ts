@@ -1,7 +1,7 @@
 export const STOCKFISH_PROFILE_KEY = "default-v1";
 export const STOCKFISH_ENGINE_NAME = "stockfish";
 export const STOCKFISH_ENGINE_VERSION = "16";
-export const STOCKFISH_DEPTH = 15;
+export const STOCKFISH_DEPTH = 13;
 
 export type MoveClassification =
   | "brilliant"
