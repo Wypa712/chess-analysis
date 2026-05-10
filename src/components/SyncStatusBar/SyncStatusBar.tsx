@@ -24,11 +24,7 @@ export function SyncStatusBar({ onSynced }: SyncStatusBarProps) {
   const onSyncedRef = useRef(onSynced);
   useEffect(() => { onSyncedRef.current = onSynced; });
 
-  // After the user manually syncs at least once, subsequent 429s show the wait message.
-  // Before that, 429 is silently ignored (caused by the auto-sync on mount consuming the token).
-  const hasManualSyncedRef = useRef(false);
-
-  const runSync = useCallback(async (isManual = false) => {
+  const runSync = useCallback(async () => {
     if (syncingRef.current) return;
     syncingRef.current = true;
     setSyncing(true);
@@ -42,15 +38,8 @@ export function SyncStatusBar({ onSynced }: SyncStatusBarProps) {
       });
 
       if (!res.ok) {
-        if (res.status === 429) {
-          if (isManual && hasManualSyncedRef.current) {
-            setError("Зачекайте перед наступною синхронізацією");
-          }
-          // else: silently ignore — auto-sync or first manual click after auto-sync
-        } else {
-          const data = await res.json().catch(() => ({}));
-          setError((data as { error?: string }).error ?? "Помилка синхронізації");
-        }
+        const data = await res.json().catch(() => ({}));
+        setError((data as { error?: string }).error ?? "Помилка синхронізації");
         return;
       }
 
@@ -60,10 +49,9 @@ export function SyncStatusBar({ onSynced }: SyncStatusBarProps) {
       try { sessionStorage.setItem(SESSION_KEY, now); } catch { /* storage full */ }
       setLastSyncTs(now);
       setResult({ imported: data.imported ?? 0, skipped: data.skipped ?? 0 });
-      if (isManual) hasManualSyncedRef.current = true;
       if (data.imported > 0) onSyncedRef.current?.();
     } catch {
-      if (isManual) setError("Не вдалося синхронізувати");
+      setError("Не вдалося синхронізувати");
     } finally {
       syncingRef.current = false;
       setSyncing(false);
@@ -109,30 +97,12 @@ export function SyncStatusBar({ onSynced }: SyncStatusBarProps) {
           <span className={styles.badge}>+{result.imported} нових</span>
         )}
         {error && <span className={styles.errorText}>{error}</span>}
+        {error && (
+          <span className={styles.syncHint}>
+            Перевірте акаунти в налаштуваннях або оновіть сторінку.
+          </span>
+        )}
       </div>
-
-      <button
-        className={styles.refreshBtn}
-        onClick={() => runSync(true)}
-        disabled={syncing}
-      >
-        <svg
-          width={14}
-          height={14}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden
-          className={syncing ? styles.spinIcon : undefined}
-        >
-          <path d="M23 4v6h-6M1 20v-6h6" />
-          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-        </svg>
-        Оновити
-      </button>
     </div>
   );
 }

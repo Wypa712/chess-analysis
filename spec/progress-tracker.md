@@ -4,7 +4,7 @@
 
 **Production:** ✅ Живий (Vercel + Neon + GitHub OAuth)  
 **Поточна фаза:** Фаза 1 v2 — завершено (потребує ручного тестування)  
-**Остання зміна:** 2026-05-10 — Фаза 1 v2: онбординг + авто-синк
+**Остання зміна:** 2026-05-11 — вирівняно кольори сторінки партії та scrollbar під оновлену палітру
 
 ---
 
@@ -29,10 +29,10 @@
 - `GET/POST /api/chess-accounts` — список і додавання акаунтів (з валідацією на платформі)
 - `DELETE /api/chess-accounts/[id]` — видалення акаунту
 - `DELETE /api/chess-accounts/reset` — dev-only повне скидання
-- `POST /api/sync` — delta sync (нові партії з lastSyncedAt, rate limit 60s)
+- `POST /api/sync` — delta sync при вході/оновленні dashboard; watermark береться з останньої імпортованої партії
 - `POST /api/sync/initial` — chunked initial import (50/chunk, cursor-based, до 1000 партій)
 - DashboardLayout: redirect до /onboarding якщо нема chess_accounts
-- SyncStatusBar: авто-синк при вході (sessionStorage, 1 раз/год) + кнопка "Оновити"
+- SyncStatusBar: фоновий авто-синк при вході або оновленні dashboard без ручної кнопки
 - Lichess importer: додано `until` cursor + `oldestPlayedAt` в response
 - Chess.com importer: додано `until` filter + `oldestPlayedAt` в response
 - Dashboard: ImportForm замінено на SyncStatusBar
@@ -44,20 +44,36 @@
 **Онбординг (перший вхід):**
 - Сторінка налаштування профілю: вказати нік на Chess.com і/або Lichess
 - Відразу після — автоматичний початковий імпорт (до **1000 партій**, chunked, не блокує UI)
-- Прибрати ручний вибір діапазону/кількості — замість цього кнопка "Оновити" як єдиний ручний тригер
+- Прибрати ручний вибір діапазону/кількості; після онбордингу синхронізація йде фоново через dashboard
 
 **Авто-синхронізація:**
-- При кожному вході: автоматично тягнути нові партії (нові відносно останньої імпортованої)
-- Виконується фоново після логіну (не блокує redirect)
-- Кнопка "Оновити" в UI — fallback якщо щось не підтягнулося або є нові партії поки апка відкрита
+- При кожному вході або оновленні dashboard: автоматично тягнути нові партії з підключених сервісів
+- Виконується фоново після логіну / mount dashboard (не блокує redirect)
+- Ручної кнопки "Оновити" в dashboard немає; користувач бачить лише статус фонового sync
 - **Без cron** (Vercel Hobby обмежує до 1 раз/день — не підходить для hourly)
 
 #### Технічні рішення:
-- `linked_accounts` таблиця: `userId`, `platform`, `username`
+- `chess_accounts` таблиця: `userId`, `platform`, `username`
 - Порівняння по даті останньої партії для delta-sync
 - Chunked import: порціями по ~50 партій щоб не впертись в 30s timeout
-- Rate limit захист на `/api/sync` endpoint
-- Dev-only reset: `DELETE FROM linked_accounts WHERE user_id = ?` або кнопка в `/settings` (тільки `NODE_ENV=development`) для тестування онбордингу повторно
+- Dev-only reset: `DELETE FROM chess_accounts WHERE user_id = ?` або кнопка в `/settings` (тільки `NODE_ENV=development`) для тестування онбордингу повторно
+
+#### Узгоджені ревʼю-рішення (2026-05-10):
+- Groq `llama-3.3-70b-versatile` є поточним primary LLM provider; spec оновлено під фактичну production-реалізацію.
+- Профіль використовує фільтр періоду 7 / 30 / 90 днів або всі партії; фільтр 25 / 50 / 100 партій більше не є вимогою.
+- Dashboard sync запускається автоматично при вході/оновленні dashboard; ручна кнопка "Оновити" прибрана з UX.
+
+#### UI-поліровка (2026-05-10):
+- Глобальна палітра стала менш монотонно-зеленою: додано teal/info/copper accents і трохи холодніші dark surfaces.
+- Dashboard stat cards, sync bar, sidebar, games list і profile отримали різні акцентні кольори для кращої scanability.
+- Favicon/PWA assets оновлено: SVG + PNG розміри для `public/` і `design-prototype/assets/`, manifests і head snippet синхронізовано під темний клітчастий фон з пішкою.
+- UX-review fixes: список ходів знову лишається чистою PGN/SAN-навігацією без badges якості; dashboard лишає одну компактну позначку статусу аналізу без окремих Stockfish/LLM бейджів; аналіз партії запускається однією основною кнопкою, яка виконує Stockfish і LLM-поради в одному flow; оновлено застарілі empty/error тексти для sync, games list і group analysis.
+- Dashboard sync status перенесено в компактний inline-pill у header, щоб не займати окремий вертикальний блок на desktop і mobile.
+- Group analysis block приведено до загальної темної dashboard/profile естетики: прибрано теплий gold-фон, пом'якшено CTA, зменшено кількість явних borders у результатах аналізу.
+- У group analysis result прибрано дублюючу кнопку "Повторити"; секції всередині результату отримали легкі divider-и для кращого читання без важких рамок.
+- Верхній header group analysis відділено тонкою лінією від вмісту результату.
+- Mobile profile ELO controls тепер переносяться в компактні рядки, щоб кнопки платформи й контролю часу не створювали горизонтальний overflow.
+- Game review screen отримав м'якші teal/info акценти для дошки, active move, CTA, eval chart і best-move arrows; глобальний scrollbar приглушено, щоб він не виглядав надто зеленим.
 
 ---
 

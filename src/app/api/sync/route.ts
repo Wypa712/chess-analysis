@@ -1,16 +1,22 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { chessAccounts } from "@/db/schema";
-import { eq, and, lte, isNull, or } from "drizzle-orm";
+import { chessAccounts, games } from "@/db/schema";
+import { eq, inArray, sql } from "drizzle-orm";
 import { importLichessGames } from "@/lib/importers/lichess";
 import { importChessComGames } from "@/lib/importers/chessdotcom";
 import { ImportError } from "@/lib/importers/errors";
 import { captureSanitizedException } from "@/lib/observability/sentry";
 
-const RATE_LIMIT_SECONDS = 15;
+type LatestPlayedAt = Date | string | null;
 
-// POST /api/sync — delta sync: fetch games newer than lastSyncedAt for all user's accounts
+function toTimeMs(value: LatestPlayedAt | undefined): number | undefined {
+  if (!value) return undefined;
+  const ms = value instanceof Date ? value.getTime() : new Date(value).getTime();
+  return Number.isFinite(ms) ? ms : undefined;
+}
+
+// POST /api/sync — delta sync: fetch games newer than the latest imported game.
 export async function POST() {
   const session = await auth();
   if (!session?.user?.id) {
@@ -19,13 +25,12 @@ export async function POST() {
 
   const userId = session.user.id;
 
-  // Fetch accounts with their current lastSyncedAt (needed for `since` param later)
+  // Fetch accounts; `lastSyncedAt` is display/status metadata, not the import watermark.
   const accounts = await db
     .select({
       id: chessAccounts.id,
       platform: chessAccounts.platform,
       username: chessAccounts.username,
-      lastSyncedAt: chessAccounts.lastSyncedAt,
     })
     .from(chessAccounts)
     .where(eq(chessAccounts.userId, userId));
@@ -34,39 +39,18 @@ export async function POST() {
     return NextResponse.json({ imported: 0, skipped: 0, accounts: [] });
   }
 
-  // Atomic rate-limit check: update lastSyncedAt=now only for accounts old enough.
-  // If 0 rows affected, all accounts were synced too recently → 429.
-  const cutoff = new Date(Date.now() - RATE_LIMIT_SECONDS * 1000);
-  const claimed = await db
-    .update(chessAccounts)
-    .set({ lastSyncedAt: new Date() })
-    .where(
-      and(
-        eq(chessAccounts.userId, userId),
-        or(isNull(chessAccounts.lastSyncedAt), lte(chessAccounts.lastSyncedAt, cutoff))
-      )
-    )
-    .returning({ id: chessAccounts.id });
+  const latestGameRows = await db
+    .select({
+      chessAccountId: games.chessAccountId,
+      latestPlayedAt: sql<LatestPlayedAt>`MAX(${games.playedAt})`,
+    })
+    .from(games)
+    .where(inArray(games.chessAccountId, accounts.map((a) => a.id)))
+    .groupBy(games.chessAccountId);
 
-  if (claimed.length === 0) {
-    const mostRecentSync = accounts.reduce<Date | null>((latest, a) => {
-      if (!a.lastSyncedAt) return latest;
-      if (!latest || a.lastSyncedAt > latest) return a.lastSyncedAt;
-      return latest;
-    }, null);
-    const remainingSecs = mostRecentSync
-      ? Math.max(1, Math.ceil((mostRecentSync.getTime() + RATE_LIMIT_SECONDS * 1000 - Date.now()) / 1000))
-      : RATE_LIMIT_SECONDS;
-    return NextResponse.json(
-      { error: `Зачекайте ${remainingSecs} с між синхронізаціями` },
-      { status: 429 }
-    );
-  }
-
-  const claimedIds = new Set(claimed.map((r) => r.id));
-  const accountsToSync = accounts.filter((a) => claimedIds.has(a.id));
-  // Preserve old lastSyncedAt per account for `since` param and failure rollback
-  const prevSyncedAt = new Map(accounts.map((a) => [a.id, a.lastSyncedAt]));
+  const latestPlayedAt = new Map(
+    latestGameRows.map((row) => [row.chessAccountId, row.latestPlayedAt])
+  );
 
   type AccountOutcome = {
     platform: string;
@@ -79,9 +63,9 @@ export async function POST() {
   type SyncResult = { accountId: string; outcome: AccountOutcome; failed: boolean };
 
   const syncResults: SyncResult[] = await Promise.all(
-    accountsToSync.map(async (account): Promise<SyncResult> => {
+    accounts.map(async (account): Promise<SyncResult> => {
       const since =
-        prevSyncedAt.get(account.id)?.getTime() ??
+        toTimeMs(latestPlayedAt.get(account.id)) ??
         Date.now() - 7 * 24 * 60 * 60 * 1000;
 
       try {
@@ -138,21 +122,22 @@ export async function POST() {
   );
 
   const outcomes = syncResults.map((r) => r.outcome);
-  const failedIds = new Set(syncResults.filter((r) => r.failed).map((r) => r.accountId));
+  const successfulIds = syncResults
+    .filter((r) => !r.failed)
+    .map((r) => r.accountId);
 
-  // Revert lastSyncedAt for failed accounts — run concurrently to reduce timeout risk
-  if (failedIds.size > 0) {
-    const rollbackResults = await Promise.allSettled(
-      Array.from(failedIds).map((id) =>
+  if (successfulIds.length > 0) {
+    const updateResults = await Promise.allSettled(
+      successfulIds.map((id) =>
         db
           .update(chessAccounts)
-          .set({ lastSyncedAt: prevSyncedAt.get(id) ?? null })
+          .set({ lastSyncedAt: new Date() })
           .where(eq(chessAccounts.id, id))
       )
     );
-    for (const r of rollbackResults) {
+    for (const r of updateResults) {
       if (r.status === "rejected") {
-        console.error("[sync] rollback failed:", r.reason);
+        console.error("[sync] lastSyncedAt update failed:", r.reason);
       }
     }
   }

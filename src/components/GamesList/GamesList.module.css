@@ -64,7 +64,7 @@
 
 .filterSelect:focus {
   background-color: var(--color-bg3);
-  border-color: var(--color-green-mid);
+  border-color: var(--color-info);
 }
 
 /* Loading / empty */
@@ -123,6 +123,7 @@
 .skeletonStatuses {
   display: flex;
   justify-content: flex-end;
+  gap: 0.375rem;
 }
 
 .loading {
@@ -206,7 +207,8 @@
   gap: 0.75rem;
   min-height: 64px;
   padding: 0.625rem 0.875rem;
-  background-color: var(--color-bg2);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--color-info) 4%, var(--color-bg2)), var(--color-bg2) 42%);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   transition: background-color 0.12s ease, border-color 0.12s ease;
@@ -216,14 +218,14 @@
 
 .gameRow:hover {
   background-color: var(--color-bg3);
-  border-color: var(--color-green);
+  border-color: color-mix(in srgb, var(--color-info) 42%, var(--color-border));
 }
 
 .pieceMark {
   width: 36px;
   height: 36px;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, var(--color-green), var(--color-bg3));
+  background: linear-gradient(135deg, var(--color-teal), var(--color-green));
   color: var(--color-text);
   display: flex;
   align-items: center;
@@ -296,7 +298,7 @@
 
 .win  { color: var(--color-success); }
 .loss { color: var(--color-danger); }
-.draw { color: var(--color-gold); }
+.draw { color: var(--color-warning); }
 
 .colorCell {
   display: inline-flex;
@@ -341,7 +343,7 @@
 .platformBadge {
   font-size: 0.6875rem;
   font-weight: 600;
-  color: var(--color-text-muted);
+  color: var(--color-info-soft);
   white-space: nowrap;
 }
 
@@ -375,8 +377,9 @@
 }
 
 .statusBadgeDone {
-  color: var(--color-green-lt);
-  border-color: var(--color-green-mid);
+  color: var(--color-teal-soft);
+  border-color: color-mix(in srgb, var(--color-teal) 48%, var(--color-border));
+  background-color: color-mix(in srgb, var(--color-teal) 10%, var(--color-bg3));
 }
 
 /* Group analysis */
@@ -473,12 +476,24 @@
   }
 
   .filtersBar {
-    justify-content: flex-start;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
   }
 
   .filterLabel,
   .filterSelect {
     width: 100%;
+  }
+
+  .filterLabelText {
+    font-size: 0.625rem;
+  }
+
+  .filterSelect {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.375rem;
+    min-height: 28px;
   }
 
   .gameRow,

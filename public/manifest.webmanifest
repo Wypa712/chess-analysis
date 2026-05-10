@@ -4,8 +4,8 @@
   "description": "Аналіз шахових партій",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0e1a0e",
-  "theme_color": "#2d5a27",
+  "background_color": "#0b1210",
+  "theme_color": "#17231f",
   "icons": [
     {
       "src": "/icon-192.png",
@@ -17,7 +17,13 @@
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

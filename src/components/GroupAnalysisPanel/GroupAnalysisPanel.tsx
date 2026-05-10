@@ -8,11 +8,9 @@ type Props = {
   analysis: GroupAnalysisJsonV1;
   gameCount: number;
   createdAt: string;
-  onReanalyze?: () => void;
-  reanalyzing?: boolean;
 };
 
-export function GroupAnalysisPanel({ analysis, gameCount, createdAt, onReanalyze, reanalyzing }: Props) {
+export function GroupAnalysisPanel({ analysis, gameCount, createdAt }: Props) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
 
   const createdAtDate = new Date(createdAt);
@@ -29,11 +27,6 @@ export function GroupAnalysisPanel({ analysis, gameCount, createdAt, onReanalyze
       <div className={styles.header}>
         <h3 className={styles.title}>Груповий аналіз · {gameCount} партій</h3>
         <span className={styles.date}>{formattedDate}</span>
-        {onReanalyze && (
-          <button type="button" className={styles.reanalyzeBtn} onClick={onReanalyze} disabled={reanalyzing}>
-            {reanalyzing ? "Аналізуємо…" : "Повторити"}
-          </button>
-        )}
       </div>
 
       <div className={styles.section}>

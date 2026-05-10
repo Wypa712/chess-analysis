@@ -84,7 +84,7 @@ function formatDate(iso: string) {
   });
 }
 
-function analysisStatusLabel(status: Game["engineAnalysisStatus"]) {
+function analysisStatusLabel(status: "done" | "not_started") {
   return status === "done" ? "Проаналізовано" : "Не проаналізовано";
 }
 
@@ -255,7 +255,7 @@ export function GamesList({
           <div className={styles.emptyIcon} aria-hidden="true">♟</div>
           <p className={styles.emptyTitle}>Партій ще немає</p>
           <p className={styles.emptyText}>
-            Імпортуйте партії з Chess.com або Lichess за допомогою форми вище
+            Додайте шаховий акаунт у налаштуваннях або зачекайте завершення синхронізації
           </p>
         </div>
       )}

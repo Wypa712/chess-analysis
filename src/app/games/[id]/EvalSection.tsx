@@ -189,7 +189,7 @@ function EvalChart({
         <path
           d={linePath}
           fill="none"
-          stroke="var(--color-green-lt)"
+          stroke="var(--color-teal-soft)"
           strokeWidth={1.5}
         />
         {/* Phase dividers */}
@@ -244,7 +244,7 @@ function EvalChart({
               y1={0}
               x2={curX}
               y2={CHART_H}
-              stroke="var(--color-green-mid)"
+              stroke="var(--color-info)"
               strokeWidth={1.5}
               strokeDasharray="3,2"
             />
@@ -252,8 +252,8 @@ function EvalChart({
               cx={curX}
               cy={curY}
               r={4}
-              fill="var(--color-green)"
-              stroke="var(--color-green-pl)"
+              fill="var(--color-teal)"
+              stroke="var(--color-info-soft)"
               strokeWidth={1.5}
             />
           </>

@@ -14,7 +14,6 @@ export function LlmAnalysis({
   llmError,
   llmAnalysis,
   openPhases,
-  onAnalyze,
   onSeekMainline,
   onTogglePhase,
 }: {
@@ -25,7 +24,6 @@ export function LlmAnalysis({
   llmError?: string | null;
   llmAnalysis: LlmGameAnalysisV1 | null;
   openPhases: Record<string, boolean>;
-  onAnalyze: () => void;
   onSeekMainline: (ply: number) => void;
   onTogglePhase: (key: string) => void;
 }) {
@@ -74,7 +72,7 @@ export function LlmAnalysis({
           <div className={styles.llmEmptyState}>
             <span className={styles.llmEmptyIcon}>◈</span>
             <span className={styles.llmEmptyText}>
-              Перейдіть на вкладку «Аналіз» і запустіть аналіз партії
+              Запустіть аналіз під дошкою, щоб побачити поради
             </span>
           </div>
         )}
@@ -92,9 +90,6 @@ export function LlmAnalysis({
             <span className={styles.llmEmptyText}>
               {llmError ?? "Не вдалося отримати аналіз."}
             </span>
-            <button type="button" className={styles.llmAnalyzeBtn} onClick={onAnalyze}>
-              Спробувати ще раз
-            </button>
           </div>
         )}
 
@@ -128,13 +123,9 @@ export function LlmAnalysis({
     <div className={styles.llmSection}>
       <div className={styles.llmSectionHeader} aria-live="polite" aria-atomic="true">
         {llmStatus === "idle" && !stockfishRunning && hasEngineAnalysis && (
-          <button
-            type="button"
-            className={styles.llmAnalyzeBtn}
-            onClick={onAnalyze}
-          >
-            Аналізувати партію
-          </button>
+          <div className={styles.llmAnalyzingRow}>
+            Натисніть «Завершити аналіз» під дошкою.
+          </div>
         )}
 
         {llmStatus === "idle" && stockfishRunning && (
@@ -152,26 +143,15 @@ export function LlmAnalysis({
         )}
 
         {llmStatus === "error" && (
-          <button
-            type="button"
-            className={styles.llmAnalyzeBtn}
-            onClick={onAnalyze}
-          >
-            Спробувати ще раз
-          </button>
+          <div className={styles.llmAnalyzingRow}>
+            Повторити можна основною кнопкою аналізу під дошкою.
+          </div>
         )}
 
         {llmStatus === "done" && (
           <div className={styles.llmDoneRow}>
             <span className={styles.llmDoneCheck}>✓</span>
             <span className={styles.llmDoneLabel}>Аналіз готовий</span>
-            <button
-              type="button"
-              className={styles.llmReanalyzeBtn}
-              onClick={onAnalyze}
-            >
-              Повторний аналіз
-            </button>
           </div>
         )}
       </div>
@@ -179,7 +159,7 @@ export function LlmAnalysis({
       {llmStatus === "idle" && !hasEngineAnalysis && !stockfishRunning && (
         <div className={styles.llmWarning}>
           <span className={styles.llmWarningIcon}>⚠</span>
-          <span>Натисніть «Запустити аналіз» — LLM-аналіз запуститься автоматично після Stockfish.</span>
+          <span>Основна кнопка під дошкою запустить Stockfish і LLM-поради в одному flow.</span>
         </div>
       )}
 

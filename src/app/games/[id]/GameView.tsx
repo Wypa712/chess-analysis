@@ -159,8 +159,8 @@ export function GameView({ game }: { game: GameData }) {
     const pos = parsed.positions[currentMove];
     if (!pos) return {};
     return {
-      [pos.from]: { background: "rgba(255, 255, 0, 0.35)" },
-      [pos.to]: { background: "rgba(255, 255, 0, 0.5)" },
+      [pos.from]: { background: "rgba(109, 174, 219, 0.24)" },
+      [pos.to]: { background: "rgba(79, 183, 162, 0.38)" },
     };
   }, [currentMove, parsed]);
 
@@ -204,7 +204,7 @@ export function GameView({ game }: { game: GameData }) {
         .map((c, i) => [
           c.uci.slice(0, 2) as Square,
           c.uci.slice(2, 4) as Square,
-          `rgba(61, 122, 53, ${opacities[i] ?? 0.28})`,
+          `rgba(79, 183, 162, ${opacities[i] ?? 0.28})`,
         ] as Arrow);
     }
     const bm = currentPositionBestMove;
@@ -212,7 +212,7 @@ export function GameView({ game }: { game: GameData }) {
     return [[
       bm.uci.slice(0, 2) as Square,
       bm.uci.slice(2, 4) as Square,
-      "rgba(61, 122, 53, 0.85)",
+      "rgba(79, 183, 162, 0.85)",
     ]];
   }, [exploreMode, exploreEvalResult, currentPositionBestMove]);
 
@@ -368,7 +368,7 @@ export function GameView({ game }: { game: GameData }) {
       }
       setAnalysis(result);
       setAnalysisState("done");
-      if (llmStatus === "idle") void handleLlmAnalyze();
+      if (llmStatus !== "analyzing") await handleLlmAnalyze();
     } catch (error) {
       setAnalysisError(
         error instanceof Error
@@ -377,7 +377,7 @@ export function GameView({ game }: { game: GameData }) {
       );
       setAnalysisState("error");
     }
-  }, [analyzeGame, parsed, game.id, game.color, exitExploreIfActive, handleLlmAnalyze]);
+  }, [analyzeGame, parsed, game.id, game.color, exitExploreIfActive, llmStatus, handleLlmAnalyze]);
 
   const runExploreAnalysis = useCallback(async (fen: string) => {
     const requestId = ++exploreAnalysisRequestRef.current;
@@ -448,8 +448,8 @@ export function GameView({ game }: { game: GameData }) {
   const exploreLastMove = explorationMoves[explorationMoves.length - 1];
   const displaySquareStyles = exploreMode && exploreLastMove
     ? {
-        [exploreLastMove.from]: { background: "rgba(255, 255, 0, 0.35)" },
-        [exploreLastMove.to]:   { background: "rgba(255, 255, 0, 0.5)" },
+        [exploreLastMove.from]: { background: "rgba(109, 174, 219, 0.24)" },
+        [exploreLastMove.to]:   { background: "rgba(79, 183, 162, 0.38)" },
       }
     : lastMoveSquares;
 
@@ -526,8 +526,8 @@ export function GameView({ game }: { game: GameData }) {
                 borderRadius: "4px",
                 boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
               }}
-              customDarkSquareStyle={{ backgroundColor: "#2d5a27" }}
-              customLightSquareStyle={{ backgroundColor: "#d4e8d0" }}
+              customDarkSquareStyle={{ backgroundColor: "var(--color-board-dark)" }}
+              customLightSquareStyle={{ backgroundColor: "var(--color-board-light)" }}
             />
             {!exploreMode && currentMoveAnalysis && currentMoveTo && (
               <MoveOverlayIcon
@@ -639,7 +639,40 @@ export function GameView({ game }: { game: GameData }) {
               </div>
             </div>
           )}
-          {analysisState === "done" && (
+          {analysisState === "done" && llmStatus === "analyzing" && (
+            <div className={styles.analyzeProgress}>
+              <div className={styles.analyzeProgressLabel}>
+                <StockfishIcon />
+                Готуємо поради…
+              </div>
+              <div className={styles.progressTrack}>
+                <div className={styles.progressFill} style={{ width: "100%" }} />
+              </div>
+            </div>
+          )}
+          {analysisState === "done" && llmStatus === "idle" && (
+            <button
+              type="button"
+              className={styles.analyzeBtn}
+              onClick={handleLlmAnalyze}
+            >
+              <StockfishIcon />
+              Завершити аналіз
+            </button>
+          )}
+          {analysisState === "done" && llmStatus === "error" && (
+            <div className={styles.analyzeError}>
+              <span>{llmError ?? "Не вдалося отримати LLM-поради"}</span>
+              <button
+                type="button"
+                className={styles.rerunBtn}
+                onClick={handleLlmAnalyze}
+              >
+                Спробувати ще
+              </button>
+            </div>
+          )}
+          {analysisState === "done" && llmStatus === "done" && (
             <div className={styles.analyzeDone}>
               <span className={styles.analyzeDoneCheck}>✓</span>
               Аналіз готовий
@@ -694,7 +727,6 @@ export function GameView({ game }: { game: GameData }) {
           llmError={llmError}
           llmAnalysis={llmAnalysis}
           llmOpenPhases={llmOpenPhases}
-          onAnalyze={handleLlmAnalyze}
           onTogglePhase={(key) => setLlmOpenPhases((prev) => ({ ...prev, [key]: !prev[key] }))}
           openingName={game.openingName}
         />
@@ -749,7 +781,7 @@ const CLASS_META: Record<
   { symbol: string; color: string; bg: string; label: string }
 > = {
   brilliant:  { symbol: "!!", color: "#2f7f7a", bg: "#39a39a", label: "Блискуче" },
-  best:       { symbol: "★",  color: "#4a8a40", bg: "#5fa854", label: "Найкращий" },
+  best:       { symbol: "★",  color: "#2f7f7a", bg: "#4fb7a2", label: "Найкращий" },
   good:       { symbol: "✓",  color: "#7a9a3a", bg: "#96bc4b", label: "Добре" },
   inaccuracy: { symbol: "?!", color: "#a07820", bg: "#c49b2d", label: "Неточність" },
   mistake:    { symbol: "?",  color: "#a85520", bg: "#d07030", label: "Зівок" },

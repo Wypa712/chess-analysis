@@ -1,38 +1,10 @@
-import { evalToPawns, type EngineAnalysisJsonV1, type MoveClassification } from "@/lib/chess/engine-analysis";
+import { evalToPawns, type EngineAnalysisJsonV1 } from "@/lib/chess/engine-analysis";
 import { LlmAnalysis, type LlmStatus } from "./LlmAnalysis";
 import { type LlmGameAnalysisV1 } from "@/lib/llm/types";
 import { type MovePair, type ExploreEvalResult } from "./types";
 import styles from "./GameView.module.css";
 
 const MATE_THRESHOLD_PAWNS = 50;
-
-// ── Move classification metadata ───────────────────────────────────────────────
-
-const CLASS_META: Record<
-  MoveClassification,
-  { symbol: string; color: string; bg: string; label: string }
-> = {
-  brilliant:  { symbol: "!!", color: "#2f7f7a", bg: "#39a39a", label: "Блискуче" },
-  best:       { symbol: "★",  color: "#4a8a40", bg: "#5fa854", label: "Найкращий" },
-  good:       { symbol: "✓",  color: "#7a9a3a", bg: "#96bc4b", label: "Добре" },
-  inaccuracy: { symbol: "?!", color: "#a07820", bg: "#c49b2d", label: "Неточність" },
-  mistake:    { symbol: "?",  color: "#a85520", bg: "#d07030", label: "Зівок" },
-  blunder:    { symbol: "??", color: "#902828", bg: "#c04040", label: "Груба помилка" },
-};
-
-function MoveClassBadge({ classification }: { classification: MoveClassification }) {
-  const meta = CLASS_META[classification];
-  if (!meta) return null;
-  return (
-    <span
-      className={styles.moveClassBadge}
-      style={{ "--badge-bg": meta.bg } as React.CSSProperties}
-      title={meta.label}
-    >
-      {meta.symbol}
-    </span>
-  );
-}
 
 // ── LlmTabsPanel ──────────────────────────────────────────────────────────────
 
@@ -51,7 +23,6 @@ interface LlmTabsPanelProps {
   llmError: string | null;
   llmAnalysis: LlmGameAnalysisV1 | null;
   llmOpenPhases: Record<string, boolean>;
-  onAnalyze: () => void;
   onTogglePhase: (key: string) => void;
   openingName: string | null;
 }
@@ -63,7 +34,6 @@ export function LlmTabsPanel({
   activeTab,
   onTabChange,
   movePairs,
-  analysis,
   currentMove,
   onSeekMainline,
   analysisState,
@@ -71,7 +41,6 @@ export function LlmTabsPanel({
   llmError,
   llmAnalysis,
   llmOpenPhases,
-  onAnalyze,
   onTogglePhase,
   openingName,
 }: LlmTabsPanelProps) {
@@ -138,8 +107,6 @@ export function LlmTabsPanel({
                 {movePairs.map((pair) => {
                   const whiteIdx = (pair.num - 1) * 2;
                   const blackIdx = whiteIdx + 1;
-                  const whiteCls = analysis?.moves[whiteIdx]?.classification;
-                  const blackCls = pair.black !== undefined ? analysis?.moves[blackIdx]?.classification : undefined;
                   return (
                     <div key={pair.num} className={styles.movePair}>
                       <span className={styles.moveNum}>{pair.num}.</span>
@@ -150,7 +117,6 @@ export function LlmTabsPanel({
                         aria-pressed={currentMove === whiteIdx}
                       >
                         <span className={styles.moveSan}>{pair.white}</span>
-                        {whiteCls && <MoveClassBadge classification={whiteCls} />}
                       </button>
                       {pair.black !== undefined && (
                         <button
@@ -160,7 +126,6 @@ export function LlmTabsPanel({
                           aria-pressed={currentMove === blackIdx}
                         >
                           <span className={styles.moveSan}>{pair.black}</span>
-                          {blackCls && <MoveClassBadge classification={blackCls} />}
                         </button>
                       )}
                     </div>
@@ -180,7 +145,6 @@ export function LlmTabsPanel({
             llmError={llmError}
             llmAnalysis={llmAnalysis}
             openPhases={llmOpenPhases}
-            onAnalyze={onAnalyze}
             onSeekMainline={onSeekMainline}
             onTogglePhase={onTogglePhase}
           />
@@ -195,7 +159,6 @@ export function LlmTabsPanel({
             llmError={llmError}
             llmAnalysis={llmAnalysis}
             openPhases={llmOpenPhases}
-            onAnalyze={onAnalyze}
             onSeekMainline={onSeekMainline}
             onTogglePhase={onTogglePhase}
           />

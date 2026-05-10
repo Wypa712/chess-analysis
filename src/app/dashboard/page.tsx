@@ -48,9 +48,8 @@ export default function DashboardPage() {
             Ваші партії та статистика. Нові партії підтягуються автоматично.
           </p>
         </div>
+        <SyncStatusBar onSynced={() => setRefreshKey((k) => k + 1)} />
       </section>
-
-      <SyncStatusBar onSynced={() => setRefreshKey((k) => k + 1)} />
 
       <section className={styles.statsGrid} aria-label="Статистика партій">
         {stats.map((stat) => (

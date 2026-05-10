@@ -185,7 +185,7 @@ LLM-аналіз однієї партії.
 |---|---|---|---|
 | `id` | `uuid` | так | primary key |
 | `game_id` | `uuid` | так | FK -> `games.id`, cascade delete |
-| `llm_model` | `text` | так | наприклад `gemini-2.0-flash` |
+| `llm_model` | `text` | так | наприклад `llama-3.3-70b-versatile` |
 | `language` | `analysis_language` | так | для v1: `uk` |
 | `schema_version` | `integer` | так | для v1: `1` |
 | `input_hash` | `text` | ні | hash PGN + engine moments + prompt version |
@@ -212,7 +212,7 @@ LLM-аналіз вибірки з 5-30 партій.
 | `id` | `uuid` | так | primary key |
 | `user_id` | `uuid` | так | FK -> `users.id`, cascade delete |
 | `game_ids` | `uuid[]` | так | вибрані партії; 5-30 id |
-| `llm_model` | `text` | так | наприклад `gemini-2.0-flash` |
+| `llm_model` | `text` | так | наприклад `llama-3.3-70b-versatile` |
 | `language` | `analysis_language` | так | для v1: `uk` |
 | `schema_version` | `integer` | так | для v1: `1` |
 | `input_hash` | `text` | ні | hash стислих summaries + prompt version |
@@ -241,7 +241,7 @@ LLM-аналіз вибірки з 5-30 партій.
 | `games_count` | `integer` | так | скільки партій враховано |
 | `period_days` | `integer` | так | 7 / 30 / 90 |
 | `max_games` | `integer` | так | 25 / 50 / 100 |
-| `llm_model` | `text` | так | наприклад `gemini-2.0-flash` |
+| `llm_model` | `text` | так | наприклад `llama-3.3-70b-versatile` |
 | `language` | `analysis_language` | так | для v1: `uk` |
 | `schema_version` | `integer` | так | для v1: `1` |
 | `analysis_json` | `jsonb` | так | схема нижче |

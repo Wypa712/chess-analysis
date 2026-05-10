@@ -62,7 +62,7 @@
 }
 
 .evalBarPending .evalBarValueLabel {
-  color: var(--color-green-pl);
+  color: var(--color-teal-soft);
 }
 
 .evalBarBlack {
@@ -201,7 +201,7 @@
 .playerAccuracy {
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--color-green-pl);
+  color: var(--color-teal-soft);
 }
 
 .playerMistakes {
@@ -246,7 +246,7 @@
 
 .navBtn:hover:not(:disabled) {
   background-color: var(--color-bg4);
-  border-color: var(--color-green);
+  border-color: color-mix(in srgb, var(--color-info) 40%, var(--color-border));
 }
 
 .navBtn:disabled {
@@ -274,8 +274,8 @@
   justify-content: center;
   gap: 7px;
   padding: 10px 16px;
-  background: linear-gradient(135deg, var(--color-green), var(--color-green-mid));
-  border: 1px solid var(--color-green-mid);
+  background: linear-gradient(135deg, var(--color-info), var(--color-teal));
+  border: 1px solid color-mix(in srgb, var(--color-info) 50%, var(--color-border));
   border-radius: var(--radius-md);
   color: #fff;
   font-size: 13px;
@@ -320,7 +320,7 @@
 
 .progressFill {
   height: 100%;
-  background: linear-gradient(90deg, var(--color-green), var(--color-green-mid));
+  background: linear-gradient(90deg, var(--color-info), var(--color-teal));
   border-radius: 2px;
   transition: width 0.15s linear;
 }
@@ -330,7 +330,7 @@
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: var(--color-green-pl);
+  color: var(--color-teal-soft);
   font-weight: 500;
 }
 
@@ -363,7 +363,7 @@
 
 .rerunBtn:hover {
   color: var(--color-text);
-  border-color: var(--color-green);
+  border-color: color-mix(in srgb, var(--color-info) 44%, var(--color-border));
 }
 
 /* ── Right: analysis panel ───────────────────────────────────────────────── */
@@ -485,7 +485,7 @@
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(45, 90, 39, 0.08) 50%,
+    rgba(109, 174, 219, 0.08) 50%,
     transparent 100%
   );
 }
@@ -552,7 +552,7 @@
 }
 
 .movesToggle:focus-visible {
-  outline: 1px solid var(--color-green-lt);
+  outline: 1px solid var(--color-info);
   outline-offset: -1px;
 }
 
@@ -632,12 +632,13 @@
 }
 
 .moveCellActive {
-  background-color: var(--color-green);
+  background-color: color-mix(in srgb, var(--color-info) 28%, var(--color-bg3));
+  box-shadow: inset 3px 0 0 var(--color-teal);
   color: #fff;
 }
 
 .moveCell:focus-visible {
-  outline: 1px solid var(--color-green-lt);
+  outline: 1px solid var(--color-info);
   outline-offset: -1px;
 }
 
@@ -675,7 +676,7 @@
 }
 
 .keyMomentsToggle:focus-visible {
-  outline: 1px solid var(--color-green-lt);
+  outline: 1px solid var(--color-info);
   outline-offset: -1px;
 }
 
@@ -697,7 +698,7 @@
 
 .keyMomentsArrowOpen {
   transform: rotate(90deg);
-  color: var(--color-green-lt);
+  color: var(--color-info-soft);
 }
 
 .keyMomentsList {
@@ -726,7 +727,7 @@
 .keyMomentNum {
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--color-green-mid);
+  color: var(--color-info-soft);
   flex-shrink: 0;
   min-width: 30px;
   text-align: right;
@@ -773,7 +774,7 @@
 
 .openingValue {
   font-size: 12px;
-  color: var(--color-green-pl);
+  color: var(--color-teal-soft);
   font-weight: 500;
 }
 
@@ -827,7 +828,8 @@
 /* ── Explore mode ─────────────────────────────────────────────────────────── */
 
 .navBtnActive {
-  background: var(--color-green);
+  background: color-mix(in srgb, var(--color-info) 22%, var(--color-bg3));
+  border-color: color-mix(in srgb, var(--color-info) 48%, var(--color-border));
   color: #fff;
 }
 
@@ -854,7 +856,7 @@
 .exploreBreadcrumbLabel {
   font-size: 9px;
   font-weight: 600;
-  color: var(--color-green-mid);
+  color: var(--color-info-soft);
   text-transform: uppercase;
   letter-spacing: 0.8px;
   flex-shrink: 0;
@@ -918,7 +920,7 @@
 }
 
 .exploreBreadcrumbMove:hover {
-  color: var(--color-green-pl);
+  color: var(--color-teal-soft);
 }
 
 .exploreAnalyzing {
@@ -1007,7 +1009,7 @@
 }
 
 .phaseAccuracyValUser {
-  color: var(--color-green-lt);
+  color: var(--color-teal-soft);
 }
 
 .phaseAccuracyValOpp {
@@ -1028,7 +1030,7 @@
 .exploreCandidatesTitle {
   font-size: 9px;
   font-weight: 600;
-  color: var(--color-green-mid);
+  color: var(--color-info-soft);
   text-transform: uppercase;
   letter-spacing: 0.8px;
 }
@@ -1100,8 +1102,8 @@
 }
 
 .tabItemActive {
-  color: var(--color-green-lt);
-  border-bottom-color: var(--color-green);
+  color: var(--color-info-soft);
+  border-bottom-color: var(--color-info);
 }
 
 /* ── Tab content ──────────────────────────────────────────────────────────── */
@@ -1170,7 +1172,7 @@
   align-items: center;
   gap: 6px;
   padding: 6px 14px;
-  background: var(--color-green);
+  background: linear-gradient(135deg, var(--color-info), var(--color-teal));
   color: #fff;
   border: none;
   border-radius: var(--radius-sm);
@@ -1203,7 +1205,7 @@
   width: 14px;
   height: 14px;
   border: 2px solid rgba(255, 255, 255, 0.15);
-  border-top-color: var(--color-green-lt);
+  border-top-color: var(--color-info-soft);
   border-radius: 50%;
   animation: llmSpin 0.7s linear infinite;
   flex-shrink: 0;
@@ -1244,7 +1246,7 @@
 }
 
 .llmReanalyzeBtn:hover {
-  border-color: var(--color-green-mid);
+  border-color: color-mix(in srgb, var(--color-info) 42%, var(--color-border));
   color: var(--color-text);
 }
 
@@ -1308,7 +1310,7 @@
 }
 
 .llmAccordionToggle:focus-visible {
-  outline: 1px solid var(--color-green-lt);
+  outline: 1px solid var(--color-info);
   outline-offset: -1px;
 }
 
@@ -1328,7 +1330,7 @@
 
 .llmAccordionArrowOpen {
   transform: rotate(90deg);
-  color: var(--color-green-lt);
+  color: var(--color-info-soft);
 }
 
 .llmAccordionBody {
@@ -1392,7 +1394,7 @@
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 600;
-  color: var(--color-green-lt);
+  color: var(--color-info-soft);
   cursor: pointer;
   text-decoration: underline;
   text-decoration-color: transparent;
@@ -1403,7 +1405,7 @@
 }
 
 .llmCriticalMove:hover {
-  text-decoration-color: var(--color-green-lt);
+  text-decoration-color: var(--color-info-soft);
 }
 
 .llmCriticalDesc {
@@ -1439,7 +1441,7 @@
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 700;
-  color: var(--color-green-mid);
+  color: var(--color-info-soft);
   min-width: 18px;
 }
 

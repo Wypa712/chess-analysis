@@ -25,65 +25,51 @@ export function AccountForm({ onSuccess }: AccountFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const hasAnyUsername = (["lichess", "chess_com"] as const).some((p) =>
-    usernames[p].trim()
-  );
+  const activeUsername = usernames[platform].trim();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    const toConnect = (["lichess", "chess_com"] as const).filter((p) =>
-      usernames[p].trim()
-    );
-    if (toConnect.length === 0) return;
+    if (!activeUsername) return;
 
     setLoading(true);
     setError(null);
 
-    const results = await Promise.allSettled(
-      toConnect.map((p) =>
-        fetch("/api/chess-accounts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ platform: p, username: usernames[p].trim() }),
-          signal: AbortSignal.timeout(10000),
-        }).then(async (res) => {
-          if (!res.ok) {
-            const data = await res.json().catch(() => ({})) as { error?: string };
-            throw new Error(data.error ?? "Помилка підключення акаунту");
-          }
-          const data: unknown = await res.json();
-          const d = data as Record<string, unknown>;
-          if (
-            typeof data !== "object" ||
-            data === null ||
-            typeof d.id !== "string" ||
-            typeof d.platform !== "string" ||
-            typeof d.username !== "string" ||
-            (typeof d.lastSyncedAt !== "string" && d.lastSyncedAt !== null)
-          ) {
-            throw new Error("Невалідна відповідь сервера");
-          }
-          return { p, account: data as LinkedAccount };
-        })
-      )
-    );
+    try {
+      const res = await fetch("/api/chess-accounts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platform, username: activeUsername }),
+        signal: AbortSignal.timeout(10000),
+      });
 
-    const errors: string[] = [];
-    for (const result of results) {
-      if (result.status === "fulfilled") {
-        setUsernames((prev) => ({ ...prev, [result.value.p]: "" }));
-        onSuccess(result.value.account);
-      } else {
-        errors.push(
-          result.reason instanceof Error
-            ? result.reason.message
-            : "Не вдалося підключитись. Перевірте з'єднання"
-        );
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(data.error ?? "Помилка підключення акаунту");
       }
-    }
 
-    if (errors.length > 0) setError(errors.join("; "));
+      const data: unknown = await res.json();
+      const d = data as Record<string, unknown>;
+      if (
+        typeof data !== "object" ||
+        data === null ||
+        typeof d.id !== "string" ||
+        typeof d.platform !== "string" ||
+        typeof d.username !== "string" ||
+        (typeof d.lastSyncedAt !== "string" && d.lastSyncedAt !== null)
+      ) {
+        throw new Error("Невалідна відповідь сервера");
+      }
+
+      setUsernames((prev) => ({ ...prev, [platform]: "" }));
+      onSuccess(data as LinkedAccount);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Не вдалося підключитись. Перевірте з'єднання"
+      );
+    }
     setLoading(false);
   }
 
@@ -131,7 +117,7 @@ export function AccountForm({ onSuccess }: AccountFormProps) {
         <button
           type="submit"
           className={styles.submitBtn}
-          disabled={loading || !hasAnyUsername}
+          disabled={loading || !activeUsername}
         >
           {loading ? "Підключення…" : "Підключити"}
         </button>

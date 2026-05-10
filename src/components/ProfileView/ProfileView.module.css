@@ -10,7 +10,8 @@
 
 /* ── Shared card ── */
 .card {
-  background: var(--color-surface);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-surface-elevated) 64%, var(--color-surface)), var(--color-surface));
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: 18px 20px;
@@ -27,8 +28,9 @@
 
 /* ── Hero ── */
 .hero {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--color-info) 10%, var(--color-surface)), var(--color-surface) 56%, color-mix(in srgb, var(--color-gold) 7%, var(--color-surface)));
+  border: 1px solid color-mix(in srgb, var(--color-info) 22%, var(--color-border));
   border-radius: var(--radius-lg);
   padding: 20px 24px;
   display: flex;
@@ -42,7 +44,7 @@
   border-radius: 14px;
   overflow: hidden;
   flex-shrink: 0;
-  background: linear-gradient(135deg, var(--color-green), var(--color-bg3));
+  background: linear-gradient(135deg, var(--color-info), var(--color-teal));
   border: 2px solid var(--color-border);
   display: flex;
   align-items: center;
@@ -91,14 +93,15 @@
 }
 
 .badgeCC {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--color-text-muted);
+  background: color-mix(in srgb, var(--color-gold) 11%, transparent);
+  color: var(--color-gold);
+  border-color: color-mix(in srgb, var(--color-gold) 24%, var(--color-border));
 }
 
 .badgeLI {
-  background: rgba(100, 160, 220, 0.1);
-  color: #88b8d8;
-  border-color: rgba(100, 160, 220, 0.2);
+  background: color-mix(in srgb, var(--color-info) 12%, transparent);
+  color: var(--color-info-soft);
+  border-color: color-mix(in srgb, var(--color-info) 28%, var(--color-border));
 }
 
 .platformUsername {
@@ -119,7 +122,7 @@
   font-family: var(--font-mono);
   font-size: 30px;
   font-weight: 500;
-  color: var(--color-green-lt);
+  color: var(--color-teal-soft);
   line-height: 1;
 }
 
@@ -199,8 +202,8 @@
 }
 
 .segBtnActive {
-  background: var(--color-green);
-  border-color: var(--color-green-mid);
+  background: color-mix(in srgb, var(--color-info) 20%, var(--color-bg3));
+  border-color: var(--color-info);
   color: var(--color-text);
   font-weight: 500;
 }
@@ -222,7 +225,7 @@
 }
 
 .wdlW { background: var(--color-success); }
-.wdlD { background: var(--color-draw); }
+.wdlD { background: var(--color-warning); }
 .wdlL { background: var(--color-danger); }
 
 .wdlLegend {
@@ -248,7 +251,7 @@
 }
 
 .wdlDotW { background: var(--color-success); }
-.wdlDotD { background: var(--color-draw); }
+.wdlDotD { background: var(--color-warning); }
 .wdlDotL { background: var(--color-danger); }
 
 .wdlCount {
@@ -358,7 +361,7 @@
 
 .miniBarFill {
   height: 100%;
-  background: linear-gradient(90deg, var(--color-green), var(--color-green-mid));
+  background: linear-gradient(90deg, var(--color-teal), var(--color-info));
   border-radius: 3px;
 }
 
@@ -442,8 +445,9 @@
 
 /* ── Group analysis ── */
 .groupSection {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-surface-elevated) 68%, var(--color-surface)), var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-info) 18%, var(--color-border));
   border-radius: var(--radius-lg);
   padding: 18px 20px;
 }
@@ -453,7 +457,9 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 46%, transparent);
   flex-wrap: wrap;
 }
 
@@ -471,19 +477,21 @@
 
 .groupAnalyzeBtn {
   flex-shrink: 0;
-  padding: 9px 18px;
-  background: var(--color-green);
-  border: none;
+  padding: 8px 16px;
+  background: color-mix(in srgb, var(--color-info) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-info) 34%, var(--color-border));
   border-radius: var(--radius-md);
-  color: var(--color-text);
+  color: var(--color-info-soft);
   font-size: 13px;
   font-weight: 500;
-  transition: background 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
   white-space: nowrap;
 }
 
 .groupAnalyzeBtn:hover {
-  background: var(--color-green-mid);
+  background: color-mix(in srgb, var(--color-info) 18%, transparent);
+  border-color: color-mix(in srgb, var(--color-info) 48%, var(--color-border));
+  color: var(--color-text);
 }
 
 .groupAnalyzeBtn:focus-visible {
@@ -702,6 +710,36 @@
     width: 64px;
   }
 
+  .eloControls {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 8px;
+  }
+
+  .eloToggle,
+  .eloTCToggle {
+    width: 100%;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .eloTCToggle {
+    margin-left: 0;
+  }
+
+  .eloToggleBtn {
+    flex: 1 1 0;
+    min-width: 0;
+    text-align: center;
+  }
+
+  .eloTCBtn {
+    flex: 1 1 72px;
+    min-width: 0;
+    text-align: center;
+  }
+
   .groupHeader {
     flex-direction: column;
   }
@@ -725,5 +763,14 @@
 
   .heroName {
     font-size: 16px;
+  }
+
+  .eloToggleBtn {
+    padding: 4px 8px;
+  }
+
+  .eloTCBtn {
+    flex-basis: calc(33.333% - 4px);
+    padding: 4px 6px;
   }
 }

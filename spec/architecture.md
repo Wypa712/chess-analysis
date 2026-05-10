@@ -14,7 +14,7 @@
 | Шахова дошка | react-chessboard | UI дошки |
 | Engine | stockfish npm v16 (WASM) | Аналіз у браузері через Web Worker |
 | Eval graph | Власний SVG | Без chart-бібліотек; ~80 рядків, клікабельний |
-| LLM | Gemini Flash 2.0 | Groq llama-3.3-70b-versatile як fallback |
+| LLM | Groq llama-3.3-70b-versatile | Поточний primary provider для LLM-аналізу |
 | Деплой | Vercel | Нативна підтримка Next.js |
 
 ## Правило залежностей
@@ -43,7 +43,7 @@ https://api.chess.com/pub/player/{user}/games/{year}/{month}
 
 Нотатки реалізації:
 
-- Імпорт має два режими: 25 / 50 / 100 найновіших партій або партії за останні 7 / 30 / 90 днів.
+- Initial import іде chunked після підключення акаунту; dashboard sync тягне нові партії відносно локального watermark.
 - Потрібно перевірити throttling і поведінку API при повторних імпортах.
 - ELO-графік будується з `games.player_rating`; rating-history API Chess.com не використовується.
 
@@ -58,19 +58,13 @@ https://lichess.org/api/games/user/{user}
 Нотатки реалізації:
 
 - Відповідь приходить як NDJSON-стрим.
-- Імпорт має два режими: 25 / 50 / 100 найновіших партій або партії за останні 7 / 30 / 90 днів.
+- Initial import іде chunked після підключення акаунту; dashboard sync тягне нові партії відносно локального watermark.
 - Next.js API route має акуратно обробляти streaming.
 - ELO-графік будується з `games.player_rating` — той самий механізм, що і для Chess.com; `rating-history` API Lichess не використовується.
 
 ### LLM
 
 Основна модель:
-
-```text
-gemini-2.0-flash
-```
-
-Fallback:
 
 ```text
 llama-3.3-70b-versatile
@@ -83,7 +77,7 @@ llama-3.3-70b-versatile
 ```text
 /                              стартова сторінка; авторизованих веде в dashboard
 /auth/login                    GitHub login
-/dashboard                     список партій, базові фільтри, імпорт
+/dashboard                     список партій, базові фільтри, фоновий sync
 /games/[id]                    дошка, engine review, LLM-аналіз однієї партії
 /profile                       метрики гравця і накопичувальне LLM-зведення
 /api/auth/[...nextauth]        NextAuth.js routes
@@ -130,11 +124,13 @@ player_summaries
 ### Потік імпорту
 
 1. Користувач входить у систему.
-2. Користувач вибирає платформу, нікнейм і режим імпорту: за кількістю або за періодом.
-3. API завантажує партії з Chess.com або Lichess.
-4. API нормалізує партії у локальну схему.
-5. Наявні партії пропускаються через `platform_game_id`.
-6. Нові партії зберігаються під chess account користувача.
+2. Якщо шахові акаунти ще не підключені, користувач проходить `/onboarding` і додає Chess.com та/або Lichess username.
+3. Початковий імпорт іде chunked, до 1000 партій на акаунт.
+4. На dashboard фоновий sync запускається при вході або оновленні сторінки.
+5. API завантажує нові партії відносно останньої локально імпортованої партії (`games.played_at`).
+6. API нормалізує партії у локальну схему.
+7. Наявні партії пропускаються через `platform_game_id`.
+8. Нові партії зберігаються під chess account користувача.
 
 ### Потік перегляду однієї партії
 
@@ -168,12 +164,11 @@ DATABASE_URL
 AUTH_SECRET
 AUTH_GITHUB_ID
 AUTH_GITHUB_SECRET
-GOOGLE_GENERATIVE_AI_API_KEY
 GROQ_API_KEY
 NEXT_PUBLIC_APP_URL
 ```
 
-`GROQ_API_KEY` є опціональним, доки не реалізовано fallback.
+`GROQ_API_KEY` обов'язковий для LLM-аналізу в поточній production-версії.
 
 ## Stockfish WASM — нотатки реалізації
 

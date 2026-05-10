@@ -7,29 +7,37 @@
 }
 
 :root {
-  /* Forest green palette */
-  --color-bg:               #0e1a0e;
-  --color-bg1:              #131f13;
-  --color-bg2:              #182418;
-  --color-bg3:              #1f2e1f;
-  --color-bg4:              #253025;
-  --color-surface:          #131f13;
-  --color-surface-elevated: #1f2e1f;
-  --color-border:           #2a3d2a;
-  --color-text:             #d4e8d0;
-  --color-text-muted:       #7a9e76;
-  --color-text-faded:       #4a6647;
+  /* Dark chess workspace palette */
+  --color-bg:               #0d1513;
+  --color-bg1:              #111b18;
+  --color-bg2:              #17231f;
+  --color-bg3:              #203029;
+  --color-bg4:              #293a32;
+  --color-surface:          #121d19;
+  --color-surface-elevated: #1d2b25;
+  --color-border:           #2d433a;
+  --color-text:             #d8ead8;
+  --color-text-muted:       #8aa98a;
+  --color-text-faded:       #58735d;
   --color-primary:          #5fa854;
   --color-primary-hover:    #a8d5a2;
   --color-green:            #2d5a27;
   --color-green-mid:        #3d7a35;
   --color-green-lt:         #5fa854;
   --color-green-pl:         #a8d5a2;
+  --color-teal:             #4fb7a2;
+  --color-teal-soft:        #88d8ca;
+  --color-info:             #6daedb;
+  --color-info-soft:        #9fc8e6;
+  --color-copper:           #d08b5b;
   --color-success:          #5fa854;
-  --color-danger:           #c0392b;
+  --color-danger:           #d05c4f;
+  --color-red:              #d05c4f;
   --color-warning:          #d4a017;
   --color-gold:             #c9945a;
-  --color-draw:             #7a9e76;
+  --color-draw:             #9b9d75;
+  --color-board-light:      #d8e6d6;
+  --color-board-dark:       #2f5f52;
 
   --mobile-nav-h: 0px;
 
@@ -50,12 +58,18 @@
 html,
 body {
   min-height: 100vh;
-  background-color: var(--color-bg);
+  background:
+    linear-gradient(135deg, #0b1211 0%, var(--color-bg) 44%, #121712 100%);
   color: var(--color-text);
   font-family: var(--font-sans);
   font-size: 16px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+}
+
+html {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-info) 24%, var(--color-border)) transparent;
 }
 
 a {
@@ -85,10 +99,10 @@ img {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-green);
+  background: color-mix(in srgb, var(--color-info) 24%, var(--color-border));
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-green-mid);
+  background: color-mix(in srgb, var(--color-info) 36%, var(--color-border));
 }

@@ -33,10 +33,10 @@
 - NextAuth.js v5 використовує JWT strategy; не створювати таблицю `auth_sessions`.
 - Без анонімного імпорту або аналізу у v1.
 - Chess.com і Lichess входять у v1.
-- Import options: режим за кількістю 25 / 50 / 100 найновіших партій або режим за періодом 7 / 30 / 90 днів.
-- Defaults: режим за кількістю, 25 партій.
+- Після підключення акаунту initial import іде chunked; dashboard sync автоматично тягне нові партії при вході або оновленні dashboard.
 - Без full lifetime import у v1.
 - UI і LLM-аналіз українською для v1.
+- Основний LLM provider у поточній production-версії: Groq `llama-3.3-70b-versatile`.
 - LLM responses мають бути strict JSON.
 - Stockfish analysis results зберігаються.
 - User-configurable engine thresholds не входять у v1.

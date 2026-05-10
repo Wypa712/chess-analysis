@@ -401,7 +401,7 @@ export function ProfileView({ user }: Props) {
           <div>
             <h3 className={styles.groupTitle}>Груповий аналіз</h3>
             <p className={styles.groupDesc}>
-              Аналіз повторюваних помилок і закономірностей у останніх 30 партіях
+              Аналіз повторюваних помилок і закономірностей у вибірці останніх партій
             </p>
           </div>
           <button
@@ -410,7 +410,7 @@ export function ProfileView({ user }: Props) {
             onClick={handleGroupAnalyze}
             disabled={groupReanalyzing}
           >
-            {groupReanalyzing ? "Аналізуємо…" : "Аналізувати останні 30 партій"}
+            {groupReanalyzing ? "Аналізуємо…" : "Аналізувати останні партії"}
           </button>
         </div>
         {groupError && (
@@ -435,8 +435,6 @@ export function ProfileView({ user }: Props) {
             analysis={groupAnalysis.analysisJson}
             gameCount={groupAnalysis.gameIds.length}
             createdAt={groupAnalysis.createdAt}
-            onReanalyze={handleGroupAnalyze}
-            reanalyzing={groupReanalyzing}
           />
         ) : !groupError ? (
           <div className={styles.groupEmpty}>

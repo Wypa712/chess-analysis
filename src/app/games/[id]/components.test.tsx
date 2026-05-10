@@ -180,7 +180,6 @@ describe('LlmTabsPanel', () => {
     llmError: null,
     llmAnalysis: null,
     llmOpenPhases: {},
-    onAnalyze: () => {},
     onTogglePhase: () => {},
     openingName: null,
   };

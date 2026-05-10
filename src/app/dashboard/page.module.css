@@ -10,7 +10,8 @@
 
 .hero {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 1rem;
 }
 
@@ -34,7 +35,8 @@
 }
 
 .statCard {
-  background-color: var(--color-bg2);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-surface-elevated) 82%, transparent), var(--color-bg2));
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: 1rem 1.125rem;
@@ -53,7 +55,7 @@
 }
 
 .statTotal {
-  background: linear-gradient(135deg, var(--color-green), var(--color-bg4));
+  background: linear-gradient(135deg, var(--color-info), var(--color-teal));
 }
 
 .statWin {
@@ -62,7 +64,7 @@
 }
 
 .statDraw {
-  background-color: var(--color-gold);
+  background-color: var(--color-warning);
   border-radius: 2px;
 }
 
@@ -85,6 +87,22 @@
   font-size: 0.75rem;
 }
 
+.statsGrid .statCard:nth-child(1) {
+  border-color: color-mix(in srgb, var(--color-info) 34%, var(--color-border));
+}
+
+.statsGrid .statCard:nth-child(2) {
+  border-color: color-mix(in srgb, var(--color-success) 32%, var(--color-border));
+}
+
+.statsGrid .statCard:nth-child(3) {
+  border-color: color-mix(in srgb, var(--color-warning) 34%, var(--color-border));
+}
+
+.statsGrid .statCard:nth-child(4) {
+  border-color: color-mix(in srgb, var(--color-danger) 30%, var(--color-border));
+}
+
 @media (max-width: 900px) {
   .container {
     padding: 1.25rem;
@@ -99,6 +117,11 @@
   .container {
     padding: 1rem;
     gap: 1rem;
+  }
+
+  .hero {
+    flex-direction: column;
+    gap: 0.5rem;
   }
 
   .title {
