@@ -19,6 +19,15 @@ const dmMono = DM_Mono({
 export const metadata: Metadata = {
   title: "Chess Analysis",
   description: "Аналіз шахових партій для гравців рівня ~1000 ELO",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Chess",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
 };
 
 export default function RootLayout({
