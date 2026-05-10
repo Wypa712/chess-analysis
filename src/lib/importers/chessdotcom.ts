@@ -128,11 +128,11 @@ async function getArchiveMonths(
     signal: AbortSignal.timeout(15_000),
   });
 
-  if (response.status === 404) {
-    throw new ImportError("user_not_found", "Chess.com user not found");
-  }
   if (response.status === 429) {
     throw new ImportError("rate_limited", "Chess.com rate limited");
+  }
+  if (response.status >= 400 && response.status < 500) {
+    throw new ImportError("user_not_found", "Chess.com user not found");
   }
   if (!response.ok) {
     throw new ImportError("api_error", `Chess.com API error: ${response.status}`);

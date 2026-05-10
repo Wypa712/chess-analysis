@@ -77,14 +77,14 @@ export async function POST(req: NextRequest) {
     .where(
       and(
         eq(chessAccounts.userId, userId),
-        sql`${chessAccounts.lastSyncedAt} > NOW() - INTERVAL '60 seconds'`
+        sql`${chessAccounts.lastSyncedAt} > NOW() - INTERVAL '15 seconds'`
       )
     )
     .limit(1);
 
   if (recentImport.length > 0) {
     return NextResponse.json(
-      { error: "Зачекайте хвилину між імпортами" },
+      { error: "Зачекайте 15 секунд між імпортами" },
       { status: 429 }
     );
   }

@@ -553,48 +553,50 @@ export function GameView({ game }: { game: GameData }) {
           <button
             type="button"
             className={styles.navBtn}
-            aria-label="Перший хід"
-            onClick={goFirst}
-            disabled={currentMove === -1}
-          >
-            <FirstIcon />
-          </button>
-          <button
-            type="button"
-            className={styles.navBtn}
-            aria-label="Попередній хід"
-            onClick={goPrev}
-            disabled={currentMove === -1}
-          >
-            <PrevIcon />
-          </button>
-          <button
-            type="button"
-            className={styles.navBtn}
-            aria-label="Наступний хід"
-            onClick={goNext}
-            disabled={currentMove === totalMoves - 1}
-          >
-            <NextIcon />
-          </button>
-          <button
-            type="button"
-            className={styles.navBtn}
-            aria-label="Останній хід"
-            onClick={goLast}
-            disabled={currentMove === totalMoves - 1}
-          >
-            <LastIcon />
-          </button>
-          <div className={styles.navDivider} />
-          <button
-            type="button"
-            className={styles.navBtn}
             aria-label="Перевернути дошку"
             onClick={() => setFlipped((f) => !f)}
           >
             <FlipIcon />
           </button>
+          <div className={styles.navDivider} />
+          <div className={styles.navMoveGroup}>
+            <button
+              type="button"
+              className={styles.navBtn}
+              aria-label="Перший хід"
+              onClick={goFirst}
+              disabled={currentMove === -1}
+            >
+              <FirstIcon />
+            </button>
+            <button
+              type="button"
+              className={styles.navBtn}
+              aria-label="Попередній хід"
+              onClick={goPrev}
+              disabled={currentMove === -1}
+            >
+              <PrevIcon />
+            </button>
+            <button
+              type="button"
+              className={styles.navBtn}
+              aria-label="Наступний хід"
+              onClick={goNext}
+              disabled={currentMove === totalMoves - 1}
+            >
+              <NextIcon />
+            </button>
+            <button
+              type="button"
+              className={styles.navBtn}
+              aria-label="Останній хід"
+              onClick={goLast}
+              disabled={currentMove === totalMoves - 1}
+            >
+              <LastIcon />
+            </button>
+          </div>
           <div className={styles.navDivider} />
           <button
             type="button"
