@@ -24,7 +24,11 @@ export function SyncStatusBar({ onSynced }: SyncStatusBarProps) {
   const onSyncedRef = useRef(onSynced);
   useEffect(() => { onSyncedRef.current = onSynced; });
 
-  const runSync = useCallback(async () => {
+  // After the user manually syncs at least once, subsequent 429s show the wait message.
+  // Before that, 429 is silently ignored (caused by the auto-sync on mount consuming the token).
+  const hasManualSyncedRef = useRef(false);
+
+  const runSync = useCallback(async (isManual = false) => {
     if (syncingRef.current) return;
     syncingRef.current = true;
     setSyncing(true);
@@ -39,7 +43,10 @@ export function SyncStatusBar({ onSynced }: SyncStatusBarProps) {
 
       if (!res.ok) {
         if (res.status === 429) {
-          setError("Зачекайте перед наступною синхронізацією");
+          if (isManual && hasManualSyncedRef.current) {
+            setError("Зачекайте перед наступною синхронізацією");
+          }
+          // else: silently ignore — auto-sync or first manual click after auto-sync
         } else {
           const data = await res.json().catch(() => ({}));
           setError((data as { error?: string }).error ?? "Помилка синхронізації");
@@ -53,9 +60,10 @@ export function SyncStatusBar({ onSynced }: SyncStatusBarProps) {
       try { sessionStorage.setItem(SESSION_KEY, now); } catch { /* storage full */ }
       setLastSyncTs(now);
       setResult({ imported: data.imported ?? 0, skipped: data.skipped ?? 0 });
+      if (isManual) hasManualSyncedRef.current = true;
       if (data.imported > 0) onSyncedRef.current?.();
     } catch {
-      setError("Не вдалося синхронізувати");
+      if (isManual) setError("Не вдалося синхронізувати");
     } finally {
       syncingRef.current = false;
       setSyncing(false);
@@ -105,7 +113,7 @@ export function SyncStatusBar({ onSynced }: SyncStatusBarProps) {
 
       <button
         className={styles.refreshBtn}
-        onClick={runSync}
+        onClick={() => runSync(true)}
         disabled={syncing}
       >
         <svg

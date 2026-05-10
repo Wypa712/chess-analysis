@@ -79,7 +79,17 @@ export default function SettingsPage() {
         <h2 className={styles.sectionTitle}>Підключені акаунти</h2>
 
         {loading ? (
-          <p className={styles.empty}>Завантаження…</p>
+          <div className={styles.accountsList}>
+            {[0.55, 0.75].map((w, i) => (
+              <div key={i} className={styles.skeletonCard}>
+                <div className={styles.skeletonIcon} />
+                <div className={styles.skeletonLines}>
+                  <div className={styles.skeletonLine} style={{ width: `${w * 100}%` }} />
+                  <div className={styles.skeletonLine} style={{ width: "40%", opacity: 0.6 }} />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : loadError ? (
           <div className={styles.errorRetry}>
             <p className={styles.errorText}>{loadError}</p>

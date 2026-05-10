@@ -8,7 +8,7 @@ import { importChessComGames } from "@/lib/importers/chessdotcom";
 import { ImportError } from "@/lib/importers/errors";
 import { captureSanitizedException } from "@/lib/observability/sentry";
 
-const RATE_LIMIT_SECONDS = 60;
+const RATE_LIMIT_SECONDS = 15;
 
 // POST /api/sync — delta sync: fetch games newer than lastSyncedAt for all user's accounts
 export async function POST() {
