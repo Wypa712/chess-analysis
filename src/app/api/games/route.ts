@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { chessAccounts, engineAnalyses, games } from "@/db/schema";
 import { STOCKFISH_PROFILE_KEY } from "@/lib/chess/engine-analysis";
-import { eq, and, desc, inArray, type SQL } from "drizzle-orm";
+import { eq, and, desc, inArray, count, type SQL } from "drizzle-orm";
 
 const PAGE_SIZE = 20;
 const VALID_PLATFORMS = ["chess_com", "lichess"] as const;
@@ -67,8 +67,7 @@ export async function GET(req: NextRequest) {
     timeControlCategory as TimeControlCategory | null;
   const resultFilter = result as GameResult | null;
 
-  // Get all chess account ids for this user (optionally filtered by platform)
-  const accountQuery = db
+  const accountSubquery = db
     .select({ id: chessAccounts.id })
     .from(chessAccounts)
     .where(
@@ -80,21 +79,8 @@ export async function GET(req: NextRequest) {
         : eq(chessAccounts.userId, userId)
     );
 
-  const userAccounts = await accountQuery;
-  if (userAccounts.length === 0) {
-    return NextResponse.json({
-      games: [],
-      total: 0,
-      page,
-      pageSize: PAGE_SIZE,
-      summary: { total: 0, wins: 0, draws: 0, losses: 0 },
-    });
-  }
-
-  const accountIds = userAccounts.map((a) => a.id);
-
   // Build where conditions
-  const baseConditions: SQL[] = [inArray(games.chessAccountId, accountIds)];
+  const baseConditions: SQL[] = [inArray(games.chessAccountId, accountSubquery)];
 
   if (timeControlCategoryFilter) {
     baseConditions.push(eq(games.timeControlCategory, timeControlCategoryFilter));
@@ -109,7 +95,7 @@ export async function GET(req: NextRequest) {
   const where = and(...conditions);
   const offset = (page - 1) * PAGE_SIZE;
 
-  const [rows, countRows, wins, draws, losses] = await Promise.all([
+  const [rows, countRows, summaryRows] = await Promise.all([
     db
       .select({
         id: games.id,
@@ -144,10 +130,16 @@ export async function GET(req: NextRequest) {
       .limit(PAGE_SIZE)
       .offset(offset),
     db.$count(games, where),
-    db.$count(games, and(summaryWhere, eq(games.result, "win"))),
-    db.$count(games, and(summaryWhere, eq(games.result, "draw"))),
-    db.$count(games, and(summaryWhere, eq(games.result, "loss"))),
+    db
+      .select({ result: games.result, cnt: count() })
+      .from(games)
+      .where(summaryWhere)
+      .groupBy(games.result),
   ]);
+
+  const wins = summaryRows.find((r) => r.result === "win")?.cnt ?? 0;
+  const draws = summaryRows.find((r) => r.result === "draw")?.cnt ?? 0;
+  const losses = summaryRows.find((r) => r.result === "loss")?.cnt ?? 0;
 
   return NextResponse.json({
     games: rows.map(({ engineAnalysisId, ...game }) => ({

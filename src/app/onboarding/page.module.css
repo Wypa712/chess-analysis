@@ -1,0 +1,151 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  background-color: var(--color-bg);
+}
+
+.card {
+  width: 100%;
+  max-width: 560px;
+  background-color: var(--color-bg2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.5rem;
+}
+
+.logo {
+  font-size: 2.5rem;
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+
+.title {
+  font-size: 1.375rem;
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.25;
+}
+
+.subtitle {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  max-width: 380px;
+}
+
+.accountsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sectionLabel {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-faded);
+}
+
+.accountsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.importBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.progressTrack {
+  height: 4px;
+  background-color: var(--color-bg4);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background-color: var(--color-primary);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.importStatus {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.importDone {
+  font-size: 0.8125rem;
+  color: var(--color-success);
+}
+
+.importErrors {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.importError {
+  font-size: 0.8125rem;
+  color: var(--color-danger);
+}
+
+.continueBtn {
+  width: 100%;
+  min-height: 42px;
+  background-color: var(--color-primary);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--color-bg);
+  cursor: pointer;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  padding: 0.625rem 1.5rem;
+  transition: background-color 0.12s ease;
+  text-align: center;
+}
+
+.continueBtn:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+}
+
+.continueBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.continueBtn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+  .card {
+    padding: 1.5rem 1rem;
+    gap: 1.25rem;
+  }
+
+  .title {
+    font-size: 1.2rem;
+  }
+}

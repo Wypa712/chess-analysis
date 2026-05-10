@@ -7,7 +7,7 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const { pathname } = req.nextUrl;
 
-  const protectedPaths = ["/dashboard", "/games", "/profile"];
+  const protectedPaths = ["/dashboard", "/games", "/profile", "/onboarding", "/settings"];
   const isProtected = protectedPaths.some((p) => pathname.startsWith(p));
 
   if (isProtected && !isLoggedIn) {

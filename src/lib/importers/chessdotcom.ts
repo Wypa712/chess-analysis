@@ -38,6 +38,7 @@ type ChessComArchivesResponse = {
 type ImportOptions = {
   limit?: number;
   since?: number;
+  until?: number;
 };
 
 export function mapTimeClass(
@@ -116,6 +117,30 @@ function parseArchiveUrl(url: string): { year: number; month: number } | null {
   };
 }
 
+const ARCHIVE_CONCURRENCY = 4;
+
+type MonthFetchResult =
+  | { ok: true; games: ChessComGame[] }
+  | { ok: false; error: "rate_limited" | "api_error"; status: number };
+
+async function fetchArchiveMonth(
+  normalizedUsername: string,
+  year: number,
+  month: number
+): Promise<MonthFetchResult> {
+  const mm = String(month).padStart(2, "0");
+  const url = `https://api.chess.com/pub/player/${encodeURIComponent(normalizedUsername)}/games/${year}/${mm}`;
+  const response = await fetch(url, {
+    headers: { "User-Agent": "chess-analysis-app/1.0" },
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (response.status === 404) return { ok: true, games: [] };
+  if (response.status === 429) return { ok: false, error: "rate_limited", status: 429 };
+  if (!response.ok) return { ok: false, error: "api_error", status: response.status };
+  const data: ChessComArchiveResponse = await response.json();
+  return { ok: true, games: data.games ?? [] };
+}
+
 async function getArchiveMonths(
   normalizedUsername: string
 ): Promise<Array<{ year: number; month: number }>> {
@@ -151,67 +176,67 @@ export async function importChessComGames(
   chessAccountId: string,
   username: string,
   options: ImportOptions
-): Promise<{ imported: number; skipped: number }> {
+): Promise<{ imported: number; skipped: number; oldestPlayedAt: number | null }> {
   const normalizedUsername = username.toLowerCase();
 
   const allMonths = await getArchiveMonths(normalizedUsername);
 
   const months =
-    options.since !== undefined
+    options.since !== undefined || options.until !== undefined
       ? allMonths.filter(({ year, month }) => {
-          const sinceDate = new Date(options.since!);
-          return (
-            year > sinceDate.getFullYear() ||
-            (year === sinceDate.getFullYear() &&
-              month >= sinceDate.getMonth() + 1)
-          );
+          if (options.since !== undefined) {
+            const sinceDate = new Date(options.since);
+            const passesLower =
+              year > sinceDate.getFullYear() ||
+              (year === sinceDate.getFullYear() && month >= sinceDate.getMonth() + 1);
+            if (!passesLower) return false;
+          }
+          if (options.until !== undefined) {
+            const untilDate = new Date(options.until);
+            const passesUpper =
+              year < untilDate.getFullYear() ||
+              (year === untilDate.getFullYear() && month <= untilDate.getMonth() + 1);
+            if (!passesUpper) return false;
+          }
+          return true;
         })
       : allMonths;
 
+  const MAX_GAMES_PER_IMPORT = 500;
+  const importCap = options.limit ?? MAX_GAMES_PER_IMPORT;
   const collected: ChessComGame[] = [];
 
-  for (const { year, month } of months) {
-    if (options.limit !== undefined && collected.length >= options.limit) {
-      break;
+  // Fetch archive months in parallel batches to avoid sequential latency
+  for (let i = 0; i < months.length && collected.length < importCap; i += ARCHIVE_CONCURRENCY) {
+    const batch = months.slice(i, i + ARCHIVE_CONCURRENCY);
+    const results = await Promise.all(
+      batch.map(({ year, month }) => fetchArchiveMonth(normalizedUsername, year, month))
+    );
+
+    for (const result of results) {
+      if (!result.ok) {
+        if (result.error === "rate_limited") throw new ImportError("rate_limited", "Chess.com rate limited");
+        throw new ImportError("api_error", `Chess.com API error: ${result.status}`);
+      }
+
+      const filtered = result.games
+        .filter(
+          (g) =>
+            g.rules === "chess" &&
+            (options.since === undefined || g.end_time * 1000 >= options.since) &&
+            (options.until === undefined || g.end_time * 1000 < options.until)
+        )
+        .sort((a, b) => b.end_time - a.end_time);
+
+      collected.push(...filtered.slice(0, importCap - collected.length));
+      if (collected.length >= importCap) break;
     }
-
-    const mm = String(month).padStart(2, "0");
-    const url = `https://api.chess.com/pub/player/${encodeURIComponent(normalizedUsername)}/games/${year}/${mm}`;
-
-    const response = await fetch(url, {
-      headers: { "User-Agent": "chess-analysis-app/1.0" },
-      signal: AbortSignal.timeout(15_000),
-    });
-
-    if (response.status === 404) continue;
-    if (response.status === 429) {
-      throw new ImportError("rate_limited", "Chess.com rate limited");
-    }
-    if (!response.ok) {
-      throw new ImportError("api_error", `Chess.com API error: ${response.status}`);
-    }
-
-    const data: ChessComArchiveResponse = await response.json();
-    const monthGames = data.games ?? [];
-
-    // Filter by import mode and only standard games.
-    const filtered = monthGames
-      .filter(
-        (g) =>
-          g.rules === "chess" &&
-          (options.since === undefined || g.end_time * 1000 >= options.since)
-      )
-      .sort((a, b) => b.end_time - a.end_time);
-
-    collected.push(...filtered);
   }
 
-  const MAX_GAMES_PER_IMPORT = 500;
-  const cap = options.limit ?? MAX_GAMES_PER_IMPORT;
-  const toProcess = collected.slice(0, cap);
+  const toProcess = collected;
 
   if (toProcess.length === 0) {
-    return { imported: 0, skipped: 0 };
+    return { imported: 0, skipped: 0, oldestPlayedAt: null };
   }
 
   const gamesToInsert = [];
@@ -261,5 +286,10 @@ export async function importChessComGames(
   const imported = inserted.length;
   const skipped = gamesToInsert.length - imported;
 
-  return { imported, skipped };
+  const oldestPlayedAt =
+    toProcess.length > 0
+      ? Math.min(...toProcess.map((g) => g.end_time * 1000))
+      : null;
+
+  return { imported, skipped, oldestPlayedAt };
 }

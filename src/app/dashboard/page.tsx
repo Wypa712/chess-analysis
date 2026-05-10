@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { ImportForm } from "@/components/ImportForm/ImportForm";
+import { SyncStatusBar } from "@/components/SyncStatusBar/SyncStatusBar";
 import { GamesList } from "@/components/GamesList/GamesList";
 import styles from "./page.module.css";
 
@@ -43,12 +43,14 @@ export default function DashboardPage() {
     <div className={styles.container}>
       <section className={styles.hero}>
         <div>
-          <h1 className={styles.title}>Привіт</h1>
+          <h1 className={styles.title}>Дашборд</h1>
           <p className={styles.subtitle}>
-            Імпортуй партії, відфільтруй останні результати і переходь до аналізу.
+            Ваші партії та статистика. Нові партії підтягуються автоматично.
           </p>
         </div>
       </section>
+
+      <SyncStatusBar onSynced={() => setRefreshKey((k) => k + 1)} />
 
       <section className={styles.statsGrid} aria-label="Статистика партій">
         {stats.map((stat) => (
@@ -61,8 +63,6 @@ export default function DashboardPage() {
           </div>
         ))}
       </section>
-
-      <ImportForm onImported={() => setRefreshKey((k) => k + 1)} />
 
       <GamesList refreshKey={refreshKey} onSummary={handleSummary} />
     </div>

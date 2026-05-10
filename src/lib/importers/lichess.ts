@@ -34,6 +34,7 @@ type LichessGame = {
 type ImportOptions = {
   limit?: number;
   since?: number;
+  until?: number;
 };
 
 type GameInsert = typeof games.$inferInsert;
@@ -185,7 +186,7 @@ export async function importLichessGames(
   chessAccountId: string,
   username: string,
   options: ImportOptions
-): Promise<{ imported: number; skipped: number }> {
+): Promise<{ imported: number; skipped: number; oldestPlayedAt: number | null }> {
   const normalizedUsername = username.toLowerCase();
 
   const url = new URL(
@@ -196,6 +197,9 @@ export async function importLichessGames(
   }
   if (options.since !== undefined) {
     url.searchParams.set("since", String(options.since));
+  }
+  if (options.until !== undefined) {
+    url.searchParams.set("until", String(options.until));
   }
   url.searchParams.set("opening", "true");
   url.searchParams.set("moves", "true");
@@ -231,10 +235,14 @@ export async function importLichessGames(
 
   let imported = 0;
   let skipped = 0;
+  let oldestPlayedAt: number | null = null;
   const batch: GameInsert[] = [];
 
   async function flushBatch() {
-    const result = await insertGameBatch(batch.splice(0, batch.length));
+    if (batch.length === 0) return;
+    const toFlush = batch.slice();
+    const result = await insertGameBatch(toFlush);
+    batch.splice(0);
     imported += result.imported;
     skipped += result.skipped;
   }
@@ -257,6 +265,11 @@ export async function importLichessGames(
     );
     if (!normalized) return;
 
+    const ts = game.createdAt;
+    if (ts && (oldestPlayedAt === null || ts < oldestPlayedAt)) {
+      oldestPlayedAt = ts;
+    }
+
     batch.push(normalized);
     if (batch.length >= INSERT_BATCH_SIZE) {
       await flushBatch();
@@ -271,7 +284,7 @@ export async function importLichessGames(
       await processLine(line);
     }
     await flushBatch();
-    return { imported, skipped };
+    return { imported, skipped, oldestPlayedAt };
   }
 
   const reader = response.body.getReader();
@@ -303,5 +316,5 @@ export async function importLichessGames(
 
   await flushBatch();
 
-  return { imported, skipped };
+  return { imported, skipped, oldestPlayedAt };
 }

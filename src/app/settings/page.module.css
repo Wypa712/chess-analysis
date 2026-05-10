@@ -1,0 +1,138 @@
+.container {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.subtitle {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  background-color: var(--color-bg2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1.25rem 1.5rem;
+}
+
+.sectionTitle {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.accountsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.empty {
+  font-size: 0.875rem;
+  color: var(--color-text-faded);
+}
+
+.errorText {
+  font-size: 0.875rem;
+  color: var(--color-danger);
+}
+
+.errorRetry {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.retryBtn {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  padding: 0.375rem 0.75rem;
+  transition: border-color 0.12s ease, color 0.12s ease;
+}
+
+.retryBtn:hover {
+  border-color: var(--color-text-muted);
+  color: var(--color-text);
+}
+
+.retryBtn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.devSection {
+  border-color: color-mix(in srgb, var(--color-warning) 40%, var(--color-border));
+}
+
+.devNote {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.devResetBtn {
+  align-self: flex-start;
+  background: transparent;
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  color: var(--color-danger);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.4375rem 1rem;
+  transition: background-color 0.12s ease;
+}
+
+.devResetBtn:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-danger) 12%, transparent);
+}
+
+.devResetBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.devResetBtn:focus-visible {
+  outline: 2px solid var(--color-danger);
+  outline-offset: 2px;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 1.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 1rem;
+  }
+
+  .section {
+    padding: 1rem;
+  }
+}
