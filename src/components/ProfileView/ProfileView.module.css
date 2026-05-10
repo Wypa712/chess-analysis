@@ -363,19 +363,75 @@
 }
 
 /* ── ELO chart ── */
-.eloLegend {
+.eloControls {
   display: flex;
-  gap: 20px;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 10px;
-  font-size: 12px;
+  gap: 8px;
 }
 
-.eloCC {
+.eloToggle {
+  display: flex;
+  gap: 4px;
+}
+
+.eloTCToggle {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.eloToggleBtn {
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  font-size: 0.75rem;
+  font-family: inherit;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease;
+}
+
+.eloToggleBtn:focus-visible {
+  outline: 2px solid var(--color-green-lt);
+  outline-offset: 2px;
+}
+
+.eloToggleBtnCC.eloToggleActive {
+  border-color: var(--color-green-lt);
   color: var(--color-green-lt);
+  background: color-mix(in srgb, var(--color-green-lt) 10%, transparent);
 }
 
-.eloLI {
+.eloToggleBtnLI.eloToggleActive {
+  border-color: var(--color-gold);
   color: var(--color-gold);
+  background: color-mix(in srgb, var(--color-gold) 10%, transparent);
+}
+
+
+.eloTCBtn {
+  padding: 2px 9px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  font-size: 0.6875rem;
+  font-family: inherit;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease;
+}
+
+.eloTCBtnActive {
+  border-color: var(--color-text-muted);
+  color: var(--color-text);
+}
+
+.eloTCBtn:focus-visible {
+  outline: 2px solid var(--color-green-lt);
+  outline-offset: 2px;
 }
 
 .eloSvg {

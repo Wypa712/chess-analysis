@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useId } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import styles from "./ProfileView.module.css";
 import type { User } from "next-auth";
@@ -9,6 +9,7 @@ import type { GroupAnalysisJsonV1 } from "@/lib/llm/types";
 
 type ProfileStats = {
   totalGames: number;
+  totalAvailable: number;
   accounts: Array<{ platform: "chess_com" | "lichess"; username: string }>;
   wdl: { wins: number; draws: number; losses: number } | null;
   byColor: {
@@ -18,8 +19,8 @@ type ProfileStats = {
   byTimeControl: Array<{ label: string; games: number; rate: number }> | null;
   openings: Array<{ name: string; games: number; rate: number }> | null;
   eloHistory: {
-    chess_com: Array<{ playedAt: string; rating: number }>;
-    lichess: Array<{ playedAt: string; rating: number }>;
+    chess_com: Record<string, Array<{ playedAt: string; rating: number }>>;
+    lichess: Record<string, Array<{ playedAt: string; rating: number }>>;
   };
 };
 
@@ -36,23 +37,12 @@ export function ProfileView({ user }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Validate and parse filter mode from URL
-  const parsedMode = searchParams.get("mode");
-  const validMode = parsedMode === "period" ? "period" : "count";
-
-  // Validate and parse filter count from URL
-  const parsedCount = parseInt(searchParams.get("count") ?? "25", 10);
-  const validCounts = [25, 50, 100] as const;
-  const validCount = (validCounts.includes(parsedCount as any) ? parsedCount : 25) as 25 | 50 | 100;
-
   // Validate and parse filter days from URL
   const parsedDays = parseInt(searchParams.get("days") ?? "30", 10);
-  const validDaysList = [7, 30, 90] as const;
-  const validDays = (validDaysList.includes(parsedDays as any) ? parsedDays : 30) as 7 | 30 | 90;
+  const validDaysList = [0, 7, 30, 90] as const;
+  const validDays = (validDaysList.includes(parsedDays as any) ? parsedDays : 30) as 0 | 7 | 30 | 90;
 
-  const [filterMode, setFilterMode] = useState<"count" | "period">(validMode);
-  const [filterCount, setFilterCount] = useState<25 | 50 | 100>(validCount);
-  const [filterDays, setFilterDays] = useState<7 | 30 | 90>(validDays);
+  const [filterDays, setFilterDays] = useState<0 | 7 | 30 | 90>(validDays);
 
   const [stats, setStats] = useState<ProfileStats | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -74,10 +64,7 @@ export function ProfileView({ user }: Props) {
     }
     setError(null);
 
-    const params = new URLSearchParams({
-      mode: filterMode,
-      ...(filterMode === "count" ? { count: filterCount.toString() } : { days: filterDays.toString() }),
-    });
+    const params = new URLSearchParams({ days: filterDays.toString() });
 
     fetch(`/api/profile/stats?${params}`, { signal: controller.signal })
       .then((res) => {
@@ -99,7 +86,7 @@ export function ProfileView({ user }: Props) {
 
     return () => controller.abort();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterMode, filterCount, filterDays]);
+  }, [filterDays]);
 
   // Fetch group analysis
   useEffect(() => {
@@ -121,12 +108,9 @@ export function ProfileView({ user }: Props) {
 
   // Update URL when filters change
   useEffect(() => {
-    const params = new URLSearchParams({
-      mode: filterMode,
-      ...(filterMode === "count" ? { count: filterCount.toString() } : { days: filterDays.toString() }),
-    });
+    const params = new URLSearchParams({ days: filterDays.toString() });
     router.replace(`/profile?${params}`, { scroll: false });
-  }, [filterMode, filterCount, filterDays, router]);
+  }, [filterDays, router]);
 
   async function handleGroupAnalyze() {
     setGroupReanalyzing(true);
@@ -165,9 +149,10 @@ export function ProfileView({ user }: Props) {
         </div>
         {/* Filters bar — static, no skeleton needed */}
         <div className={styles.filtersBar} aria-hidden="true" style={{ pointerEvents: "none", opacity: 0.4 }}>
-          <div className={styles.filterGroup}>
-            <button type="button" className={styles.filterModeBtn}>За кількістю</button>
-            <button type="button" className={styles.filterModeBtn}>За періодом</button>
+          <div className={styles.filterSegment}>
+            {["7 дн.", "30 дн.", "90 дн.", "Всі"].map((l) => (
+              <button key={l} type="button" className={styles.segBtn}>{l}</button>
+            ))}
           </div>
         </div>
         {/* Stats row skeleton */}
@@ -278,49 +263,18 @@ export function ProfileView({ user }: Props) {
 
       {/* ── Filters ── */}
       <section className={styles.filtersBar}>
-        <div className={styles.filterGroup}>
-          <button
-            type="button"
-            className={`${styles.filterModeBtn} ${filterMode === "count" ? styles.filterModeBtnActive : ""}`}
-            onClick={() => setFilterMode("count")}
-          >
-            За кількістю
-          </button>
-          <button
-            type="button"
-            className={`${styles.filterModeBtn} ${filterMode === "period" ? styles.filterModeBtnActive : ""}`}
-            onClick={() => setFilterMode("period")}
-          >
-            За періодом
-          </button>
+        <div className={styles.filterSegment}>
+          {([7, 30, 90, 0] as const).map((v) => (
+            <button
+              type="button"
+              key={v}
+              className={`${styles.segBtn} ${filterDays === v ? styles.segBtnActive : ""}`}
+              onClick={() => setFilterDays(v)}
+            >
+              {v === 0 ? "Всі" : `${v} дн.`}
+            </button>
+          ))}
         </div>
-        {filterMode === "count" ? (
-          <div className={styles.filterSegment}>
-            {([25, 50, 100] as const).map((v) => (
-              <button
-                type="button"
-                key={v}
-                className={`${styles.segBtn} ${filterCount === v ? styles.segBtnActive : ""}`}
-                onClick={() => setFilterCount(v)}
-              >
-                {v}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className={styles.filterSegment}>
-            {([7, 30, 90] as const).map((v) => (
-              <button
-                type="button"
-                key={v}
-                className={`${styles.segBtn} ${filterDays === v ? styles.segBtnActive : ""}`}
-                onClick={() => setFilterDays(v)}
-              >
-                {v} дн.
-              </button>
-            ))}
-          </div>
-        )}
       </section>
 
       {/* ── Stats row ── */}
@@ -438,6 +392,7 @@ export function ProfileView({ user }: Props) {
           ccData={eloHistory.chess_com}
           liData={eloHistory.lichess}
         />
+
       </section>
 
       {/* ── Group analysis ── */}
@@ -506,22 +461,57 @@ export function ProfileView({ user }: Props) {
   );
 }
 
+const TC_LABELS: Record<string, string> = {
+  bullet: "Bullet",
+  blitz: "Blitz",
+  rapid: "Rapid",
+  classical: "Classical",
+  correspondence: "Корес.",
+  unknown: "Інше",
+};
+const TC_ORDER = ["bullet", "blitz", "rapid", "classical", "correspondence", "unknown"];
+
 function EloChartPlaceholder({
   ccData,
   liData,
 }: {
-  ccData: Array<{ playedAt: string; rating: number }>;
-  liData: Array<{ playedAt: string; rating: number }>;
+  ccData: Record<string, Array<{ playedAt: string; rating: number }>>;
+  liData: Record<string, Array<{ playedAt: string; rating: number }>>;
 }) {
-  const W = 500;
-  const H = 130;
-  const padL = 44;
-  const padR = 48;
-  const padT = 12;
-  const padB = 20;
+  const uid = useId();
+  const gradCC = `${uid}-cc`;
+  const gradLI = `${uid}-li`;
 
-  const hasCCData = ccData.length > 0;
-  const hasLIData = liData.length > 0;
+  const hasCCData = Object.keys(ccData).length > 0;
+  const hasLIData = Object.keys(liData).length > 0;
+  const bothPlatforms = hasCCData && hasLIData;
+
+  const [activePlatform, setActivePlatform] = useState<"chess_com" | "lichess">(() =>
+    hasCCData ? "chess_com" : "lichess"
+  );
+
+  const activeRecord = activePlatform === "chess_com" ? ccData : liData;
+  const availableTCs = TC_ORDER.filter((tc) => (activeRecord[tc]?.length ?? 0) > 0);
+
+  const [activeTC, setActiveTC] = useState<string>(() => {
+    const record = hasCCData ? ccData : liData;
+    return TC_ORDER.find((tc) => (record[tc]?.length ?? 0) > 0) ?? "blitz";
+  });
+
+  // Reset TC to first available when platform changes
+  useEffect(() => {
+    const first = TC_ORDER.find((tc) => (activeRecord[tc]?.length ?? 0) > 0);
+    if (first && !activeRecord[activeTC]) setActiveTC(first);
+  }, [activePlatform]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const activeSeries = activeRecord[activeTC] ?? [];
+
+  const W = 500;
+  const H = 200;
+  const padL = 44;
+  const padR = 52;
+  const padT = 16;
+  const padB = 28;
 
   if (!hasCCData && !hasLIData) {
     return (
@@ -531,118 +521,184 @@ function EloChartPlaceholder({
     );
   }
 
-  const ccRatings = ccData.map((d) => d.rating);
-  const liRatings = liData.map((d) => d.rating);
-  const allVals = [...ccRatings, ...liRatings];
-  const minV = Math.min(...allVals) - 20;
-  const maxV = Math.max(...allVals) + 20;
+  // Downsample to at most 200 pts with a simple moving-average smoothing pass
+  function processSeries(arr: Array<{ playedAt: string; rating: number }>, max: number) {
+    if (arr.length === 0) return [];
+    // stride sample first
+    const sampled =
+      arr.length <= max
+        ? arr
+        : Array.from({ length: max - 1 }, (_, i) => arr[Math.round((i * arr.length) / (max - 1))]).concat([
+            arr[arr.length - 1],
+          ]);
+    // 5-point moving average to reduce noise
+    const win = Math.min(5, Math.floor(sampled.length / 4));
+    if (win < 2) return sampled.map((d) => ({ t: new Date(d.playedAt).getTime(), r: d.rating }));
+    return sampled.map((d, i, a) => {
+      const lo = Math.max(0, i - win);
+      const hi = Math.min(a.length - 1, i + win);
+      const avg = a.slice(lo, hi + 1).reduce((s, x) => s + x.rating, 0) / (hi - lo + 1);
+      return { t: new Date(d.playedAt).getTime(), r: Math.round(avg) };
+    });
+  }
+
+  // Only process and display the currently selected platform + time control
+  const activePts = processSeries(activeSeries, 200);
+
+  const allTimes = activePts.map((p) => p.t);
+  const allRatings = activePts.map((p) => p.r);
+
+  const minT = allTimes.length > 0 ? Math.min(...allTimes) : 0;
+  const maxT = allTimes.length > 0 ? Math.max(...allTimes) : 1;
   const chartW = W - padL - padR;
   const chartH = H - padT - padB;
 
-  const maxLen = Math.max(ccData.length, liData.length);
+  // Round Y range to nice step
+  const rawMin = allRatings.length > 0 ? Math.min(...allRatings) : 0;
+  const rawMax = allRatings.length > 0 ? Math.max(...allRatings) : 100;
+  const range = rawMax - rawMin;
+  const step = range > 600 ? 200 : range > 300 ? 100 : 50;
+  const minV = Math.floor((rawMin - 30) / step) * step;
+  const maxV = Math.ceil((rawMax + 30) / step) * step;
 
-  function toX(i: number, total: number) {
-    if (total === 1) return padL + chartW / 2;
-    return padL + (i / (total - 1)) * chartW;
+  const yTicks: number[] = [];
+  for (let v = minV; v <= maxV; v += step) yTicks.push(v);
+
+  function toX(t: number) {
+    if (maxT === minT) return padL + chartW / 2;
+    return padL + ((t - minT) / (maxT - minT)) * chartW;
   }
   function toY(v: number) {
     return padT + (1 - (v - minV) / (maxV - minV)) * chartH;
   }
-  function makePath(pts: Array<{ rating: number }>) {
+
+  // Catmull-Rom smooth bezier path — control points clamped to [p1.x, p2.x] to prevent loops
+  function makeSmoothPath(pts: Array<{ t: number; r: number }>) {
     if (pts.length === 0) return "";
-    return pts
-      .map((p, i) => `${i === 0 ? "M" : "L"}${toX(i, pts.length).toFixed(1)},${toY(p.rating).toFixed(1)}`)
-      .join(" ");
+    const coords = pts.map((p) => ({ x: toX(p.t), y: toY(p.r) }));
+    if (coords.length === 1) return `M${coords[0].x.toFixed(1)},${coords[0].y.toFixed(1)}`;
+    let d = `M${coords[0].x.toFixed(1)},${coords[0].y.toFixed(1)}`;
+    const tension = 0.3;
+    for (let i = 1; i < coords.length; i++) {
+      const p0 = coords[i - 2] ?? coords[i - 1];
+      const p1 = coords[i - 1];
+      const p2 = coords[i];
+      const p3 = coords[i + 1] ?? coords[i];
+      const cp1x = Math.max(p1.x, Math.min(p2.x, p1.x + (p2.x - p0.x) * tension));
+      const cp1y = p1.y + (p2.y - p0.y) * tension;
+      const cp2x = Math.max(p1.x, Math.min(p2.x, p2.x - (p3.x - p1.x) * tension));
+      const cp2y = p2.y - (p3.y - p1.y) * tension;
+      d += ` C${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`;
+    }
+    return d;
   }
 
-  const yTicks = [minV + 20, Math.round((minV + maxV) / 2), maxV - 20];
+  function makeAreaPath(pts: Array<{ t: number; r: number }>, linePath: string) {
+    if (!linePath || pts.length === 0) return "";
+    const bottomY = (padT + chartH).toFixed(1);
+    return `${linePath} L${toX(pts[pts.length - 1].t).toFixed(1)},${bottomY} L${toX(pts[0].t).toFixed(1)},${bottomY} Z`;
+  }
+
+  // X-axis labels: ~5 evenly spaced date ticks
+  const NUM_X_LABELS = 5;
+  const xLabels = Array.from({ length: NUM_X_LABELS }, (_, i) => {
+    const t = minT + (i / (NUM_X_LABELS - 1)) * (maxT - minT);
+    const d = new Date(t);
+    const label = d.toLocaleDateString("uk-UA", { month: "short", year: "2-digit" });
+    return { t, label };
+  });
+
+  const activeLinePath = makeSmoothPath(activePts);
+  const isCC = activePlatform === "chess_com" || (!bothPlatforms && hasCCData);
+  const activeColor = isCC ? "var(--color-green-lt)" : "var(--color-gold)";
+  const activeGrad = isCC ? gradCC : gradLI;
 
   return (
     <div>
-      <div className={styles.eloLegend}>
-        {hasCCData && <span className={styles.eloCC}>— Chess.com</span>}
-        {hasLIData && <span className={styles.eloLI}>— Lichess</span>}
+      <div className={styles.eloControls}>
+        {/* Platform toggle — left, only when both platforms have data */}
+        {bothPlatforms && (
+          <div className={styles.eloToggle}>
+            <button
+              type="button"
+              className={`${styles.eloToggleBtn} ${styles.eloToggleBtnCC} ${activePlatform === "chess_com" ? styles.eloToggleActive : ""}`}
+              onClick={() => setActivePlatform("chess_com")}
+            >
+              Chess.com
+            </button>
+            <button
+              type="button"
+              className={`${styles.eloToggleBtn} ${styles.eloToggleBtnLI} ${activePlatform === "lichess" ? styles.eloToggleActive : ""}`}
+              onClick={() => setActivePlatform("lichess")}
+            >
+              Lichess
+            </button>
+          </div>
+        )}
+
+        {/* Time-control toggle — right */}
+        {availableTCs.length > 1 && (
+          <div className={styles.eloTCToggle}>
+            {availableTCs.map((tc) => (
+              <button
+                type="button"
+                key={tc}
+                className={`${styles.eloTCBtn} ${activeTC === tc ? styles.eloTCBtnActive : ""}`}
+                onClick={() => setActiveTC(tc)}
+              >
+                {TC_LABELS[tc] ?? tc}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
+
       <svg viewBox={`0 0 ${W} ${H}`} className={styles.eloSvg} aria-hidden="true">
+        <defs>
+          <linearGradient id={gradCC} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--color-green-lt)" stopOpacity={0.18} />
+            <stop offset="100%" stopColor="var(--color-green-lt)" stopOpacity={0} />
+          </linearGradient>
+          <linearGradient id={gradLI} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--color-gold)" stopOpacity={0.15} />
+            <stop offset="100%" stopColor="var(--color-gold)" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+
+        {/* Y grid lines */}
         {yTicks.map((v) => (
           <g key={v}>
-            <line
-              x1={padL}
-              y1={toY(v)}
-              x2={W - padR}
-              y2={toY(v)}
-              stroke="var(--color-border)"
-              strokeWidth={1}
-            />
-            <text
-              x={padL - 6}
-              y={toY(v) + 4}
-              textAnchor="end"
-              fontSize={9}
-              fill="var(--color-text-faded)"
-              fontFamily="var(--font-mono)"
-            >
+            <line x1={padL} y1={toY(v)} x2={W - padR} y2={toY(v)} stroke="var(--color-border)" strokeWidth={1} />
+            <text x={padL - 6} y={toY(v) + 4} textAnchor="end" fontSize={9} fill="var(--color-text-faded)" fontFamily="var(--font-mono)">
               {v}
             </text>
           </g>
         ))}
-        <line
-          x1={padL}
-          y1={H - padB}
-          x2={W - padR}
-          y2={H - padB}
-          stroke="var(--color-border)"
-          strokeWidth={1}
-        />
-        {hasCCData && (
+
+        {/* X axis baseline */}
+        <line x1={padL} y1={padT + chartH} x2={W - padR} y2={padT + chartH} stroke="var(--color-border)" strokeWidth={1} />
+
+        {/* X-axis date labels */}
+        {xLabels.map(({ t, label }, i) => (
+          <text key={i} x={toX(t)} y={padT + chartH + 14} textAnchor="middle" fontSize={8} fill="var(--color-text-faded)" fontFamily="var(--font-mono)">
+            {label}
+          </text>
+        ))}
+
+        {/* Active series */}
+        {activePts.length > 0 && (
           <>
-            <path
-              d={makePath(ccData)}
-              fill="none"
-              stroke="var(--color-green-lt)"
-              strokeWidth={2}
-              strokeLinejoin="round"
-            />
-            <circle
-              cx={toX(ccData.length - 1, ccData.length)}
-              cy={toY(ccData[ccData.length - 1].rating)}
-              r={3}
-              fill="var(--color-green-lt)"
-            />
+            <path d={makeAreaPath(activePts, activeLinePath)} fill={`url(#${activeGrad})`} />
+            <path d={activeLinePath} fill="none" stroke={activeColor} strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" />
+            <circle cx={toX(activePts[activePts.length - 1].t)} cy={toY(activePts[activePts.length - 1].r)} r={3} fill={activeColor} />
             <text
-              x={toX(ccData.length - 1, ccData.length) + 6}
-              y={toY(ccData[ccData.length - 1].rating) + 4}
+              x={toX(activePts[activePts.length - 1].t) + 6}
+              y={toY(activePts[activePts.length - 1].r) + 4}
               fontSize={10}
-              fill="var(--color-green-lt)"
+              fill={activeColor}
               fontFamily="var(--font-mono)"
             >
-              {ccData[ccData.length - 1].rating}
-            </text>
-          </>
-        )}
-        {hasLIData && (
-          <>
-            <path
-              d={makePath(liData)}
-              fill="none"
-              stroke="var(--color-gold)"
-              strokeWidth={2}
-              strokeLinejoin="round"
-            />
-            <circle
-              cx={toX(liData.length - 1, liData.length)}
-              cy={toY(liData[liData.length - 1].rating)}
-              r={3}
-              fill="var(--color-gold)"
-            />
-            <text
-              x={toX(liData.length - 1, liData.length) + 6}
-              y={toY(liData[liData.length - 1].rating) + 4}
-              fontSize={10}
-              fill="var(--color-gold)"
-              fontFamily="var(--font-mono)"
-            >
-              {liData[liData.length - 1].rating}
+              {activeSeries[activeSeries.length - 1].rating}
             </text>
           </>
         )}

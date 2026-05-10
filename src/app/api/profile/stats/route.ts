@@ -2,11 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { chessAccounts, games } from "@/db/schema";
-import { eq, and, sql, desc, asc, inArray } from "drizzle-orm";
+import { eq, and, sql, asc, desc, inArray } from "drizzle-orm";
 
 const MIN_GAMES_FOR_STATS = 5;
-
-type FilterMode = "count" | "period";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -16,17 +14,9 @@ export async function GET(req: NextRequest) {
   const userId = session.user.id;
 
   const { searchParams } = new URL(req.url);
-  const mode = (searchParams.get("mode") ?? "count") as FilterMode;
-  const count = parseInt(searchParams.get("count") ?? "25", 10);
   const days = parseInt(searchParams.get("days") ?? "30", 10);
 
-  if (!["count", "period"].includes(mode)) {
-    return NextResponse.json({ error: "Invalid mode" }, { status: 400 });
-  }
-  if (mode === "count" && ![25, 50, 100].includes(count)) {
-    return NextResponse.json({ error: "Invalid count" }, { status: 400 });
-  }
-  if (mode === "period" && ![7, 30, 90].includes(days)) {
+  if (![0, 7, 30, 90].includes(days)) {
     return NextResponse.json({ error: "Invalid days" }, { status: 400 });
   }
 
@@ -38,7 +28,8 @@ export async function GET(req: NextRequest) {
       username: chessAccounts.username,
     })
     .from(chessAccounts)
-    .where(eq(chessAccounts.userId, userId));
+    .where(eq(chessAccounts.userId, userId))
+    .orderBy(asc(chessAccounts.id));
 
   const accountsAll = accountRows.map(({ platform, username }) => ({ platform, username }));
   const seen = new Set<string>();
@@ -57,14 +48,14 @@ export async function GET(req: NextRequest) {
       byColor: null,
       byTimeControl: null,
       openings: null,
-      eloHistory: { chess_com: [], lichess: [] },
+      eloHistory: { chess_com: {}, lichess: {} },
     });
   }
 
   // Build filter condition using inArray (safe parameterized SQL)
   const baseCondition = inArray(games.chessAccountId, accountIdList);
   const filterCondition =
-    mode === "count"
+    days === 0
       ? baseCondition
       : and(baseCondition, sql`${games.playedAt} > NOW() - INTERVAL '1 day' * ${days}`);
 
@@ -83,28 +74,14 @@ export async function GET(req: NextRequest) {
       byColor: null,
       byTimeControl: null,
       openings: null,
-      eloHistory: { chess_com: [], lichess: [] },
+      eloHistory: { chess_com: {}, lichess: {} },
     });
   }
 
-  // Get filtered game IDs (for count mode, limit to N most recent)
-  let filteredGameIds: string[];
-  if (mode === "count") {
-    const rows = await db
-      .select({ id: games.id })
-      .from(games)
-      .where(baseCondition)
-      .orderBy(desc(games.playedAt))
-      .limit(count);
-    filteredGameIds = rows.map((r) => r.id);
-  } else {
-    const rows = await db
-      .select({ id: games.id })
-      .from(games)
-      .where(filterCondition)
-      .limit(500);
-    filteredGameIds = rows.map((r) => r.id);
-  }
+  // Get filtered game IDs (no limit for "all games")
+  const baseQuery = db.select({ id: games.id }).from(games).where(filterCondition).orderBy(desc(games.playedAt));
+  const filteredRows = await (days === 0 ? baseQuery : baseQuery.limit(500));
+  const filteredGameIds = filteredRows.map((r) => r.id);
 
   if (filteredGameIds.length === 0) {
     return NextResponse.json({
@@ -114,7 +91,7 @@ export async function GET(req: NextRequest) {
       byColor: null,
       byTimeControl: null,
       openings: null,
-      eloHistory: { chess_com: [], lichess: [] },
+      eloHistory: { chess_com: {}, lichess: {} },
     });
   }
 
@@ -210,40 +187,48 @@ export async function GET(req: NextRequest) {
     rate: Math.round(((r.wins ?? 0) / r.total) * 100),
   }));
 
-  // ELO history (all games for user, not filtered by count/period)
+  // ELO history — respects the same period filter as the rest of the stats
+  const eloDateFilter =
+    days === 0
+      ? sql`${games.playerRating} IS NOT NULL`
+      : and(
+          sql`${games.playerRating} IS NOT NULL`,
+          sql`${games.playedAt} > NOW() - INTERVAL '1 day' * ${days}`
+        );
   const eloRows = await db
     .select({
       platform: chessAccounts.platform,
+      timeControl: games.timeControlCategory,
       playedAt: games.playedAt,
       rating: games.playerRating,
     })
     .from(games)
     .innerJoin(chessAccounts, eq(games.chessAccountId, chessAccounts.id))
-    .where(
-      and(
-        eq(chessAccounts.userId, userId),
-        sql`${games.playerRating} IS NOT NULL`
-      )
-    )
+    .where(and(eq(chessAccounts.userId, userId), eloDateFilter))
     .orderBy(asc(games.playedAt));
 
+  type EloPoint = { playedAt: string; rating: number };
+  type EloByTC = Partial<Record<string, EloPoint[]>>;
+
+  function groupByTC(platform: string): EloByTC {
+    const result: EloByTC = {};
+    for (const r of eloRows) {
+      if (r.platform !== platform) continue;
+      const tc = r.timeControl ?? "unknown";
+      if (!result[tc]) result[tc] = [];
+      result[tc]!.push({ playedAt: r.playedAt.toISOString(), rating: r.rating! });
+    }
+    return result;
+  }
+
   const eloHistory = {
-    chess_com: eloRows
-      .filter((r) => r.platform === "chess_com")
-      .map((r) => ({
-        playedAt: r.playedAt.toISOString(),
-        rating: r.rating!,
-      })),
-    lichess: eloRows
-      .filter((r) => r.platform === "lichess")
-      .map((r) => ({
-        playedAt: r.playedAt.toISOString(),
-        rating: r.rating!,
-      })),
+    chess_com: groupByTC("chess_com"),
+    lichess: groupByTC("lichess"),
   };
 
   return NextResponse.json({
     totalGames,
+    totalAvailable,
     accounts,
     wdl,
     byColor,
