@@ -152,8 +152,33 @@ describe('POST /api/analysis/group', () => {
 
   it('returns 429 when rate-limited', async () => {
     mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
-    // Rate-limit check returns a row
-    setupSelectChain([{ id: 'rate-limit-row' }]);
+    let callCount = 0;
+    const chain = {
+      from: vi.fn().mockReturnThis(),
+      innerJoin: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) {
+          return Promise.resolve(
+            Array.from({ length: 5 }, (_, i) => ({
+              id: `550e8400-e29b-41d4-a716-44665544000${i}`,
+              result: 'win',
+              color: 'white',
+              opponent: `opponent-${i}`,
+              openingName: null,
+              timeControlCategory: 'rapid',
+              playerRating: 1000,
+              opponentRating: 1000,
+            }))
+          );
+        }
+        if (callCount === 2) return Promise.resolve([]); // no matching inputHash cache
+        return Promise.resolve([{ id: 'rate-limit-row' }]); // rate-limit row
+      }),
+    };
+    mockDb.select.mockReturnValue(chain);
     const { POST } = await import('./route');
     const res = await POST(makeRequest());
     expect(res.status).toBe(429);

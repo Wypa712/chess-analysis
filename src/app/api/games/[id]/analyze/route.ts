@@ -7,6 +7,7 @@ import Groq from "groq-sdk";
 import { isLlmGameAnalysisV1, type LlmGameAnalysisV1 } from "@/lib/llm/types";
 import type { EngineAnalysisJsonV1 } from "@/lib/chess/engine-analysis";
 import { retryWithBackoff } from "@/lib/retry";
+import { captureSanitizedException } from "@/lib/observability/sentry";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -216,6 +217,13 @@ export async function POST(
   } catch (err) {
     const isAbort = err instanceof Error && (err.name === "AbortError" || err.message.toLowerCase().includes("abort"));
     console.error("[LLM] generateContent failed:", err);
+    if (!isAbort) {
+      captureSanitizedException(err, "LlmGameAnalysisRequestFailed", {
+        route: "/api/games/[id]/analyze",
+        provider: "groq",
+        model: LLM_MODEL,
+      });
+    }
     return NextResponse.json(
       { error: isAbort ? "LLM timeout" : "LLM request failed" },
       { status: 502 }

@@ -270,6 +270,7 @@ export const groupAnalyses = pgTable(
   },
   (t) => [
     index("group_analyses_user_created_idx").on(t.userId, t.createdAt),
+    index("group_analyses_user_hash_idx").on(t.userId, t.inputHash),
     check(
       "group_analyses_game_ids_count",
       sql`cardinality(${t.gameIds}) BETWEEN 5 AND 30`

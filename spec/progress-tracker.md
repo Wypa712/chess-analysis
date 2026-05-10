@@ -5,7 +5,7 @@
 **Завершено:** Фази 1–6.1, Фаза 7A, Фаза 7.0, Фаза 7B, Фаза 7C, Фаза 8  
 **Поточна фаза:** Фаза 9 — Полірування + деплой (2 дні)  
 **Наступна фаза:** Production  
-**Останнє ревью:** 2026-05-07 — Загальна оцінка **5.3/10**
+**Останнє ревью:** 2026-05-10 — Фаза 9.3 завершена (Sentry integration)
 
 ---
 
@@ -225,7 +225,7 @@
   - Підключено до `/api/games/[id]/analyze` і `/api/analysis/group`
   - AbortController shared — один deadline для всіх спроб
 
-- [ ] **[9-6]** `inputHash` для дедуплікації group analyses
+- [x] **[9-6]** `inputHash` для дедуплікації group analyses ✅
   - Міграція БД: додати колонку `input_hash TEXT` до таблиці `group_analyses` (nullable для зворотної сумісності); одночасно створити індекс `CREATE INDEX group_analyses_user_hash_idx ON group_analyses(user_id, input_hash)` — підтримує запит `WHERE user_id = ? AND input_hash = ?` без full-table scan
   - Генерація хешу: `SHA-256(sorted game_ids joined by ',')` — використати `crypto` (Node built-in)
   - Логіка в `/api/analysis/group` POST:
@@ -234,18 +234,20 @@
     3. Якщо знайдено → повернути кешований результат з `{ cached: true }`
     4. Якщо ні → запустити Groq, зберегти з `input_hash`
   - Drizzle: оновити схему `drizzle/schema.ts` — додати поле `inputHash` і `index("group_analyses_user_hash_idx").on(table.userId, table.inputHash)`, запустити `drizzle-kit generate` + `migrate`
-  - Перевірка: два однакових запити → другий повертає без виклику Groq
+  - Реалізовано cache-first логіку в `/api/analysis/group`: повторний однаковий набір партій повертає `{ cached: true }` без Groq і без rate-limit
+  - Додано індекс `group_analyses_user_hash_idx` у Drizzle schema + міграцію `0002_milky_cerebro.sql`
+  - Перевірка: `npm.cmd run test:run` → 137/137; `npm.cmd run build` → успішно
   
   ------
   
 
-- [ ] **[9-8]** `/api/health` endpoint
+- [x] **[9-8]** `/api/health` endpoint ✅
   - `GET /api/health` — публічний, без auth
   - Перевіряє: підключення до БД (`SELECT 1`), наявність ключових env vars
   - Відповідь: `{ status: "ok" | "degraded", db: "ok" | "error", env: "ok" | "missing_vars", ts: ISO8601 }`
   - HTTP 200 якщо `status: "ok"`, HTTP 503 якщо `status: "degraded"`
-  - Реалізація: `app/api/health/route.ts`, тайм-аут на DB ping — 3s
-  - Перевірка: `curl /api/health` → `{"status":"ok",...}`
+  - Реалізація: `src/app/api/health/route.ts`, тайм-аут на DB ping — 3s
+  - Перевірка: route входить у successful `npm.cmd run build`
 
 -----
 
@@ -253,19 +255,17 @@
 
 **Мета:** Продуктові помилки автоматично логуються у Sentry — без PII.
 
-- [ ] **[9-7]** Sentry integration
-  - Встановити: `@sentry/nextjs` (перевірити сумісність з Next.js 15)
-  - Файли конфігурації: `sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`
-  - `next.config.js`: wrap з `withSentryConfig`, вимкнути source map upload якщо немає платного плану
-  - Env var: `SENTRY_DSN` → додати в `.env.example`, документувати в Vercel env vars
-  - Capture points:
-    - `/api/games/import` — помилки Chess.com/Lichess fetch
-    - `/api/games/[id]/analyze` — Groq failures після вичерпання retry
-    - `/api/analysis/group` — аналогічно
-    - Client-side: глобальний error boundary або Next.js `error.tsx`
-  - **Не логувати:** PGN, analysis_json, user email, game content — тільки error type + route
-  - `beforeSend` hook: sanitize `event.extra` і `event.contexts`
-  - Перевірка: навмисно кинути помилку в dev → подія з'являється у Sentry dashboard
+- [x] **[9-7]** Sentry integration ✅
+  - `@sentry/nextjs@10.52.0` встановлено (сумісний з Next.js 15)
+  - `src/instrumentation-client.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts` — DSN + beforeSend sanitization
+  - `src/instrumentation.ts` — Next.js 15 register() hook для server/edge + `onRequestError`
+  - `next.config.ts` — wrapped з `withSentryConfig` (sourcemaps disabled, telemetry off)
+  - Env vars: `NEXT_PUBLIC_SENTRY_DSN` (client) + `SENTRY_DSN` (server) → `.env.example`
+  - Capture points: `/api/games/import` (api_error/network_error), `/api/games/[id]/analyze` (Groq після retry), `/api/analysis/group` (Groq після retry)
+  - `src/app/error.tsx` і `src/app/global-error.tsx` — client-side + global App Router error boundaries з `captureException`
+  - `beforeSend` видаляє `event.extra`, `event.user`, request body/headers/cookies/query/url і system contexts — без PII
+  - Ревью-фікси: sanitized capture helper з оригінальним stack trace, Sentry `sourcemaps.disable: true`, прибрано deprecated `sentry.client.config.ts`
+  - Build: ✅ успішно; Tests: 137/137 ✅
 
 ---
 

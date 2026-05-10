@@ -15,6 +15,13 @@
       "when": 1777843428740,
       "tag": "0001_align_auth_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778413645797,
+      "tag": "0002_milky_cerebro",
+      "breakpoints": true
     }
   ]
 }

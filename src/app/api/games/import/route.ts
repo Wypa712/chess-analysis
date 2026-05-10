@@ -6,6 +6,7 @@ import { eq, and, isNull, sql } from "drizzle-orm";
 import { importLichessGames } from "@/lib/importers/lichess";
 import { importChessComGames } from "@/lib/importers/chessdotcom";
 import { ImportError } from "@/lib/importers/errors";
+import { captureSanitizedException } from "@/lib/observability/sentry";
 
 const VALID_LIMITS = [25, 50, 100] as const;
 const VALID_DAYS = [7, 30, 90] as const;
@@ -179,6 +180,13 @@ export async function POST(req: NextRequest) {
     const platformName = platform === "chess_com" ? "Chess.com" : "Lichess";
 
     if (err instanceof ImportError) {
+      if (err.code === "api_error" || err.code === "network_error") {
+        captureSanitizedException(err, `ImportError:${err.code}`, {
+          route: "/api/games/import",
+          platform,
+          code: err.code,
+        });
+      }
       const messages = {
         user_not_found: `Гравця "${trimmedUsername}" не знайдено на ${platformName}`,
         rate_limited: `${platformName} обмежує запити. Спробуйте через кілька хвилин`,
@@ -202,6 +210,11 @@ export async function POST(req: NextRequest) {
       (err instanceof DOMException &&
         (err.name === "TimeoutError" || err.name === "AbortError"))
     ) {
+      captureSanitizedException(err, "NetworkError", {
+        route: "/api/games/import",
+        platform,
+        code: "network_error",
+      });
       return NextResponse.json(
         {
           error: `Не вдалося підключитися до ${platformName}. Перевірте з'єднання`,
@@ -211,6 +224,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    captureSanitizedException(err, "ImportUnhandledError", {
+      route: "/api/games/import",
+      platform,
+    });
     return NextResponse.json(
       { error: "Помилка імпорту. Спробуйте пізніше", code: "api_error" },
       { status: 500 }

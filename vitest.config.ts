@@ -10,9 +10,6 @@ export default defineConfig({
   plugins: [react()],
   test: {
     globals: true,
-    environmentMatchGlobs: [
-      ['src/app/**/*.test.tsx', 'jsdom'],
-    ],
     environment: 'node',
     css: true,
     setupFiles: ['./vitest.setup.ts'],

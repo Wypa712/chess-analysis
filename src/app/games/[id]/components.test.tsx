@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 // Smoke tests — verify Phase 7C components render without crashing.
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';

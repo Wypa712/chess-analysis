@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHash } from "crypto";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { chessAccounts, engineAnalyses, gameAnalyses, games, groupAnalyses } from "@/db/schema";
@@ -6,6 +7,7 @@ import { eq, and, inArray, desc, sql } from "drizzle-orm";
 import Groq from "groq-sdk";
 import { isGroupAnalysisJsonV1, type GroupAnalysisJsonV1 } from "@/lib/llm/types";
 import { retryWithBackoff } from "@/lib/retry";
+import { captureSanitizedException } from "@/lib/observability/sentry";
 
 const LLM_MODEL = "llama-3.3-70b-versatile";
 const MIN_GAMES = 5;
@@ -65,22 +67,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "LLM not configured" }, { status: 503 });
   }
 
-  // P1-6: rate-limit — one group analysis per 60 seconds per user
-  const recentRows = await db
-    .select({ id: groupAnalyses.id })
-    .from(groupAnalyses)
-    .where(and(
-      eq(groupAnalyses.userId, userId),
-      sql`${groupAnalyses.createdAt} > NOW() - INTERVAL '60 seconds'`
-    ))
-    .limit(1);
-  if (recentRows.length > 0) {
-    return NextResponse.json(
-      { error: "Зачекайте хвилину перед повторним аналізом." },
-      { status: 429 }
-    );
-  }
-
   // Accept optional explicit gameIds; if absent, auto-select last MAX_GAMES games.
   const body = await req.json().catch(() => ({}));
   let gameIds: string[] | null = null;
@@ -114,6 +100,51 @@ export async function POST(req: NextRequest) {
   }
 
   const usedIds = ownedGames.map((g) => g.id);
+  const inputHash = createGroupInputHash(usedIds);
+
+  const cachedRows = await db
+    .select({
+      id: groupAnalyses.id,
+      gameIds: groupAnalyses.gameIds,
+      analysisJson: groupAnalyses.analysisJson,
+      createdAt: groupAnalyses.createdAt,
+    })
+    .from(groupAnalyses)
+    .where(and(
+      eq(groupAnalyses.userId, userId),
+      eq(groupAnalyses.inputHash, inputHash)
+    ))
+    .orderBy(desc(groupAnalyses.createdAt))
+    .limit(1);
+
+  if (cachedRows.length > 0 && isGroupAnalysisJsonV1(cachedRows[0].analysisJson)) {
+    return NextResponse.json({
+      analysis: {
+        id: cachedRows[0].id,
+        gameIds: cachedRows[0].gameIds,
+        analysisJson: cachedRows[0].analysisJson,
+        createdAt: cachedRows[0].createdAt,
+      },
+      cached: true,
+    });
+  }
+
+  // P1-6: rate-limit — one new group analysis per 60 seconds per user.
+  const recentRows = await db
+    .select({ id: groupAnalyses.id })
+    .from(groupAnalyses)
+    .where(and(
+      eq(groupAnalyses.userId, userId),
+      sql`${groupAnalyses.createdAt} > NOW() - INTERVAL '60 seconds'`
+    ))
+    .limit(1);
+  if (recentRows.length > 0) {
+    return NextResponse.json(
+      { error: "Зачекайте хвилину перед повторним аналізом." },
+      { status: 429 }
+    );
+  }
+
   const summaries = await buildGameSummaries(ownedGames);
   const prompt = buildGroupPrompt(summaries);
 
@@ -166,6 +197,13 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const isAbort = err instanceof Error && (err.name === "AbortError" || err.message.includes("abort"));
     console.error("[group-analysis] LLM error:", err);
+    if (!isAbort) {
+      captureSanitizedException(err, "LlmGroupAnalysisRequestFailed", {
+        route: "/api/analysis/group",
+        provider: "groq",
+        model: LLM_MODEL,
+      });
+    }
     return NextResponse.json(
       { error: isAbort ? "LLM timeout" : "Не вдалося отримати аналіз. Спробуйте ще раз." },
       { status: 502 }
@@ -185,6 +223,7 @@ export async function POST(req: NextRequest) {
         llmModel: LLM_MODEL,
         language: "uk",
         schemaVersion: 1,
+        inputHash,
         promptTokens: promptTokens ?? null,
         completionTokens: completionTokens ?? null,
         analysisJson: parsed,
@@ -223,6 +262,12 @@ export async function POST(req: NextRequest) {
 }
 
 // ── helpers ─────────────────────────────────────────────────────────────────
+
+function createGroupInputHash(gameIds: string[]): string {
+  return createHash("sha256")
+    .update([...gameIds].sort().join(","))
+    .digest("hex");
+}
 
 type GameRow = {
   id: string;
