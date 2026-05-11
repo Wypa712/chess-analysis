@@ -1,39 +1,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Chess Analysis">
   <defs>
-    <linearGradient id="bg" x1="54" y1="34" x2="458" y2="484" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#17352e"/>
-      <stop offset="0.52" stop-color="#091210"/>
-      <stop offset="1" stop-color="#24301b"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#18322a"/>
+      <stop offset="1" stop-color="#0d1a15"/>
     </linearGradient>
-    <linearGradient id="piece" x1="188" y1="108" x2="329" y2="426" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#fff9d7"/>
-      <stop offset="0.56" stop-color="#d9efbd"/>
-      <stop offset="1" stop-color="#8fd6bd"/>
-    </linearGradient>
-    <linearGradient id="accent" x1="332" y1="168" x2="432" y2="260" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#f6d56f"/>
-      <stop offset="1" stop-color="#54c9ab"/>
-    </linearGradient>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="18" stdDeviation="16" flood-color="#010504" flood-opacity="0.48"/>
+    <clipPath id="cc">
+      <circle cx="256" cy="256" r="178"/>
+    </clipPath>
+    <filter id="cs">
+      <feDropShadow dx="0" dy="5" stdDeviation="12" flood-color="#000508" flood-opacity="0.38"/>
     </filter>
   </defs>
 
-  <rect x="20" y="20" width="472" height="472" rx="108" fill="url(#bg)"/>
-  <rect x="20" y="20" width="472" height="472" rx="108" fill="none" stroke="#31564c" stroke-width="8"/>
+  <rect width="512" height="512" rx="108" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="178" fill="#ede4ca" filter="url(#cs)"/>
 
-  <g opacity="0.18" fill="#e0f1de">
-    <path d="M74 86h91v91H74zM256 86h91v91h-91zM165 177h91v91h-91zM347 177h91v91h-91zM74 268h91v91H74zM256 268h91v91h-91zM165 359h91v91h-91zM347 359h91v91h-91z"/>
-  </g>
-
-  <path d="M340 217l28 28 55-68" fill="none" stroke="url(#accent)" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M328 296h102" fill="none" stroke="#54c9ab" stroke-width="16" stroke-linecap="round" opacity="0.86"/>
-  <path d="M360 332h70" fill="none" stroke="#f6d56f" stroke-width="16" stroke-linecap="round" opacity="0.9"/>
-
-  <g filter="url(#shadow)" fill="url(#piece)">
-    <circle cx="242" cy="145" r="55"/>
-    <path d="M205 212h74l18 103H187l18-103z"/>
-    <path d="M172 352c0-29 24-53 53-53h34c29 0 53 24 53 53v22H172v-22z"/>
-    <path d="M129 390h226l18 48H111l18-48z"/>
+  <!-- Knight: clip wrapper separate from transform wrapper -->
+  <g clip-path="url(#cc)">
+    <g transform="translate(112,84) scale(7)">
+      <path fill="#15312a" d="M22 10c10.5 1 16.5 8 16 29H15c0-9 10-6.5 8-21"/>
+      <path fill="#15312a" d="M24 18c.38 2.91-5.55 7.37-8 9-3 2-2.82 4.34-5 4-1.04-.94 1.41-3.04 0-3-1 0 .19 1.23-1 2-1 0-4 1-4-4 0-2 6-12 6-12s1.89-1.9 2-3.5c-.73-1-.5-2-.5-3 1-1 3 2.5 3 2.5h2s.78-2 2.5-3c1 0 1 3 1 3"/>
+      <path fill="#ede4ca" d="M9.5 25.5a.5.5 0 1 1-1 0 .5.5 0 1 1 1 0m5.43-9.75a.5 1.5 30 1 1-.86-.5.5 1.5 30 1 1 .86.5"/>
+      <path fill="#15312a" d="m24.55 10.4-.45 1.45.5.15c3.15 1 5.65 2.49 7.9 6.75S35.75 29.06 35.25 39l-.05.5h2.25l.05-.5c.5-10.06-.88-16.85-3.25-21.34s-5.79-6.64-9.19-7.16z"/>
+    </g>
   </g>
 </svg>
