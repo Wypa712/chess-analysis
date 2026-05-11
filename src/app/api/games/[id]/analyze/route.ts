@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHash } from "crypto";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { chessAccounts, engineAnalyses, gameAnalyses, games } from "@/db/schema";
+import { chessAccounts, engineAnalyses, gameAnalyses, games, llmRequestLocks } from "@/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import Groq from "groq-sdk";
 import { isLlmGameAnalysisV1, type LlmGameAnalysisV1 } from "@/lib/llm/types";
@@ -13,6 +14,8 @@ const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const LLM_MODEL = "llama-3.3-70b-versatile";
+const GAME_PROMPT_VERSION = "game-analysis-v1";
+const LOCK_TTL_MS = 2 * 60 * 1000;
 
 // P0-3: module-level client so HTTP connections are reused across warm invocations
 const groq = process.env.GROQ_API_KEY
@@ -49,6 +52,35 @@ async function getCachedEngineAnalysis(gameId: string): Promise<EngineAnalysisJs
     .orderBy(desc(engineAnalyses.createdAt))
     .limit(1);
   return (rows[0]?.analysisJson as EngineAnalysisJsonV1) ?? null;
+}
+
+async function acquireLlmLock(lockKey: string, userId: string, scope: string): Promise<boolean> {
+  await db
+    .delete(llmRequestLocks)
+    .where(sql`${llmRequestLocks.expiresAt} < NOW()`);
+
+  const rows = await db
+    .insert(llmRequestLocks)
+    .values({
+      lockKey,
+      userId,
+      scope,
+      expiresAt: new Date(Date.now() + LOCK_TTL_MS),
+    })
+    .onConflictDoNothing()
+    .returning({ lockKey: llmRequestLocks.lockKey });
+
+  return rows.length > 0;
+}
+
+async function releaseLlmLock(lockKey: string, userId: string): Promise<void> {
+  try {
+    await db
+      .delete(llmRequestLocks)
+      .where(and(eq(llmRequestLocks.lockKey, lockKey), eq(llmRequestLocks.userId, userId)));
+  } catch (err) {
+    console.error("[LLM] lock release failed:", err);
+  }
 }
 
 const SYSTEM_PROMPT = `Ти шаховий тренер. Відповідай ВИКЛЮЧНО валідним JSON без markdown-обгортки.
@@ -107,6 +139,20 @@ function buildUserMessage(
   }
 
   return lines.join("\n");
+}
+
+function createGameInputHash(
+  game: NonNullable<Awaited<ReturnType<typeof getOwnedGame>>>,
+  engineAnalysis: EngineAnalysisJsonV1 | null
+): string {
+  return createHash("sha256")
+    .update(JSON.stringify({
+      model: LLM_MODEL,
+      promptVersion: GAME_PROMPT_VERSION,
+      game,
+      engineAnalysis,
+    }))
+    .digest("hex");
 }
 
 export async function GET(
@@ -187,6 +233,17 @@ export async function POST(
 
   const engineAnalysis = await getCachedEngineAnalysis(id);
   const userMessage = buildUserMessage(ownedGame, engineAnalysis);
+  const inputHash = createGameInputHash(ownedGame, engineAnalysis);
+  const lockKey = `game-analysis:${id}:${inputHash}`;
+  const lockAcquired = await acquireLlmLock(lockKey, session.user.id, "game-analysis");
+  if (!lockAcquired) {
+    return NextResponse.json(
+      { error: "Analysis already in progress" },
+      { status: 429 }
+    );
+  }
+
+  try {
 
   let rawText: string;
   let promptTokens: number | undefined;
@@ -264,6 +321,7 @@ export async function POST(
         llmModel: LLM_MODEL,
         language: "uk",
         schemaVersion: 1,
+        inputHash,
         promptTokens: promptTokens ?? null,
         completionTokens: completionTokens ?? null,
         analysisJson: analysis,
@@ -283,5 +341,8 @@ export async function POST(
       { error: "Failed to save analysis" },
       { status: 500 }
     );
+  }
+  } finally {
+    await releaseLlmLock(lockKey, session.user.id);
   }
 }

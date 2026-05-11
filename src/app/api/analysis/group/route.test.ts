@@ -10,6 +10,7 @@ const mockDb = {
   select: vi.fn(),
   selectDistinctOn: vi.fn(),
   insert: vi.fn(),
+  delete: vi.fn(),
 };
 vi.mock('@/db', () => ({ db: mockDb }));
 
@@ -19,6 +20,7 @@ vi.mock('@/db/schema', () => ({
   groupAnalyses: {},
   engineAnalyses: {},
   gameAnalyses: {},
+  llmRequestLocks: { lockKey: 'lock_key', userId: 'user_id', expiresAt: 'expires_at' },
 }));
 
 vi.mock('drizzle-orm', () => ({
@@ -105,6 +107,7 @@ describe('POST /api/analysis/group', () => {
     vi.resetModules();
     vi.clearAllMocks();
     process.env.GROQ_API_KEY = 'test-key';
+    mockDb.delete.mockReturnValue({ where: vi.fn().mockResolvedValue([]) });
   });
 
   afterEach(() => {
@@ -179,6 +182,16 @@ describe('POST /api/analysis/group', () => {
       }),
     };
     mockDb.select.mockReturnValue(chain);
+    mockDb.selectDistinctOn.mockReturnValue({
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockResolvedValue([]),
+    });
+    mockDb.insert.mockReturnValue({
+      values: vi.fn().mockReturnThis(),
+      onConflictDoNothing: vi.fn().mockReturnThis(),
+      returning: vi.fn().mockResolvedValue([{ lockKey: 'lock' }]),
+    });
     const { POST } = await import('./route');
     const res = await POST(makeRequest());
     expect(res.status).toBe(429);

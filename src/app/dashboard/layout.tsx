@@ -23,8 +23,9 @@ export default async function DashboardLayout({
       .from(chessAccounts)
       .where(eq(chessAccounts.userId, session.user.id))
       .limit(1);
-  } catch {
-    redirect("/error");
+  } catch (error) {
+    console.error("[dashboard] failed to load chess accounts:", error);
+    throw error;
   }
 
   if (accounts.length === 0) {

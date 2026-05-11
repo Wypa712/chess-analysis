@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { chessAccounts, games } from "@/db/schema";
-import { eq, and, sql, asc, desc, inArray } from "drizzle-orm";
+import { eq, and, sql, asc, inArray } from "drizzle-orm";
 
 const MIN_GAMES_FOR_STATS = 5;
 
@@ -78,12 +78,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // Get filtered game IDs (no limit for "all games")
-  const baseQuery = db.select({ id: games.id }).from(games).where(filterCondition).orderBy(desc(games.playedAt));
-  const filteredRows = await (days === 0 ? baseQuery : baseQuery.limit(500));
-  const filteredGameIds = filteredRows.map((r) => r.id);
-
-  if (filteredGameIds.length === 0) {
+  if (totalAvailable === 0) {
     return NextResponse.json({
       totalGames: 0,
       accounts,
@@ -95,9 +90,8 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // totalGames now represents the actual number of games analyzed (subset if count mode)
-  const totalGames = filteredGameIds.length;
-  const gameFilter = inArray(games.id, filteredGameIds);
+  const totalGames = totalAvailable;
+  const gameFilter = filterCondition;
 
   // W/D/L
   const wdlRows = await db

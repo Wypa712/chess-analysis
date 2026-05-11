@@ -9,6 +9,7 @@ vi.mock('@/auth', () => ({ auth: mockAuth }));
 const mockDb = {
   select: vi.fn(),
   insert: vi.fn(),
+  delete: vi.fn(),
 };
 vi.mock('@/db', () => ({ db: mockDb }));
 
@@ -17,6 +18,7 @@ vi.mock('@/db/schema', () => ({
   chessAccounts: {},
   gameAnalyses: {},
   engineAnalyses: {},
+  llmRequestLocks: { lockKey: 'lock_key', userId: 'user_id', expiresAt: 'expires_at' },
 }));
 
 vi.mock('drizzle-orm', () => ({
@@ -150,6 +152,7 @@ describe('POST /api/games/[id]/analyze', () => {
     vi.resetModules();
     vi.clearAllMocks();
     process.env.GROQ_API_KEY = 'test-key';
+    mockDb.delete.mockReturnValue({ where: vi.fn().mockResolvedValue([]) });
   });
 
   afterEach(() => {
@@ -248,11 +251,18 @@ describe('POST /api/games/[id]/analyze', () => {
       usage: { prompt_tokens: 100, completion_tokens: 200 },
     });
 
+    const lockInsertChain = {
+      values: vi.fn().mockReturnThis(),
+      onConflictDoNothing: vi.fn().mockReturnThis(),
+      returning: vi.fn().mockResolvedValue([{ lockKey: 'lock' }]),
+    };
     const insertChain = {
       values: vi.fn().mockReturnThis(),
       returning: vi.fn().mockResolvedValue([{ analysisJson: fakeAnalysis }]),
     };
-    mockDb.insert.mockReturnValue(insertChain);
+    mockDb.insert
+      .mockReturnValueOnce(lockInsertChain)
+      .mockReturnValueOnce(insertChain);
 
     const { POST } = await import('./route');
     const res = await POST(makeRequest('http://localhost'), makeParams(VALID_UUID));

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { chessAccounts, engineAnalyses, gameAnalyses, games, groupAnalyses } from "@/db/schema";
+import { chessAccounts, engineAnalyses, gameAnalyses, games, groupAnalyses, llmRequestLocks } from "@/db/schema";
 import { eq, and, inArray, desc, sql } from "drizzle-orm";
 import Groq from "groq-sdk";
 import { isGroupAnalysisJsonV1, type GroupAnalysisJsonV1 } from "@/lib/llm/types";
@@ -10,9 +10,11 @@ import { retryWithBackoff } from "@/lib/retry";
 import { captureSanitizedException } from "@/lib/observability/sentry";
 
 const LLM_MODEL = "llama-3.3-70b-versatile";
+const GROUP_PROMPT_VERSION = "group-analysis-v1";
 const MIN_GAMES = 5;
 const MAX_GAMES = 30;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const LOCK_TTL_MS = 2 * 60 * 1000;
 
 // P0-3: module-level client so HTTP connections are reused across warm invocations
 const groq = process.env.GROQ_API_KEY
@@ -100,7 +102,8 @@ export async function POST(req: NextRequest) {
   }
 
   const usedIds = ownedGames.map((g) => g.id);
-  const inputHash = createGroupInputHash(usedIds);
+  const summaries = await buildGameSummaries(ownedGames);
+  const inputHash = createGroupInputHash(summaries);
 
   const cachedRows = await db
     .select({
@@ -129,6 +132,17 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  const lockKey = `group-analysis:${userId}:${inputHash}`;
+  const lockAcquired = await acquireLlmLock(lockKey, userId, "group-analysis");
+  if (!lockAcquired) {
+    return NextResponse.json(
+      { error: "Аналіз уже виконується. Зачекайте кілька секунд." },
+      { status: 429 }
+    );
+  }
+
+  try {
+
   // P1-6: rate-limit — one new group analysis per 60 seconds per user.
   const recentRows = await db
     .select({ id: groupAnalyses.id })
@@ -145,7 +159,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const summaries = await buildGameSummaries(ownedGames);
   const prompt = buildGroupPrompt(summaries);
 
   let parsed: GroupAnalysisJsonV1;
@@ -259,14 +272,50 @@ export async function POST(req: NextRequest) {
       createdAt: savedRow.createdAt,
     },
   });
+  } finally {
+    await releaseLlmLock(lockKey, userId);
+  }
 }
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
-function createGroupInputHash(gameIds: string[]): string {
+function createGroupInputHash(summaries: string[]): string {
   return createHash("sha256")
-    .update([...gameIds].sort().join(","))
+    .update(JSON.stringify({
+      model: LLM_MODEL,
+      promptVersion: GROUP_PROMPT_VERSION,
+      summaries,
+    }))
     .digest("hex");
+}
+
+async function acquireLlmLock(lockKey: string, userId: string, scope: string): Promise<boolean> {
+  await db
+    .delete(llmRequestLocks)
+    .where(sql`${llmRequestLocks.expiresAt} < NOW()`);
+
+  const rows = await db
+    .insert(llmRequestLocks)
+    .values({
+      lockKey,
+      userId,
+      scope,
+      expiresAt: new Date(Date.now() + LOCK_TTL_MS),
+    })
+    .onConflictDoNothing()
+    .returning({ lockKey: llmRequestLocks.lockKey });
+
+  return rows.length > 0;
+}
+
+async function releaseLlmLock(lockKey: string, userId: string): Promise<void> {
+  try {
+    await db
+      .delete(llmRequestLocks)
+      .where(and(eq(llmRequestLocks.lockKey, lockKey), eq(llmRequestLocks.userId, userId)));
+  } catch (err) {
+    console.error("[group-analysis] lock release failed:", err);
+  }
 }
 
 type GameRow = {

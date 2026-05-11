@@ -22,6 +22,20 @@
       "when": 1778413645797,
       "tag": "0002_milky_cerebro",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1778532333695,
+      "tag": "0003_sleepy_valkyrie",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1778532391374,
+      "tag": "0004_cheerful_marvel_boy",
+      "breakpoints": true
     }
   ]
 }

@@ -256,6 +256,25 @@ LLM-аналіз вибірки з 5-30 партій.
 - check: `period_days in (7, 30, 90)`;
 - check: `max_games in (25, 50, 100)`.
 
+### `llm_request_locks`
+
+Операційна таблиця для коротких TTL-locks навколо дорогих LLM-запитів. Потрібна, щоб паралельні кліки або дубльовані POST-запити не запускали кілька однакових Groq-викликів.
+
+| Поле | Тип | Обов'язкове | Примітки |
+|---|---|---|---|
+| `lock_key` | `text` | так | primary key; включає scope і input hash |
+| `user_id` | `uuid` | так | FK -> `users.id`, cascade delete |
+| `scope` | `text` | так | наприклад `game-analysis` або `group-analysis` |
+| `expires_at` | `timestamptz` | так | TTL, після якого lock можна прибрати |
+| `created_at` | `timestamptz` | так | default `now()` |
+
+Обмеження / індекси:
+
+- primary key: `lock_key`;
+- foreign key: `user_id` -> `users.id`;
+- index: (`user_id`, `scope`);
+- index: `expires_at`.
+
 ## JSON-схеми
 
 Це логічні TypeScript-подібні схеми. У коді їх треба валідувати перед збереженням у `jsonb`.

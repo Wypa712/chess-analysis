@@ -4,7 +4,7 @@
 
 **Production:** ✅ Живий (Vercel + Neon + GitHub OAuth)  
 **Поточна фаза:** Фаза 1 v2 — завершено (потребує ручного тестування)  
-**Остання зміна:** 2026-05-11 — вирівняно кольори сторінки партії та scrollbar під оновлену палітру
+**Остання зміна:** 2026-05-11 — виправлено LLM cache/concurrency, profile stats cap і mobile opening footer на сторінці партії
 
 ---
 
@@ -74,6 +74,15 @@
 - Верхній header group analysis відділено тонкою лінією від вмісту результату.
 - Mobile profile ELO controls тепер переносяться в компактні рядки, щоб кнопки платформи й контролю часу не створювали горизонтальний overflow.
 - Game review screen отримав м'якші teal/info акценти для дошки, active move, CTA, eval chart і best-move arrows; глобальний scrollbar приглушено, щоб він не виглядав надто зеленим.
+
+#### Review fixes (2026-05-11):
+- Group LLM analysis cache тепер хешує реальні summaries + model/prompt version, а не тільки `gameIds`, тому оновлений Stockfish/LLM контекст не повертає застарілий cached result.
+- Додано `llm_request_locks` TTL-таблицю і міграції для короткого DB-lock навколо game/group LLM-запитів, щоб паралельні POST-и не запускали дубльовані Groq-виклики.
+- Individual game LLM analysis тепер зберігає `input_hash` для PGN/game metadata + Stockfish context + prompt version.
+- Profile stats більше не ріже 7/30/90-денні метрики прихованим limit 500; агрегації рахуються по всьому вибраному періоду.
+- Dashboard DB failure тепер проходить через Next error boundary, замість redirect на неіснуючий `/error`.
+- Mobile opening footer на сторінці аналізу більше не накладається absolute-ом на tab content; довга назва дебюту акуратно обрізається в нижньому рядку панелі.
+- Прибрано невикористану залежність `@google/generative-ai`, оскільки production LLM provider зараз Groq.
 
 ---
 

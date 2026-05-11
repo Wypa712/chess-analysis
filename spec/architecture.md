@@ -117,6 +117,9 @@ group_analyses
 
 player_summaries
   id, user_id, generated_at, games_count, analysis_json
+
+llm_request_locks
+  lock_key, user_id, scope, expires_at, created_at
 ```
 
 ## Основні потоки даних

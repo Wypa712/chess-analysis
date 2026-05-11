@@ -116,6 +116,10 @@ export const authVerificationTokens = pgTable(
   ]
 );
 
+users.enableRLS();
+authAccounts.enableRLS();
+authVerificationTokens.enableRLS();
+
 // ─── Product tables ───────────────────────────────────────────────────────────
 
 export const chessAccounts = pgTable(
@@ -275,6 +279,25 @@ export const groupAnalyses = pgTable(
       "group_analyses_game_ids_count",
       sql`cardinality(${t.gameIds}) BETWEEN 5 AND 30`
     ),
+  ]
+);
+
+export const llmRequestLocks = pgTable(
+  "llm_request_locks",
+  {
+    lockKey: text("lock_key").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    scope: text("scope").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("llm_request_locks_user_scope_idx").on(t.userId, t.scope),
+    index("llm_request_locks_expires_at_idx").on(t.expiresAt),
   ]
 );
 
