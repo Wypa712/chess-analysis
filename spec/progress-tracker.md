@@ -83,6 +83,7 @@
 - Dashboard DB failure тепер проходить через Next error boundary, замість redirect на неіснуючий `/error`.
 - Mobile opening footer на сторінці аналізу більше не накладається absolute-ом на tab content; довга назва дебюту акуратно обрізається в нижньому рядку панелі.
 - Прибрано невикористану залежність `@google/generative-ai`, оскільки production LLM provider зараз Groq.
+- PWA icon refresh: згенеровано новий SVG/PNG комплект із v2 filename-ами для manifest/apple/favicon, щоб мобільні install flows не тримали старі кешовані іконки.
 
 ---
 
