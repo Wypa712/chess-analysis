@@ -3,6 +3,7 @@
 import { Chessboard } from "react-chessboard";
 import type { Arrow, Square } from "react-chessboard/dist/chessboard/types";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { RouteLoader } from "@/components/RouteLoader/RouteLoader";
 import { Chess } from "chess.js";
 import { parsePgn } from "@/lib/chess/pgn";
 import { useStockfish } from "@/hooks/useStockfish";
@@ -95,6 +96,7 @@ export function GameView({ game }: { game: GameData }) {
   const [llmError, setLlmError] = useState<string | null>(null);
   const [llmAnalysis, setLlmAnalysis] = useState<LlmGameAnalysisV1 | null>(null);
   const [llmOpenPhases, setLlmOpenPhases] = useState<Record<string, boolean>>({});
+  const [initialFetchCount, setInitialFetchCount] = useState(0);
 
   const { analyzeGame, analyzeSinglePosition, terminate } = useStockfish();
 
@@ -111,7 +113,8 @@ export function GameView({ game }: { game: GameData }) {
           setAnalysisState("done");
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setInitialFetchCount((c) => c + 1));
   }, [game.id]);
 
   // Load cached LLM analysis on mount
@@ -124,7 +127,8 @@ export function GameView({ game }: { game: GameData }) {
           setLlmStatus("done");
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setInitialFetchCount((c) => c + 1));
   }, [game.id]);
 
   const movePairs = useMemo<MovePair[]>(() => {
@@ -433,6 +437,10 @@ export function GameView({ game }: { game: GameData }) {
     setExploreMode(true);
     void runExploreAnalysis(chessCopy.fen());
     return true;
+  }
+
+  if (initialFetchCount < 2) {
+    return <RouteLoader text="Завантажуємо партію…" />;
   }
 
   const resultLabel =

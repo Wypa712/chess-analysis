@@ -40,40 +40,32 @@ export function DashboardClient() {
     { label: "Поразок", value: summary.losses, tone: styles.statLoss },
   ];
 
-  if (summaryLoading) {
-    return (
-      <>
-        <RouteLoader text="Завантажуємо дашборд…" />
-        <div style={{ display: "none" }}>
-          <GamesList refreshKey={refreshKey} onSummary={handleSummary} />
-        </div>
-      </>
-    );
-  }
-
   return (
-    <div className={styles.container}>
-      <section className={styles.hero}>
-        <div>
-          <h1 className={styles.title}>Дашборд</h1>
-          <p className={styles.subtitle}>
-            Ваші партії та статистика. Нові партії підтягуються автоматично.
-          </p>
-        </div>
-        <SyncStatusBar onSynced={() => setRefreshKey((k) => k + 1)} />
-      </section>
-
-      <section className={styles.statsGrid} aria-label="Статистика партій">
-        {stats.map((stat) => (
-          <div key={stat.label} className={styles.statCard}>
-            <div className={`${styles.statMark} ${stat.tone}`} />
-            <p className={styles.statValue}>{stat.value}</p>
-            <p className={styles.statLabel}>{stat.label}</p>
+    <>
+      {summaryLoading && <RouteLoader text="Завантажуємо дашборд…" />}
+      <div style={summaryLoading ? { display: "none" } : undefined} className={styles.container}>
+        <section className={styles.hero}>
+          <div>
+            <h1 className={styles.title}>Дашборд</h1>
+            <p className={styles.subtitle}>
+              Ваші партії та статистика. Нові партії підтягуються автоматично.
+            </p>
           </div>
-        ))}
-      </section>
+          <SyncStatusBar onSynced={() => setRefreshKey((k) => k + 1)} />
+        </section>
 
-      <GamesList refreshKey={refreshKey} onSummary={handleSummary} />
-    </div>
+        <section className={styles.statsGrid} aria-label="Статистика партій">
+          {stats.map((stat) => (
+            <div key={stat.label} className={styles.statCard}>
+              <div className={`${styles.statMark} ${stat.tone}`} />
+              <p className={styles.statValue}>{stat.value}</p>
+              <p className={styles.statLabel}>{stat.label}</p>
+            </div>
+          ))}
+        </section>
+
+        <GamesList refreshKey={refreshKey} onSummary={handleSummary} />
+      </div>
+    </>
   );
 }
