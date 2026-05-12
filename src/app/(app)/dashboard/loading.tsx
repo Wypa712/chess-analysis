@@ -1,10 +1,5 @@
-import styles from "./page.module.css";
+import { RouteLoader } from "@/components/RouteLoader/RouteLoader";
 
 export default function DashboardLoading() {
-  return (
-    <div className={styles.routeLoader} aria-live="polite">
-      <div className={styles.loaderSpinner} aria-hidden="true" />
-      <p className={styles.loaderText}>Завантажуємо дашборд…</p>
-    </div>
-  );
+  return <RouteLoader text="Завантажуємо дашборд…" />;
 }

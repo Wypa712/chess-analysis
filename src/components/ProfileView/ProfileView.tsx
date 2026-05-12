@@ -4,6 +4,7 @@ import { useState, useEffect, useId } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppUser } from "@/components/AppUserContext";
 import styles from "./ProfileView.module.css";
+import { RouteLoader } from "@/components/RouteLoader/RouteLoader";
 import { GroupAnalysisPanel } from "@/components/GroupAnalysisPanel/GroupAnalysisPanel";
 import type { GroupAnalysisJsonV1 } from "@/lib/llm/types";
 
@@ -136,49 +137,7 @@ export function ProfileView() {
   }
 
   if (initialLoading || (!stats && !error)) {
-    return (
-      <div className={styles.page}>
-        {/* Hero skeleton */}
-        <div className={styles.skeletonHero}>
-          <div className={styles.skeletonAvatar} />
-          <div className={styles.skeletonHeroLines}>
-            <div className={styles.skeletonLine} style={{ width: "40%" }} />
-            <div className={styles.skeletonLine} style={{ width: "60%", opacity: 0.6 }} />
-          </div>
-        </div>
-        {/* Filters bar — static, no skeleton needed */}
-        <div className={styles.filtersBar} aria-hidden="true" style={{ pointerEvents: "none", opacity: 0.4 }}>
-          <div className={styles.filterSegment}>
-            {["7 дн.", "30 дн.", "90 дн.", "Всі"].map((l) => (
-              <button key={l} type="button" className={styles.segBtn}>{l}</button>
-            ))}
-          </div>
-        </div>
-        {/* Stats row skeleton */}
-        <div className={styles.skeletonStatsRow}>
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className={styles.skeletonCard}>
-              <div className={styles.skeletonLine} style={{ width: "50%" }} />
-              <div className={styles.skeletonLine} style={{ width: "100%", height: 18 }} />
-              <div className={styles.skeletonLine} style={{ width: "80%", opacity: 0.6 }} />
-              <div className={styles.skeletonLine} style={{ width: "65%", opacity: 0.4 }} />
-            </div>
-          ))}
-        </div>
-        {/* Openings card skeleton */}
-        <div className={styles.skeletonCard}>
-          <div className={styles.skeletonLine} style={{ width: "30%" }} />
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className={styles.skeletonLine} style={{ width: `${75 - i * 8}%`, opacity: 1 - i * 0.12 }} />
-          ))}
-        </div>
-        {/* ELO chart skeleton */}
-        <div className={styles.skeletonCard}>
-          <div className={styles.skeletonLine} style={{ width: "35%" }} />
-          <div className={styles.skeletonLine} style={{ width: "100%", height: 130 }} />
-        </div>
-      </div>
-    );
+    return <RouteLoader text="Завантажуємо профіль…" />;
   }
 
   if (error) {

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { AccountForm } from "@/components/AccountForm/AccountForm";
 import type { LinkedAccount } from "@/components/AccountForm/AccountForm";
 import { LinkedAccountCard } from "@/components/LinkedAccountCard/LinkedAccountCard";
+import { RouteLoader } from "@/components/RouteLoader/RouteLoader";
 import styles from "./page.module.css";
 
 export default function SettingsPage() {
@@ -79,17 +80,7 @@ export default function SettingsPage() {
         <h2 className={styles.sectionTitle}>Підключені акаунти</h2>
 
         {loading ? (
-          <div className={styles.accountsList}>
-            {[0.55, 0.75].map((w, i) => (
-              <div key={i} className={styles.skeletonCard}>
-                <div className={styles.skeletonIcon} />
-                <div className={styles.skeletonLines}>
-                  <div className={styles.skeletonLine} style={{ width: `${w * 100}%` }} />
-                  <div className={styles.skeletonLine} style={{ width: "40%", opacity: 0.6 }} />
-                </div>
-              </div>
-            ))}
-          </div>
+          <RouteLoader inline text="Завантажуємо акаунти…" />
         ) : loadError ? (
           <div className={styles.errorRetry}>
             <p className={styles.errorText}>{loadError}</p>

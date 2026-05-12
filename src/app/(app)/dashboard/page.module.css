@@ -103,43 +103,6 @@
   border-color: color-mix(in srgb, var(--color-danger) 30%, var(--color-border));
 }
 
-.routeLoader {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.875rem;
-  padding: 2rem;
-  color: var(--color-text-muted);
-}
-
-.loaderSpinner {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  border: 2px solid color-mix(in srgb, var(--color-border) 78%, transparent);
-  border-top-color: var(--color-info-soft);
-  animation: loaderSpin 0.85s linear infinite;
-}
-
-.loaderText {
-  font-size: 0.875rem;
-  color: var(--color-text-muted);
-}
-
-@keyframes loaderSpin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@supports (height: 100dvh) {
-  .routeLoader {
-    min-height: 100dvh;
-  }
-}
-
 @media (max-width: 900px) {
   .container {
     padding: 1.25rem;
@@ -174,7 +137,4 @@
     font-size: 1.35rem;
   }
 
-  .routeLoader {
-    min-height: calc(100svh - var(--mobile-nav-h));
-  }
 }
