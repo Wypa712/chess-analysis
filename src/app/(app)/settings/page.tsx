@@ -69,6 +69,10 @@ export default function SettingsPage() {
     }
   }
 
+  if (loading) {
+    return <RouteLoader text="Завантажуємо налаштування…" />;
+  }
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
@@ -79,9 +83,7 @@ export default function SettingsPage() {
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>Підключені акаунти</h2>
 
-        {loading ? (
-          <RouteLoader inline text="Завантажуємо акаунти…" />
-        ) : loadError ? (
+        {loadError ? (
           <div className={styles.errorRetry}>
             <p className={styles.errorText}>{loadError}</p>
             <button

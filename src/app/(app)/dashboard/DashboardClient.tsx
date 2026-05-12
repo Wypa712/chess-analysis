@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { SyncStatusBar } from "@/components/SyncStatusBar/SyncStatusBar";
 import { GamesList } from "@/components/GamesList/GamesList";
+import { RouteLoader } from "@/components/RouteLoader/RouteLoader";
 import styles from "./page.module.css";
 
 type DashboardSummary = {
@@ -39,6 +40,17 @@ export function DashboardClient() {
     { label: "Поразок", value: summary.losses, tone: styles.statLoss },
   ];
 
+  if (summaryLoading) {
+    return (
+      <>
+        <RouteLoader text="Завантажуємо дашборд…" />
+        <div style={{ display: "none" }}>
+          <GamesList refreshKey={refreshKey} onSummary={handleSummary} />
+        </div>
+      </>
+    );
+  }
+
   return (
     <div className={styles.container}>
       <section className={styles.hero}>
@@ -55,9 +67,7 @@ export function DashboardClient() {
         {stats.map((stat) => (
           <div key={stat.label} className={styles.statCard}>
             <div className={`${styles.statMark} ${stat.tone}`} />
-            <p className={styles.statValue}>
-              {summaryLoading ? "..." : stat.value}
-            </p>
+            <p className={styles.statValue}>{stat.value}</p>
             <p className={styles.statLabel}>{stat.label}</p>
           </div>
         ))}
