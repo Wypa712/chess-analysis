@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
+import { AppUserProvider } from "./AppUserContext";
 import { SidebarNav } from "./SidebarNav";
 import styles from "./AppShell.module.css";
 import type { User } from "next-auth";
@@ -24,13 +25,15 @@ export function AppShell({ user, children }: AppShellProps) {
   }, [pathname]);
 
   return (
-    <div className={styles.shell}>
-      <SidebarNav user={user} />
-      <main ref={contentRef} className={styles.content}>
-        <div key={pathname} className={styles.routeFrame}>
-          {children}
-        </div>
-      </main>
-    </div>
+    <AppUserProvider user={user}>
+      <div className={styles.shell}>
+        <SidebarNav user={user} />
+        <main ref={contentRef} className={styles.content}>
+          <div key={pathname} className={styles.routeFrame}>
+            {children}
+          </div>
+        </main>
+      </div>
+    </AppUserProvider>
   );
 }

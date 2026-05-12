@@ -738,7 +738,6 @@ export function GameView({ game }: { game: GameData }) {
           activeTab={activeTab}
           onTabChange={setActiveTab}
           movePairs={movePairs}
-          analysis={analysis}
           currentMove={currentMove}
           onSeekMainline={seekMainline}
           analysisState={analysisState}

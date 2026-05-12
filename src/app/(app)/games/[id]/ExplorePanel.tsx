@@ -62,7 +62,10 @@ export function ExplorePanel({
               const el = moveTrailRef.current;
               if (!drag.active || !el) return;
               const delta = e.pageX - el.offsetLeft - drag.startX;
-              if (Math.abs(delta) > 4) drag.moved = true;
+              if (Math.abs(delta) > 4) {
+                drag.moved = true;
+                drag.suppressClick = true;
+              }
               if (drag.moved) {
                 e.preventDefault();
                 el.scrollLeft = drag.scrollLeft - delta;

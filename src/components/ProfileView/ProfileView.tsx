@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useId } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useAppUser } from "@/components/AppUserContext";
 import styles from "./ProfileView.module.css";
-import type { User } from "next-auth";
 import { GroupAnalysisPanel } from "@/components/GroupAnalysisPanel/GroupAnalysisPanel";
 import type { GroupAnalysisJsonV1 } from "@/lib/llm/types";
 
@@ -31,9 +31,8 @@ type GroupAnalysisRow = {
   createdAt: string;
 };
 
-type Props = { user: User };
-
-export function ProfileView({ user }: Props) {
+export function ProfileView() {
+  const user = useAppUser();
   const router = useRouter();
   const searchParams = useSearchParams();
 

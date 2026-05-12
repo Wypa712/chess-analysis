@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useCallback, useState } from "react";
 import { SyncStatusBar } from "@/components/SyncStatusBar/SyncStatusBar";
 import { GamesList } from "@/components/GamesList/GamesList";
 import styles from "./page.module.css";
@@ -19,7 +19,7 @@ const EMPTY_SUMMARY: DashboardSummary = {
   losses: 0,
 };
 
-export default function DashboardPage() {
+export function DashboardClient() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [summary, setSummary] = useState<DashboardSummary>(EMPTY_SUMMARY);
   const [summaryLoading, setSummaryLoading] = useState(true);

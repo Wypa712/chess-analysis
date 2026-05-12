@@ -88,6 +88,14 @@ llama-3.3-70b-versatile
 /api/profile/summary           POST повторна генерація зведення профілю
 ```
 
+### App Router layout structure
+
+- Продуктові protected pages (`/dashboard`, `/profile`, `/settings`, `/games/[id]`) живуть у route group `src/app/(app)/`.
+- `src/app/(app)/layout.tsx` виконує спільну session-перевірку і рендерить стабільний `AppShell`, щоб sidebar/mobile nav не перемонтовувались між protected pages.
+- URL-и не містять `(app)` і залишаються такими самими: `/dashboard`, `/profile`, `/settings`, `/games/[id]`.
+- Сторінки, яким потрібен `user.id` для ownership або page-specific gate, можуть робити власну server-перевірку нижче shared layout. Зокрема dashboard перевіряє наявність `chess_accounts` у `page.tsx`, а не в layout.
+- Повільні page segments мають локальні `loading.tsx`, а не глобальний AppShell overlay, щоб уникати подвійних loading states. Для navigation loading на dashboard/game page використовується компактний loader замість повносторінкового skeleton, щоб не створювати layout jumps.
+
 ## Модель даних
 
 Детальна схема таблиць, обмежень, індексів і JSON-структур описана в `database-schema.md`.

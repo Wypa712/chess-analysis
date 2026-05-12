@@ -4,7 +4,7 @@
 
 **Production:** ✅ Живий (Vercel + Neon + GitHub OAuth)  
 **Поточна фаза:** Фаза 1 v2 — завершено (потребує ручного тестування)  
-**Остання зміна:** 2026-05-12 — прибрано відчутну затримку app navigation через optimistic nav state і без route fade animation
+**Остання зміна:** 2026-05-12 — dashboard route loader вирівняно по центру видимої області
 
 ---
 
@@ -101,6 +101,12 @@
 #### App navigation UX fix (2026-05-12):
 - Sidebar і mobile bottom nav тепер підсвічують цільову сторінку одразу після кліку, не чекаючи завершення Next route transition.
 - Прибрано `routeFrame` fade/slide animation, яка додавала ~140ms візуальної затримки після натискання на навігаційні кнопки.
+- Відкачено експериментальний AppShell overlay skeleton: він накладався поверх старого екрана і конфліктував із внутрішніми skeleton states сторінок.
+- Protected app routes (`/dashboard`, `/profile`, `/settings`, `/games/[id]`) перенесено в route group `src/app/(app)/` зі спільним `layout.tsx`, який один раз рендерить `AppShell`.
+- Dashboard account gate перенесено з route layout у `dashboard/page.tsx`, щоб DB-перевірка не перемонтовувала shell.
+- Додано локальні `loading.tsx` для `/dashboard` і `/games/[id]`; вони рендеряться як власний loading state route segment, без глобального overlay поверх старої сторінки.
+- Skeleton layouts у `dashboard/loading.tsx` і `games/[id]/loading.tsx` замінено на компактний centered loader, бо повносторінкові skeleton-и створювали неприємні стрибки перед реальним layout.
+- Dashboard route loader тепер має viewport-based min-height (`100dvh` / `100svh` з поправкою на bottom nav), щоб spinner був по центру екрана.
 
 ---
 

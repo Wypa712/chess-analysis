@@ -1,4 +1,4 @@
-import { evalToPawns, type EngineAnalysisJsonV1 } from "@/lib/chess/engine-analysis";
+import { evalToPawns } from "@/lib/chess/engine-analysis";
 import { LlmAnalysis, type LlmStatus } from "./LlmAnalysis";
 import { type LlmGameAnalysisV1 } from "@/lib/llm/types";
 import { type MovePair, type ExploreEvalResult } from "./types";
@@ -15,7 +15,6 @@ interface LlmTabsPanelProps {
   activeTab: "moves" | "analysis" | "advice";
   onTabChange: (tab: "moves" | "analysis" | "advice") => void;
   movePairs: MovePair[];
-  analysis: EngineAnalysisJsonV1 | null;
   currentMove: number;
   onSeekMainline: (i: number) => void;
   analysisState: "idle" | "loading" | "done" | "error";

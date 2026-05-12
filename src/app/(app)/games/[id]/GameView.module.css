@@ -254,6 +254,11 @@
   cursor: default;
 }
 
+.navBtn:focus-visible {
+  outline: 2px solid var(--color-info);
+  outline-offset: 2px;
+}
+
 .navDivider {
   width: 1px;
   height: 20px;
@@ -292,6 +297,11 @@
 
 .analyzeBtn:active {
   transform: translateY(0);
+}
+
+.analyzeBtn:focus-visible {
+  outline: 2px solid var(--color-info);
+  outline-offset: 2px;
 }
 
 .analyzeProgress {
@@ -366,6 +376,11 @@
   border-color: color-mix(in srgb, var(--color-info) 44%, var(--color-border));
 }
 
+.rerunBtn:focus-visible {
+  outline: 2px solid var(--color-info);
+  outline-offset: 2px;
+}
+
 /* ── Right: analysis panel ───────────────────────────────────────────────── */
 
 .analysisPanel {
@@ -403,6 +418,12 @@
 
 .backLink:hover {
   color: var(--color-text);
+}
+
+.backLink:focus-visible {
+  outline: 1px solid var(--color-info);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 .gameTitle {
@@ -925,6 +946,12 @@
   color: var(--color-teal-soft);
 }
 
+.exploreBreadcrumbMove:focus-visible {
+  outline: 1px solid var(--color-info);
+  outline-offset: 1px;
+  border-radius: 2px;
+}
+
 .exploreAnalyzing {
   flex-shrink: 0;
   font-size: 11px;
@@ -950,6 +977,11 @@
 
 .exploreExitBtn:hover {
   color: var(--color-text);
+}
+
+.exploreExitBtn:focus-visible {
+  outline: 2px solid var(--color-info);
+  outline-offset: 2px;
 }
 
 /* ── Phase accuracy row (below eval chart) ───────────────────────────────── */
@@ -1103,6 +1135,11 @@
   color: var(--color-text-muted);
 }
 
+.tabItem:focus-visible {
+  outline: 1px solid var(--color-info);
+  outline-offset: -1px;
+}
+
 .tabItemActive {
   color: var(--color-info-soft);
   border-bottom-color: var(--color-info);
@@ -1195,6 +1232,11 @@
   cursor: not-allowed;
 }
 
+.llmAnalyzeBtn:focus-visible {
+  outline: 2px solid var(--color-info);
+  outline-offset: 2px;
+}
+
 .llmAnalyzingRow {
   display: flex;
   align-items: center;
@@ -1250,6 +1292,11 @@
 .llmReanalyzeBtn:hover {
   border-color: color-mix(in srgb, var(--color-info) 42%, var(--color-border));
   color: var(--color-text);
+}
+
+.llmReanalyzeBtn:focus-visible {
+  outline: 2px solid var(--color-info);
+  outline-offset: 2px;
 }
 
 .llmWarning {
@@ -1410,6 +1457,12 @@
   text-decoration-color: var(--color-info-soft);
 }
 
+.llmCriticalMove:focus-visible {
+  outline: 1px solid var(--color-info);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 .llmCriticalDesc {
   flex: 1;
   min-width: 0;
@@ -1463,4 +1516,44 @@
   font-size: 11px;
   line-height: 1.4;
   color: var(--color-text-muted);
+}
+
+/* ── Route loading ──────────────────────────────────────────────────────── */
+
+.routeLoader {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.875rem;
+  padding: 2rem;
+  color: var(--color-text-muted);
+}
+
+.loaderSpinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--color-border) 78%, transparent);
+  border-top-color: var(--color-info-soft);
+  animation: loaderSpin 0.85s linear infinite;
+}
+
+.loaderText {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+@keyframes loaderSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 768px) {
+  .routeLoader {
+    min-height: calc(100svh - var(--mobile-nav-h));
+  }
 }

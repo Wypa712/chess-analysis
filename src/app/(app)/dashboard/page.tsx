@@ -1,15 +1,11 @@
 import { auth } from "@/auth";
-import { redirect } from "next/navigation";
-import { AppShell } from "@/components/AppShell";
 import { db } from "@/db";
 import { chessAccounts } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { redirect } from "next/navigation";
+import { DashboardClient } from "./DashboardClient";
 
-export default async function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function DashboardPage() {
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -24,7 +20,8 @@ export default async function DashboardLayout({
       .where(eq(chessAccounts.userId, session.user.id))
       .limit(1);
   } catch (error) {
-    console.error("[dashboard] failed to load chess accounts:", error);
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error("[dashboard] failed to load chess accounts:", msg);
     throw error;
   }
 
@@ -32,5 +29,5 @@ export default async function DashboardLayout({
     redirect("/onboarding");
   }
 
-  return <AppShell user={session.user}>{children}</AppShell>;
+  return <DashboardClient />;
 }
