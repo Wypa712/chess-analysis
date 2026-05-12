@@ -116,6 +116,7 @@
     display: flex;
     flex-direction: row;
     position: fixed;
+    height: var(--mobile-nav-h);
     bottom: 0;
     left: 0;
     right: 0;
@@ -128,6 +129,7 @@
 
 .bottomItem {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -136,6 +138,8 @@
   padding: 10px 0 8px;
   color: var(--color-text-faded);
   transition: color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .bottomItem:hover {

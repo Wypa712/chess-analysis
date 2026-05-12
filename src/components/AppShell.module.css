@@ -1,6 +1,7 @@
 .shell {
   display: flex;
   height: 100vh;
+  min-height: 100vh;
   overflow: hidden;
   background-color: var(--color-bg);
 }
@@ -9,4 +10,43 @@
   flex: 1;
   overflow-y: auto;
   padding-bottom: var(--mobile-nav-h);
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+}
+
+.routeFrame {
+  min-height: 100%;
+  animation: routeEnter 140ms ease-out both;
+}
+
+@keyframes routeEnter {
+  from {
+    opacity: 0.82;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@supports (height: 100dvh) {
+  .shell {
+    height: 100dvh;
+    min-height: 100dvh;
+  }
+}
+
+@media (max-width: 768px) {
+  .shell {
+    height: 100svh;
+    min-height: 100svh;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .routeFrame {
+    animation: none;
+  }
 }

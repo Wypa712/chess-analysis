@@ -4,7 +4,7 @@
 
 **Production:** ✅ Живий (Vercel + Neon + GitHub OAuth)  
 **Поточна фаза:** Фаза 1 v2 — завершено (потребує ручного тестування)  
-**Остання зміна:** 2026-05-12 — оновлено favicon/PWA icon set на прозору crown-іконку без темного фону
+**Остання зміна:** 2026-05-12 — згладжено mobile route transitions і виправлено skeleton списку партій
 
 ---
 
@@ -89,6 +89,10 @@
 - Favicon/PWA assets оновлено на погоджену прозору crown-іконку без темного квадратного фону; нижня декоративна лінія вирівняна лівіше згідно з референсом.
 - Додано cache-busted `v3` SVG/PNG комплект для favicon, Apple touch icon і PWA manifest у `public/`; `src/app/layout.tsx`, `src/app/manifest.ts`, `public/manifest.webmanifest` і `design-prototype/assets/manifest.webmanifest` переведено на `v3`.
 - Прибрано старі `src/app/icon.tsx` і `src/app/apple-icon.tsx`, щоб Next metadata не генерувала паралельні іконки зі старим дизайном.
+
+#### Mobile UI fix (2026-05-12):
+- Skeleton rows у `GamesList` на mobile тепер використовують ті самі grid columns для side/status зон, що й реальні рядки партій; прибрано криве автопозиціонування заглушок на вузьких екранах.
+- AppShell тепер скидає scroll внутрішнього content-контейнера при переході між routes, додає легкий enter-перехід і стабілізує mobile viewport/bottom-nav safe area, щоб навігація між сторінками на телефоні не смикалась.
 
 ---
 

@@ -51,7 +51,7 @@
 
 @media (max-width: 768px) {
   :root {
-    --mobile-nav-h: 60px;
+    --mobile-nav-h: calc(60px + env(safe-area-inset-bottom, 0px));
   }
 }
 

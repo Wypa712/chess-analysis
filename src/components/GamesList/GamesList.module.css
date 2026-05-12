@@ -463,7 +463,8 @@
     grid-template-columns: 36px minmax(180px, 1fr) minmax(100px, auto);
   }
 
-  .statuses {
+  .statuses,
+  .skeletonStatuses {
     grid-column: 2 / -1;
     justify-content: flex-start;
   }
@@ -503,12 +504,25 @@
   }
 
   .gameSide,
-  .statuses {
+  .statuses,
+  .skeletonSide,
+  .skeletonStatuses {
     grid-column: 2;
     justify-content: flex-start;
   }
 
   .gameSide {
+    align-items: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .skeletonRow {
+    row-gap: 0.5rem;
+  }
+
+  .skeletonSide {
     align-items: flex-start;
     flex-direction: row;
     flex-wrap: wrap;
