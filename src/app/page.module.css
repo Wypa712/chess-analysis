@@ -1,29 +1,38 @@
 .main {
+  width: 100%;
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 2rem;
+  overflow-x: hidden;
 }
 
 .hero {
   text-align: center;
-  max-width: 560px;
+  width: 100%;
+  max-width: min(560px, calc(100vw - 2.5rem));
+  min-width: 0;
 }
 
 .title {
+  max-width: 100%;
   font-size: 3rem;
   font-weight: 700;
   color: var(--color-text);
   margin-bottom: 1rem;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
 }
 
 .subtitle {
+  max-width: 100%;
   font-size: 1.125rem;
   color: var(--color-text-muted);
   margin-bottom: 2.5rem;
   line-height: 1.6;
+  overflow-wrap: break-word;
 }
 
 .ctaButton {
@@ -40,4 +49,26 @@
 .ctaButton:hover {
   background-color: var(--color-primary-hover);
   color: #fff;
+}
+
+@media (max-width: 520px) {
+  .main {
+    align-items: center;
+    padding: 1.25rem;
+  }
+
+  .title {
+    font-size: 2.25rem;
+  }
+
+  .subtitle {
+    font-size: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .ctaButton {
+    width: 100%;
+    max-width: 220px;
+    padding-inline: 1rem;
+  }
 }

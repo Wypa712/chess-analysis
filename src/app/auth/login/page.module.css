@@ -1,10 +1,12 @@
 .main {
+  width: 100%;
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 2rem;
   background-color: var(--color-bg);
+  overflow-x: hidden;
 }
 
 .card {
@@ -13,22 +15,28 @@
   border-radius: var(--radius-lg);
   padding: 2.5rem;
   width: 100%;
-  max-width: 400px;
+  max-width: min(400px, calc(100vw - 2rem));
+  min-width: 0;
   text-align: center;
 }
 
 .title {
+  max-width: 100%;
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--color-text);
   margin-bottom: 0.75rem;
+  line-height: 1.25;
+  overflow-wrap: break-word;
 }
 
 .subtitle {
+  max-width: 100%;
   font-size: 0.9375rem;
   color: var(--color-text-muted);
   margin-bottom: 2rem;
   line-height: 1.6;
+  overflow-wrap: break-word;
 }
 
 .githubButton {
@@ -50,4 +58,23 @@
 .githubButton:hover {
   background-color: var(--color-border);
   border-color: var(--color-text-muted);
+}
+
+@media (max-width: 520px) {
+  .main {
+    padding: 1rem;
+  }
+
+  .card {
+    padding: 1.5rem;
+  }
+
+  .title {
+    font-size: 1.25rem;
+    line-height: 1.25;
+  }
+
+  .githubButton {
+    padding-inline: 1rem;
+  }
 }
