@@ -17,18 +17,6 @@
 
 .routeFrame {
   min-height: 100%;
-  animation: routeEnter 140ms ease-out both;
-}
-
-@keyframes routeEnter {
-  from {
-    opacity: 0.82;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 @supports (height: 100dvh) {
@@ -42,11 +30,5 @@
   .shell {
     height: 100svh;
     min-height: 100svh;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .routeFrame {
-    animation: none;
   }
 }

@@ -1,6 +1,8 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import type { MouseEvent } from "react";
 import { signOutAction } from "@/app/actions/auth";
 import styles from "./SidebarNav.module.css";
 import type { User } from "next-auth";
@@ -46,6 +48,31 @@ interface SidebarNavProps {
 
 export function SidebarNav({ user }: SidebarNavProps) {
   const pathname = usePathname();
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const activePath = pendingHref ?? pathname;
+
+  useEffect(() => {
+    setPendingHref(null);
+  }, [pathname]);
+
+  function handleNavClick(
+    event: MouseEvent<HTMLAnchorElement>,
+    href: string
+  ) {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey ||
+      pathname.startsWith(href)
+    ) {
+      return;
+    }
+
+    setPendingHref(href);
+  }
 
   return (
     <>
@@ -56,7 +83,8 @@ export function SidebarNav({ user }: SidebarNavProps) {
 
         <div className={styles.navItems}>
           {NAV_ITEMS.map(({ href, label, icon }) => {
-            const active = pathname.startsWith(href);
+            const active = activePath.startsWith(href);
+            const current = pathname.startsWith(href);
             return (
               <Link
                 key={href}
@@ -64,7 +92,8 @@ export function SidebarNav({ user }: SidebarNavProps) {
                 className={`${styles.navBtn} ${active ? styles.navBtnActive : ""}`}
                 title={label}
                 aria-label={label}
-                aria-current={active ? "page" : undefined}
+                aria-current={current ? "page" : undefined}
+                onClick={(event) => handleNavClick(event, href)}
               >
                 <NavIcon d={icon} />
               </Link>
@@ -110,14 +139,16 @@ export function SidebarNav({ user }: SidebarNavProps) {
 
       <nav className={styles.bottomNav} aria-label="Мобільна навігація">
         {NAV_ITEMS.map(({ href, label, icon }) => {
-          const active = pathname.startsWith(href);
+          const active = activePath.startsWith(href);
+          const current = pathname.startsWith(href);
           return (
             <Link
               key={href}
               href={href}
               className={`${styles.bottomItem} ${active ? styles.bottomItemActive : ""}`}
               aria-label={label}
-              aria-current={active ? "page" : undefined}
+              aria-current={current ? "page" : undefined}
+              onClick={(event) => handleNavClick(event, href)}
             >
               <NavIcon d={icon} />
               <span className={styles.bottomLabel}>{label}</span>
