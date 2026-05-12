@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { RouteLoader } from "@/components/RouteLoader/RouteLoader";
 import styles from "./GamesList.module.css";
 
 type Game = {
@@ -208,7 +207,24 @@ export function GamesList({
       </div>
 
       {loading && !data && (
-        <RouteLoader inline text="Завантажуємо партії…" />
+        <div className={styles.rows}>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className={styles.skeletonRow}>
+              <div className={styles.skeletonIcon} />
+              <div className={styles.skeletonMain}>
+                <div className={styles.skeletonLine} style={{ width: "55%" }} />
+                <div className={styles.skeletonLine} style={{ width: "75%", opacity: 0.6 }} />
+              </div>
+              <div className={styles.skeletonSide}>
+                <div className={styles.skeletonLine} style={{ width: 60 }} />
+                <div className={styles.skeletonLine} style={{ width: 48, opacity: 0.6 }} />
+              </div>
+              <div className={styles.skeletonStatuses}>
+                <div className={styles.skeletonLine} style={{ width: 90, height: 20, borderRadius: 4 }} />
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
       {!loading && error && (
