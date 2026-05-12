@@ -4,7 +4,7 @@
 
 **Production:** ✅ Живий (Vercel + Neon + GitHub OAuth)  
 **Поточна фаза:** Фаза 1 v2 — завершено (потребує ручного тестування)  
-**Остання зміна:** 2026-05-11 — виправлено LLM cache/concurrency, profile stats cap і mobile opening footer на сторінці партії
+**Остання зміна:** 2026-05-12 — оновлено favicon/PWA icon set на прозору crown-іконку без темного фону
 
 ---
 
@@ -84,6 +84,11 @@
 - Mobile opening footer на сторінці аналізу більше не накладається absolute-ом на tab content; довга назва дебюту акуратно обрізається в нижньому рядку панелі.
 - Прибрано невикористану залежність `@google/generative-ai`, оскільки production LLM provider зараз Groq.
 - PWA icon refresh: згенеровано новий SVG/PNG комплект із v2 filename-ами для manifest/apple/favicon, щоб мобільні install flows не тримали старі кешовані іконки.
+
+#### PWA icon update (2026-05-12):
+- Favicon/PWA assets оновлено на погоджену прозору crown-іконку без темного квадратного фону; нижня декоративна лінія вирівняна лівіше згідно з референсом.
+- Додано cache-busted `v3` SVG/PNG комплект для favicon, Apple touch icon і PWA manifest у `public/`; `src/app/layout.tsx`, `src/app/manifest.ts`, `public/manifest.webmanifest` і `design-prototype/assets/manifest.webmanifest` переведено на `v3`.
+- Прибрано старі `src/app/icon.tsx` і `src/app/apple-icon.tsx`, щоб Next metadata не генерувала паралельні іконки зі старим дизайном.
 
 ---
 
