@@ -26,6 +26,7 @@
   border: 2px solid color-mix(in srgb, var(--color-border) 78%, transparent);
   border-top-color: var(--color-info-soft);
   animation: spin 0.85s linear infinite;
+  will-change: transform;
 }
 
 .text {

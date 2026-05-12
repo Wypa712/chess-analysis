@@ -343,7 +343,9 @@ export function GameView({ game }: { game: GameData }) {
     observer.observe(boardAreaEl);
     compute();
     return () => observer.disconnect();
-  }, []);
+  // re-run after initial fetches complete so refs are attached to real layout
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialFetchCount]);
 
   useEffect(() => {
     return () => terminate();
