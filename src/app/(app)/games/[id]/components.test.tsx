@@ -15,10 +15,9 @@ vi.mock('next/link', () => ({
 // which is fine for smoke tests (we only check that rendering doesn't throw).
 vi.mock('./GameView.module.css', () => ({ default: new Proxy({}, { get: (_t, prop) => String(prop) }) }));
 
-import { ExplorePanel } from './ExplorePanel';
 import { EvalSection } from './EvalSection';
 import { LlmTabsPanel } from './LlmTabsPanel';
-import type { GameData, TrailDragState } from './types';
+import type { GameData } from './types';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -35,65 +34,6 @@ const GAME_DATA: GameData = {
   playedAt: new Date().toISOString(),
   moveCount: 20,
 };
-
-// ── ExplorePanel ──────────────────────────────────────────────────────────────
-
-describe('ExplorePanel', () => {
-  function renderExplorePanel(exploreMode = false) {
-    const moveTrailRef = { current: null } as React.RefObject<HTMLDivElement | null>;
-    const trailDragState: TrailDragState = {
-      active: false, moved: false, suppressClick: false, startX: 0, scrollLeft: 0,
-    };
-    const trailDragRef = { current: trailDragState };
-
-    return render(
-      <ExplorePanel
-        exploreMode={exploreMode}
-        explorationMoves={[]}
-        exploreAnalyzing={false}
-        boardSize={400}
-        moveTrailRef={moveTrailRef}
-        trailDragRef={trailDragRef}
-        onBreadcrumbClick={() => {}}
-        onExitExplore={() => {}}
-        onFinishTrailDrag={() => {}}
-      />
-    );
-  }
-
-  it('renders without crashing when exploreMode is false', () => {
-    expect(() => renderExplorePanel(false)).not.toThrow();
-  });
-
-  it('renders explore breadcrumb when exploreMode is true', () => {
-    renderExplorePanel(true);
-    expect(screen.getByText('Варіант')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'До партії' })).toBeInTheDocument();
-  });
-
-  it('renders exploration moves as buttons', () => {
-    const moveTrailRef = { current: null } as React.RefObject<HTMLDivElement | null>;
-    const trailDragRef = { current: { active: false, moved: false, suppressClick: false, startX: 0, scrollLeft: 0 } };
-    render(
-      <ExplorePanel
-        exploreMode={true}
-        explorationMoves={[
-          { san: 'e4', from: 'e2', to: 'e4', uci: 'e2e4' },
-          { san: 'e5', from: 'e7', to: 'e5', uci: 'e7e5' },
-        ]}
-        exploreAnalyzing={false}
-        boardSize={400}
-        moveTrailRef={moveTrailRef}
-        trailDragRef={trailDragRef}
-        onBreadcrumbClick={() => {}}
-        onExitExplore={() => {}}
-        onFinishTrailDrag={() => {}}
-      />
-    );
-    expect(screen.getByRole('button', { name: 'e4' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'e5' })).toBeInTheDocument();
-  });
-});
 
 // ── EvalSection ───────────────────────────────────────────────────────────────
 

@@ -22,14 +22,6 @@ export type GameData = {
   moveCount: number;
 };
 
-export type TrailDragState = {
-  active: boolean;
-  moved: boolean;
-  suppressClick: boolean;
-  startX: number;
-  scrollLeft: number;
-};
-
 export type ExploreEvalResult = {
   eval: EngineEval;
   bestMove?: { uci: string; san?: string };

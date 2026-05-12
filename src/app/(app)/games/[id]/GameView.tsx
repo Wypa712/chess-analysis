@@ -2,7 +2,7 @@
 
 import { Chessboard } from "react-chessboard";
 import type { Arrow, Square } from "react-chessboard/dist/chessboard/types";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Chess } from "chess.js";
 import { parsePgn } from "@/lib/chess/pgn";
 import { useStockfish } from "@/hooks/useStockfish";
@@ -15,7 +15,6 @@ import {
 } from "@/lib/chess/engine-analysis";
 import { type LlmStatus } from "./LlmAnalysis";
 import { isLlmGameAnalysisV1, type LlmGameAnalysisV1 } from "@/lib/llm/types";
-import { ExplorePanel } from "./ExplorePanel";
 import { EvalSection } from "./EvalSection";
 import { LlmTabsPanel } from "./LlmTabsPanel";
 import {
@@ -33,16 +32,20 @@ import {
   type MovePair,
   type ExploreMove,
   type GameData,
-  type TrailDragState,
   type ExploreEvalResult,
 } from "./types";
 import styles from "./GameView.module.css";
 
 const MAX_BOARD_SIZE = 760;
+const MIN_BOARD_SIZE = 200;
 const EVAL_BAR_WIDTH = 24;
 const BOARD_ROW_GAP = 10;
-const DESKTOP_BOARD_AREA_RATIO = 0.52;
 const DESKTOP_VERTICAL_CHROME = 290;
+
+function snapBoardSize(size: number): number {
+  const clamped = Math.min(Math.max(size, MIN_BOARD_SIZE), MAX_BOARD_SIZE);
+  return Math.max(MIN_BOARD_SIZE, Math.floor(clamped / 8) * 8);
+}
 
 function calcPhaseAccuracy(
   moves: EngineAnalysisJsonV1["moves"],
@@ -74,14 +77,6 @@ export function GameView({ game }: { game: GameData }) {
   const layoutRef = useRef<HTMLDivElement>(null);
   const boardAreaRef = useRef<HTMLDivElement>(null);
   const exploreAnalysisRequestRef = useRef(0);
-  const moveTrailRef = useRef<HTMLDivElement>(null);
-  const trailDragRef = useRef<TrailDragState>({
-    active: false,
-    moved: false,
-    suppressClick: false,
-    startX: 0,
-    scrollLeft: 0,
-  });
 
   const [boardSize, setBoardSize] = useState(MAX_BOARD_SIZE);
   const [currentMove, setCurrentMove] = useState(-1);
@@ -321,12 +316,7 @@ export function GameView({ game }: { game: GameData }) {
     return () => window.removeEventListener("keydown", handleKey);
   }, [totalMoves, exitExploreIfActive, stepExploreBackward]);
 
-  useEffect(() => {
-    const trail = moveTrailRef.current;
-    if (trail) trail.scrollLeft = trail.scrollWidth;
-  }, [explorationMoves]);
-
-  useEffect(() => {
+  useLayoutEffect(() => {
     const layoutEl = layoutRef.current;
     const boardAreaEl = boardAreaRef.current;
     if (!layoutEl || !boardAreaEl) return;
@@ -336,21 +326,18 @@ export function GameView({ game }: { game: GameData }) {
       const style = getComputedStyle(boardAreaEl);
       const paddingX =
         parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
-      const layoutWidth = layoutEl.clientWidth;
-      const containerWidth = isMobile
-        ? layoutWidth
-        : layoutWidth * DESKTOP_BOARD_AREA_RATIO;
       const availableW =
-        containerWidth - paddingX - EVAL_BAR_WIDTH - BOARD_ROW_GAP;
+        boardAreaEl.clientWidth - paddingX - EVAL_BAR_WIDTH - BOARD_ROW_GAP;
       const availableH = layoutEl.clientHeight - DESKTOP_VERTICAL_CHROME;
-      const size = isMobile
-        ? Math.min(Math.max(availableW, 200), MAX_BOARD_SIZE)
-        : Math.min(Math.max(Math.min(availableW, availableH), 200), MAX_BOARD_SIZE);
-      setBoardSize(size);
+      const rawSize = isMobile ? availableW : Math.min(availableW, availableH);
+      const size = snapBoardSize(rawSize);
+      setBoardSize((prev) => (prev === size ? prev : size));
     };
 
     const observer = new ResizeObserver(compute);
     observer.observe(layoutEl);
+    observer.observe(boardAreaEl);
+    compute();
     return () => observer.disconnect();
   }, []);
 
@@ -425,11 +412,6 @@ export function GameView({ game }: { game: GameData }) {
     }
   }, [analyzeGame, parsed, game.id, game.color, exitExploreIfActive, llmStatus, handleLlmAnalyze]);
 
-  function handleBreadcrumbClick(moveIndex: number) {
-    if (trailDragRef.current.suppressClick) return;
-    replayExploreMoves(explorationMoves.slice(0, moveIndex + 1));
-  }
-
   function handleExploreDrop(sourceSquare: string, targetSquare: string): boolean {
     if (!parsed) return false;
     const sourceFen = explorationChess?.fen() ?? getMainlineFen();
@@ -486,19 +468,6 @@ export function GameView({ game }: { game: GameData }) {
   const evalActive = exploreMode ? !!exploreEvalResult : !!analysis;
   const evalPending = exploreMode && exploreAnalyzing && !exploreEvalResult;
 
-  function finishTrailDrag() {
-    const drag = trailDragRef.current;
-    if (drag.moved) {
-      drag.suppressClick = true;
-      window.setTimeout(() => {
-        trailDragRef.current.suppressClick = false;
-      }, 0);
-    }
-    drag.active = false;
-    drag.moved = false;
-    if (moveTrailRef.current) moveTrailRef.current.style.cursor = "";
-  }
-
   return (
     <div className={styles.layout} ref={layoutRef}>
       {/* ── Left: board area ── */}
@@ -510,18 +479,6 @@ export function GameView({ game }: { game: GameData }) {
           accuracy={analysis?.accuracy[opponentColor === "white" ? "white" : "black"]}
           mistakes={analysis ? countClassifications(analysis, opponentColor, "mistake") : undefined}
           blunders={analysis ? countClassifications(analysis, opponentColor, "blunder") : undefined}
-        />
-
-        <ExplorePanel
-          exploreMode={exploreMode}
-          explorationMoves={explorationMoves}
-          exploreAnalyzing={exploreAnalyzing}
-          boardSize={boardSize}
-          moveTrailRef={moveTrailRef}
-          trailDragRef={trailDragRef}
-          onBreadcrumbClick={handleBreadcrumbClick}
-          onExitExplore={handleExitExplore}
-          onFinishTrailDrag={finishTrailDrag}
         />
 
         <div className={styles.boardRow}>
