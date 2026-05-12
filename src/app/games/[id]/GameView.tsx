@@ -226,6 +226,24 @@ export function GameView({ game }: { game: GameData }) {
       : (parsed.positions[currentMove]?.fen ?? "start");
   }, [currentMove, parsed]);
 
+  const runExploreAnalysis = useCallback(async (fen: string) => {
+    const requestId = ++exploreAnalysisRequestRef.current;
+    setExploreEvalResult(null);
+    setExploreAnalyzing(true);
+    try {
+      const result = await analyzeSinglePosition(fen);
+      if (exploreAnalysisRequestRef.current === requestId) {
+        setExploreEvalResult(result);
+      }
+    } catch {
+      // Keep explore mode usable even if a speculative engine call fails.
+    } finally {
+      if (exploreAnalysisRequestRef.current === requestId) {
+        setExploreAnalyzing(false);
+      }
+    }
+  }, [analyzeSinglePosition]);
+
   const handleExitExplore = useCallback(() => {
     exploreAnalysisRequestRef.current += 1;
     setExploreMode(false);
@@ -244,8 +262,36 @@ export function GameView({ game }: { game: GameData }) {
     setCurrentMove(moveIndex);
   }, [exitExploreIfActive]);
 
+  const replayExploreMoves = useCallback((movesToReplay: ExploreMove[]) => {
+    if (!parsed) return;
+    if (movesToReplay.length === 0) {
+      handleExitExplore();
+      return;
+    }
+
+    const baseFen = getMainlineFen();
+    const chess = new Chess(baseFen === "start" ? undefined : baseFen);
+    for (const move of movesToReplay) {
+      chess.move({ from: move.from, to: move.to, promotion: "q" });
+    }
+
+    setExploreMode(true);
+    setExplorationChess(chess);
+    setExplorationMoves(movesToReplay);
+    void runExploreAnalysis(chess.fen());
+  }, [parsed, getMainlineFen, handleExitExplore, runExploreAnalysis]);
+
+  const stepExploreBackward = useCallback(() => {
+    if (!exploreMode) return false;
+    replayExploreMoves(explorationMoves.slice(0, -1));
+    return true;
+  }, [exploreMode, explorationMoves, replayExploreMoves]);
+
   const goFirst = () => seekMainline(-1);
-  const goPrev  = () => { exitExploreIfActive(); setCurrentMove((m) => Math.max(-1, m - 1)); };
+  const goPrev  = () => {
+    if (stepExploreBackward()) return;
+    setCurrentMove((m) => Math.max(-1, m - 1));
+  };
   const goNext  = () => { exitExploreIfActive(); setCurrentMove((m) => Math.min(totalMoves - 1, m + 1)); };
   const goLast  = () => seekMainline(totalMoves - 1);
 
@@ -263,7 +309,7 @@ export function GameView({ game }: { game: GameData }) {
       }
       if (e.key === "ArrowLeft") {
         e.preventDefault();
-        exitExploreIfActive();
+        if (stepExploreBackward()) return;
         setCurrentMove((m) => Math.max(-1, m - 1));
       } else if (e.key === "ArrowRight") {
         e.preventDefault();
@@ -273,7 +319,7 @@ export function GameView({ game }: { game: GameData }) {
     }
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [totalMoves, exitExploreIfActive]);
+  }, [totalMoves, exitExploreIfActive, stepExploreBackward]);
 
   useEffect(() => {
     const trail = moveTrailRef.current;
@@ -379,36 +425,9 @@ export function GameView({ game }: { game: GameData }) {
     }
   }, [analyzeGame, parsed, game.id, game.color, exitExploreIfActive, llmStatus, handleLlmAnalyze]);
 
-  const runExploreAnalysis = useCallback(async (fen: string) => {
-    const requestId = ++exploreAnalysisRequestRef.current;
-    setExploreEvalResult(null);
-    setExploreAnalyzing(true);
-    try {
-      const result = await analyzeSinglePosition(fen);
-      if (exploreAnalysisRequestRef.current === requestId) {
-        setExploreEvalResult(result);
-      }
-    } catch {
-      // Keep explore mode usable even if a speculative engine call fails.
-    } finally {
-      if (exploreAnalysisRequestRef.current === requestId) {
-        setExploreAnalyzing(false);
-      }
-    }
-  }, [analyzeSinglePosition]);
-
   function handleBreadcrumbClick(moveIndex: number) {
     if (trailDragRef.current.suppressClick) return;
-    if (!parsed) return;
-    const baseFen = getMainlineFen();
-    const chess = new Chess(baseFen === "start" ? undefined : baseFen);
-    const movesToReplay = explorationMoves.slice(0, moveIndex + 1);
-    for (const m of movesToReplay) {
-      chess.move({ from: m.from, to: m.to, promotion: "q" });
-    }
-    setExplorationChess(chess);
-    setExplorationMoves(movesToReplay);
-    void runExploreAnalysis(chess.fen());
+    replayExploreMoves(explorationMoves.slice(0, moveIndex + 1));
   }
 
   function handleExploreDrop(sourceSquare: string, targetSquare: string): boolean {
@@ -574,7 +593,7 @@ export function GameView({ game }: { game: GameData }) {
               className={styles.navBtn}
               aria-label="Попередній хід"
               onClick={goPrev}
-              disabled={currentMove === -1}
+              disabled={exploreMode ? explorationMoves.length === 0 : currentMove === -1}
             >
               <PrevIcon />
             </button>

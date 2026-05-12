@@ -4,7 +4,7 @@
 
 **Production:** ✅ Живий (Vercel + Neon + GitHub OAuth)  
 **Поточна фаза:** Фаза 1 v2 — завершено (потребує ручного тестування)  
-**Остання зміна:** 2026-05-12 — згладжено mobile route transitions і закрито mobile overflow на auth screens
+**Остання зміна:** 2026-05-12 — навігація назад у explore/variant mode тепер відкочує варіант на один хід
 
 ---
 
@@ -94,6 +94,9 @@
 - Skeleton rows у `GamesList` на mobile тепер використовують ті самі grid columns для side/status зон, що й реальні рядки партій; прибрано криве автопозиціонування заглушок на вузьких екранах.
 - AppShell тепер скидає scroll внутрішнього content-контейнера при переході між routes, додає легкий enter-перехід і стабілізує mobile viewport/bottom-nav safe area, щоб навігація між сторінками на телефоні не смикалась.
 - Під час mobile UX-аудиту знайдено horizontal overflow на стартовій і login-сторінках; hero/card/text отримали viewport-bound max-width, `min-width: 0` і коректні переноси, а global layout блокує випадковий horizontal scroll.
+
+#### Game review UX fix (2026-05-12):
+- У режимі прорахунку варіанту кнопка/клавіша "попередній хід" тепер відкочує саме останній хід варіанту і перезапускає quick Stockfish-кандидатів для нової позиції; вихід в основну лінію лишається окремою дією.
 
 ---
 
