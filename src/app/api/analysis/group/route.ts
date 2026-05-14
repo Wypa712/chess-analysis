@@ -97,10 +97,9 @@ export async function POST(req: NextRequest) {
   }
 
   const usedIds = ownedGames.map((g) => g.id);
-  const summaries = await buildGameSummaries(ownedGames);
-  const inputHash = createGroupInputHash(summaries);
+  const inputHash = createGroupInputHash(usedIds);
 
-  // Cache lookup stays before lock acquisition so cache hits do not hold the LLM lock.
+  // Cache lookup runs before summary aggregation so cache hits avoid extra DB work and LLM locks.
   const cachedRows = await db
     .select({
       id: groupAnalyses.id,
@@ -155,6 +154,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const summaries = await buildGameSummaries(ownedGames);
   const prompt = buildGroupPrompt(summaries);
 
   let parsed: GroupAnalysisJsonV1;
@@ -284,12 +284,12 @@ export async function POST(req: NextRequest) {
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
-function createGroupInputHash(summaries: string[]): string {
+function createGroupInputHash(gameIds: string[]): string {
   return createHash("sha256")
     .update(JSON.stringify({
       model: LLM_MODEL,
       promptVersion: GROUP_PROMPT_VERSION,
-      summaries,
+      gameIds,
     }))
     .digest("hex");
 }
