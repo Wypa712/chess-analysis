@@ -3,6 +3,13 @@ type RetryOptions = {
   baseDelayMs?: number;
 };
 
+export class LlmRateLimitError extends Error {
+  constructor(public readonly retryAfterSeconds: number) {
+    super(`LLM rate limited — retry after ${retryAfterSeconds}s`);
+    this.name = "LlmRateLimitError";
+  }
+}
+
 function isRetryable(err: unknown): boolean {
   if (err instanceof TypeError) return true;
   if (err !== null && typeof err === "object" && "status" in err) {
@@ -25,6 +32,19 @@ export async function retryWithBackoff<T>(
       return await fn();
     } catch (err) {
       lastErr = err;
+      if (
+        err !== null &&
+        typeof err === "object" &&
+        "status" in err &&
+        (err as { status: number }).status === 429
+      ) {
+        const headers = (err as { headers?: { get?: (key: string) => string | null } })
+          .headers;
+        const retryAfter = headers?.get?.("retry-after");
+        if (retryAfter !== null && retryAfter !== undefined) {
+          throw new LlmRateLimitError(parseInt(retryAfter, 10) || 60);
+        }
+      }
       const isAbort =
         err instanceof Error &&
         (err.name === "AbortError" || err.message.toLowerCase().includes("abort"));
