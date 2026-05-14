@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import styles from "./SyncStatusBar.module.css";
 
 const SESSION_KEY = "chess_sync_ts";
+const RATE_LIMIT_KEY = "chess_sync_rate_limited_until";
+const RATE_LIMIT_DURATION_MS = 60_000;
 
 interface SyncResult {
   imported: number;
@@ -37,6 +39,13 @@ export function SyncStatusBar({ onSynced }: SyncStatusBarProps) {
         signal: AbortSignal.timeout(60000),
       });
 
+      if (res.status === 429) {
+        const until = Date.now() + RATE_LIMIT_DURATION_MS;
+        try { localStorage.setItem(RATE_LIMIT_KEY, String(until)); } catch { /* storage unavailable */ }
+        setError("Синхронізацію rate-limited — спробуй через 60 сек");
+        return;
+      }
+
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setError((data as { error?: string }).error ?? "Помилка синхронізації");
@@ -46,7 +55,10 @@ export function SyncStatusBar({ onSynced }: SyncStatusBarProps) {
       const data = await res.json();
 
       const now = new Date().toISOString();
-      try { sessionStorage.setItem(SESSION_KEY, now); } catch { /* storage full */ }
+      try {
+        localStorage.setItem(SESSION_KEY, now);
+        localStorage.removeItem(RATE_LIMIT_KEY);
+      } catch { /* storage unavailable */ }
       setLastSyncTs(now);
       setResult({ imported: data.imported ?? 0, skipped: data.skipped ?? 0 });
       if (data.imported > 0) onSyncedRef.current?.();
@@ -58,15 +70,28 @@ export function SyncStatusBar({ onSynced }: SyncStatusBarProps) {
     }
   }, []);
 
-  // On mount: restore last timestamp for display, then always sync
+  // On mount: restore last timestamp for display, then sync unless rate-limited.
   const hasMountedRef = useRef(false);
   useEffect(() => {
     if (hasMountedRef.current) return;
     hasMountedRef.current = true;
     try {
-      const stored = sessionStorage.getItem(SESSION_KEY);
+      const stored = localStorage.getItem(SESSION_KEY);
       if (stored) setLastSyncTs(stored);
     } catch { /* storage unavailable */ }
+
+    const rateLimitedUntil = (() => {
+      try {
+        return parseInt(localStorage.getItem(RATE_LIMIT_KEY) ?? "0", 10);
+      } catch {
+        return 0;
+      }
+    })();
+    if (Date.now() < rateLimitedUntil) {
+      setError("Синхронізацію rate-limited — спробуй через 60 сек");
+      return;
+    }
+
     runSync();
   }, [runSync]);
 

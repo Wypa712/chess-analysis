@@ -43,8 +43,13 @@ export function useProfileStats(initialDays: ProfileStatsDays = 30) {
     const params = new URLSearchParams({ days: filterDays.toString() });
 
     fetch(`/api/profile/stats?${params}`, { signal: controller.signal })
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to load stats");
+      .then(async (res) => {
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          throw new Error(
+            (errBody as { error?: string }).error ?? `Помилка ${res.status}`
+          );
+        }
         return res.json();
       })
       .then((data: ProfileStats) => {
@@ -54,7 +59,11 @@ export function useProfileStats(initialDays: ProfileStatsDays = 30) {
       })
       .catch((err) => {
         if (err.name !== "AbortError") {
-          setError("Не вдалося завантажити статистику");
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Не вдалося завантажити статистику"
+          );
           setInitialLoading(false);
           setRefetching(false);
         }

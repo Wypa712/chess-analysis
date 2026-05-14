@@ -106,14 +106,20 @@ export function GameView({ game }: { game: GameData }) {
   // Load cached engine analysis on mount
   useEffect(() => {
     fetch(`/api/games/${game.id}/engine-analysis`)
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => {
+        if (!r.ok) throw new Error("Не вдалося завантажити аналіз двигуна");
+        return r.json();
+      })
       .then((data) => {
         if (data?.analysis && isEngineAnalysisJsonV1(data.analysis)) {
           setAnalysis(data.analysis);
           setAnalysisState("done");
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        setAnalysisError("Не вдалося завантажити аналіз двигуна");
+        setAnalysisState("error");
+      })
       .finally(() => setInitialFetchCount((c) => c + 1));
   }, [game.id]);
 
@@ -127,7 +133,9 @@ export function GameView({ game }: { game: GameData }) {
           setLlmStatus("done");
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        setLlmStatus("idle");
+      })
       .finally(() => setInitialFetchCount((c) => c + 1));
   }, [game.id]);
 
