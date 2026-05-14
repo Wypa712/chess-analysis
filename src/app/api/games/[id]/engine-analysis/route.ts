@@ -16,6 +16,8 @@ import { parsePgn } from "@/lib/chess/pgn";
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+const MAX_PAYLOAD_BYTES = 500 * 1024;
+
 async function getOwnedGame(gameId: string, userId: string) {
   const rows = await db
     .select({ id: games.id, pgn: games.pgn })
@@ -110,6 +112,14 @@ export async function POST(
   const ownedGame = await getOwnedGame(id, session.user.id);
   if (!ownedGame) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const contentLength = req.headers.get("content-length");
+  if (contentLength !== null) {
+    const payloadBytes = Number.parseInt(contentLength, 10);
+    if (Number.isFinite(payloadBytes) && payloadBytes > MAX_PAYLOAD_BYTES) {
+      return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+    }
   }
 
   let body: unknown;
