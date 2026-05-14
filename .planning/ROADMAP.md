@@ -165,7 +165,15 @@ All 8 original phases are complete. Production is live on Vercel.
   4. Profile/stats запити паралельні; group analysis cache ordering виправлено
   5. UI audit пройдений, мобайл responsive перевірений по всіх сторінках
   6. Error states покращені (onboarding, SyncStatusBar 429, game/profile)
-**Plans:** TBD
+**Plans:** 7 plans
+Plans:
+- [ ] 10-01-PLAN.md — Security: RLS migration + Content-Length guard + username regex validation
+- [ ] 10-02-PLAN.md — Code cleanup: extract llm-lock + groq-client shared libs + fix group cache ordering
+- [ ] 10-03-PLAN.md — Performance: parallelize profile/stats queries + cap sync concurrency + Retry-After propagation
+- [ ] 10-04-PLAN.md — Refactor: split GameView (useGameNavigation + useExploreMode) + useStockfish (useStockfishWorker + useGameAnalysis)
+- [ ] 10-05-PLAN.md — Refactor: split ProfileView (useProfileStats) + rename totalGames → analyzedGames + queen-promotion hint
+- [ ] 10-06-PLAN.md — Error states: SyncStatusBar 429/localStorage + onboarding error parsing + game/profile error visibility
+- [ ] 10-07-PLAN.md — UI/UX audit: visual sweep + mobile responsive review (has human-verify checkpoint)
 
 ### v2 Phase 3: Email Auth + Google OAuth
 **Status:** PLANNED
@@ -220,7 +228,7 @@ All 8 original phases are complete. Production is live on Vercel.
 | M1 — 7. Player Profile | Done | Complete | 2025 |
 | M1 — 8. Polish & Deploy | Done | Complete | 2025 |
 | M2 — v2 Phase 1: Onboarding + Auto-Sync | Done | Complete | 2026-05-10 |
-| M2 — v2 Phase 2: Polish & Hardening | TBD | Planned | - |
+| M2 — v2 Phase 2: Polish & Hardening | 0/7 | Planned | - |
 | M2 — v2 Phase 3: Email Auth + Google OAuth | TBD | Planned | - |
 | M2 — v2 Phase 4: React Query + Client Caching | TBD | Planned | - |
 | M2 — v2 Phase 5: LLM Abstraction + Backlog | TBD | Planned | - |
