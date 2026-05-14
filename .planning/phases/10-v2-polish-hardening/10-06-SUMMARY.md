@@ -64,6 +64,7 @@ completed: 2026-05-14
 ## Task Commits
 
 1. **Task 1-2: Sync 429 guard and client error-state hardening** - `3ef60ae` (fix)
+2. **Review fix: Non-Error profile fetch rejection guard** - `cec281a` (fix)
 
 **Plan metadata:** this summary commit.
 
@@ -81,7 +82,20 @@ completed: 2026-05-14
 
 ## Deviations from Plan
 
-None - plan executed exactly as written.
+### Auto-fixed Issues
+
+**1. [Rule 1 - Bug] Guarded non-Error profile fetch rejections**
+- **Found during:** Code review after Task 2
+- **Issue:** `useProfileStats` assumed caught values always expose `.name`, which can throw if a promise rejects with a primitive.
+- **Fix:** Changed the abort check to `err instanceof Error && err.name === "AbortError"`.
+- **Files modified:** `src/hooks/useProfileStats.ts`
+- **Verification:** `npx.cmd tsc --noEmit`; `npx.cmd vitest run`
+- **Committed in:** `cec281a`
+
+---
+
+**Total deviations:** 1 auto-fixed (1 bug).
+**Impact on plan:** Defensive correctness fix only; no behavior or scope expansion.
 
 ## Issues Encountered
 
