@@ -2,24 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { chessAccounts, engineAnalyses, gameAnalyses, games, groupAnalyses, llmRequestLocks } from "@/db/schema";
+import { chessAccounts, engineAnalyses, gameAnalyses, games, groupAnalyses } from "@/db/schema";
 import { eq, and, inArray, desc, sql } from "drizzle-orm";
-import Groq from "groq-sdk";
 import { isGroupAnalysisJsonV1, type GroupAnalysisJsonV1 } from "@/lib/llm/types";
-import { retryWithBackoff } from "@/lib/retry";
+import { LlmRateLimitError, retryWithBackoff } from "@/lib/retry";
 import { captureSanitizedException } from "@/lib/observability/sentry";
+import { acquireLlmLock, releaseLlmLock } from "@/lib/db/llm-lock";
+import { groq } from "@/lib/llm/groq-client";
 
 const LLM_MODEL = "llama-3.3-70b-versatile";
 const GROUP_PROMPT_VERSION = "group-analysis-v1";
 const MIN_GAMES = 5;
 const MAX_GAMES = 30;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const LOCK_TTL_MS = 2 * 60 * 1000;
-
-// P0-3: module-level client so HTTP connections are reused across warm invocations
-const groq = process.env.GROQ_API_KEY
-  ? new Groq({ apiKey: process.env.GROQ_API_KEY })
-  : null;
 
 // ── GET: last cached group analysis for the current user ────────────────────
 
@@ -105,6 +100,7 @@ export async function POST(req: NextRequest) {
   const summaries = await buildGameSummaries(ownedGames);
   const inputHash = createGroupInputHash(summaries);
 
+  // Cache lookup stays before lock acquisition so cache hits do not hold the LLM lock.
   const cachedRows = await db
     .select({
       id: groupAnalyses.id,
@@ -208,6 +204,15 @@ export async function POST(req: NextRequest) {
 
     parsed = unknown;
   } catch (err) {
+    if (err instanceof LlmRateLimitError) {
+      return NextResponse.json(
+        {
+          error: `LLM перевантажена — спробуй через ${err.retryAfterSeconds} сек`,
+          retryAfter: err.retryAfterSeconds,
+        },
+        { status: 429 }
+      );
+    }
     const isAbort = err instanceof Error && (err.name === "AbortError" || err.message.includes("abort"));
     console.error("[group-analysis] LLM error:", err);
     if (!isAbort) {
@@ -287,35 +292,6 @@ function createGroupInputHash(summaries: string[]): string {
       summaries,
     }))
     .digest("hex");
-}
-
-async function acquireLlmLock(lockKey: string, userId: string, scope: string): Promise<boolean> {
-  await db
-    .delete(llmRequestLocks)
-    .where(sql`${llmRequestLocks.expiresAt} < NOW()`);
-
-  const rows = await db
-    .insert(llmRequestLocks)
-    .values({
-      lockKey,
-      userId,
-      scope,
-      expiresAt: new Date(Date.now() + LOCK_TTL_MS),
-    })
-    .onConflictDoNothing()
-    .returning({ lockKey: llmRequestLocks.lockKey });
-
-  return rows.length > 0;
-}
-
-async function releaseLlmLock(lockKey: string, userId: string): Promise<void> {
-  try {
-    await db
-      .delete(llmRequestLocks)
-      .where(and(eq(llmRequestLocks.lockKey, lockKey), eq(llmRequestLocks.userId, userId)));
-  } catch (err) {
-    console.error("[group-analysis] lock release failed:", err);
-  }
 }
 
 type GameRow = {
