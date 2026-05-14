@@ -58,7 +58,7 @@ export function useProfileStats(initialDays: ProfileStatsDays = 30) {
         setRefetching(false);
       })
       .catch((err) => {
-        if (err.name !== "AbortError") {
+        if (!(err instanceof Error && err.name === "AbortError")) {
           setError(
             err instanceof Error
               ? err.message
