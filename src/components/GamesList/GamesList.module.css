@@ -268,12 +268,14 @@
 }
 
 .dot_white {
-  background-color: #d4e8d0;
-  border: 1px solid #7a9e76;
+  /* Audit: replaced board-like hardcoded whites/greens with global board/token colors. */
+  background-color: var(--color-board-light);
+  border: 1px solid var(--color-green-lt);
 }
 
 .dot_black {
-  background-color: #253025;
+  /* Audit: replaced dark piece fill with global background token. */
+  background-color: var(--color-bg3);
   border: 1px solid var(--color-border);
 }
 
@@ -352,11 +354,13 @@
 }
 
 .groupError {
-  padding: 10px 14px;
+  /* Audit: normalized padding to 4px grid. */
+  padding: 12px 16px;
   background: rgba(224, 85, 85, 0.08);
   border: 1px solid rgba(224, 85, 85, 0.3);
   border-radius: var(--radius-sm);
-  color: #e08080;
+  /* Audit: replaced hardcoded error text with danger token. */
+  color: var(--color-danger);
   font-size: 0.8125rem;
   margin-top: 8px;
 }

@@ -67,13 +67,15 @@
 
 .evalBarBlack {
   flex: 1;
-  background: #1a1a1a;
+  /* Audit: replaced hardcoded eval dark fill with global background token. */
+  background: var(--color-bg);
   transition: flex 0.45s ease;
 }
 
 .evalBarWhite {
   flex-shrink: 0;
-  background: #e8dcc8;
+  /* Audit: replaced hardcoded eval light fill with global board-light token. */
+  background: var(--color-board-light);
   transition: height 0.45s ease;
 }
 
@@ -158,15 +160,17 @@
 }
 
 .playerIconWhite {
-  background: linear-gradient(135deg, #f0e8d0, #d4c49a);
+  /* Audit: replaced hardcoded white-piece gradient with palette tokens. */
+  background: linear-gradient(135deg, var(--color-board-light), var(--color-green-pl));
   border: 1px solid var(--color-gold);
-  color: #1a1a1a;
+  color: var(--color-bg);
 }
 
 .playerIconBlack {
-  background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
-  border: 1px solid #444;
-  color: #ccc;
+  /* Audit: replaced hardcoded black-piece gradient with palette tokens. */
+  background: linear-gradient(135deg, var(--color-bg4), var(--color-bg));
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
 }
 
 .playerInfo {
@@ -815,13 +819,13 @@
     gap: 0;
   }
 
-  .boardArea {
+.boardArea {
     border-right: none;
     border-bottom: 1px solid var(--color-border);
     overflow-y: auto;
     overflow-x: hidden;
     padding: 12px;
-    gap: 10px;
+    gap: 12px;
     width: 100%;
     box-sizing: border-box;
   }

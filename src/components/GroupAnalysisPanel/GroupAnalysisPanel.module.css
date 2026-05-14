@@ -75,7 +75,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 9px 12px;
+  /* Audit: normalized accordion padding to 4px grid. */
+  padding: 8px 12px;
   background: color-mix(in srgb, var(--color-surface-elevated) 74%, var(--color-bg2));
   border: none;
   cursor: pointer;
@@ -112,9 +113,10 @@
 .weaknessItem {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   font-size: 0.8125rem;
-  padding: 11px 12px;
+  /* Audit: normalized weakness row padding to 4px grid. */
+  padding: 12px;
   border-top: 1px solid color-mix(in srgb, var(--color-border) 48%, transparent);
 }
 
@@ -145,9 +147,10 @@
 .openingItem {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   font-size: 0.8125rem;
-  padding: 10px 12px;
+  /* Audit: normalized opening row padding to 4px grid. */
+  padding: 12px;
   background: color-mix(in srgb, var(--color-surface-elevated) 72%, var(--color-surface));
   border-radius: var(--radius-sm);
   box-shadow: inset 2px 0 0 color-mix(in srgb, var(--color-info) 50%, var(--color-border));
@@ -171,13 +174,13 @@
 .actionPlanGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 
 .actionCard {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   padding: 12px;
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--color-surface-elevated) 74%, var(--color-surface));

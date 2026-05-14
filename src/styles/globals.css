@@ -6,6 +6,8 @@
   padding: 0;
 }
 
+/* Audit: loading pattern is full-page spinner for initial route loads; section-level refreshes keep existing content dimmed or use inline loaders. */
+
 :root {
   /* Dark chess workspace palette */
   --color-bg:               #0d1513;

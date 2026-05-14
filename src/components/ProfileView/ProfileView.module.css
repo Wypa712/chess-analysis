@@ -14,7 +14,8 @@
     linear-gradient(180deg, color-mix(in srgb, var(--color-surface-elevated) 64%, var(--color-surface)), var(--color-surface));
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: 18px 20px;
+  /* Audit: normalized card padding to 4px grid. */
+  padding: 16px 20px;
 }
 
 .cardTitle {
@@ -32,16 +33,18 @@
     linear-gradient(135deg, color-mix(in srgb, var(--color-info) 10%, var(--color-surface)), var(--color-surface) 56%, color-mix(in srgb, var(--color-gold) 7%, var(--color-surface)));
   border: 1px solid color-mix(in srgb, var(--color-info) 22%, var(--color-border));
   border-radius: var(--radius-lg);
-  padding: 20px 24px;
+  /* Audit: normalized hero padding to 4px grid. */
+  padding: 24px;
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 16px;
 }
 
 .heroAvatarWrap {
   width: 56px;
   height: 56px;
-  border-radius: 14px;
+  /* Audit: replaced one-off radius with global token. */
+  border-radius: var(--radius-lg);
   overflow: hidden;
   flex-shrink: 0;
   background: linear-gradient(135deg, var(--color-info), var(--color-teal));
@@ -55,7 +58,7 @@
   width: 56px;
   height: 56px;
   object-fit: cover;
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
 }
 
 .heroAvatarFallback {
@@ -86,8 +89,9 @@
 
 .platformBadge {
   font-size: 12px;
-  padding: 3px 10px;
-  border-radius: 20px;
+  /* Audit: normalized badge spacing/radius to design tokens. */
+  padding: 4px 12px;
+  border-radius: var(--radius-md);
   font-weight: 500;
   border: 1px solid var(--color-border);
 }
@@ -154,9 +158,10 @@
 }
 
 .filterModeBtn {
-  padding: 5px 14px;
+  /* Audit: normalized segmented control padding to 4px grid. */
+  padding: 4px 12px;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: none;
   color: var(--color-text-muted);
   cursor: pointer;
@@ -187,7 +192,8 @@
 }
 
 .segBtn {
-  padding: 5px 14px;
+  /* Audit: normalized filter button padding to 4px grid. */
+  padding: 4px 12px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-bg2);
@@ -308,7 +314,8 @@
 }
 
 .colorDotB {
-  background: #1a1a1a;
+  /* Audit: replaced hardcoded black with global surface/background token. */
+  background: var(--color-bg);
   border: 1px solid var(--color-text-faded);
 }
 
@@ -335,7 +342,8 @@
   grid-template-columns: 1fr 80px 60px 80px;
   gap: 8px;
   align-items: center;
-  padding: 9px 0;
+  /* Audit: normalized row padding to 4px grid. */
+  padding: 8px 0;
   border-bottom: 1px solid rgba(42, 61, 42, 0.4);
   font-size: 13px;
 }
@@ -354,7 +362,7 @@
 .miniBar {
   height: 6px;
   background: var(--color-bg3);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   width: 80px;
 }
@@ -362,7 +370,7 @@
 .miniBarFill {
   height: 100%;
   background: linear-gradient(90deg, var(--color-teal), var(--color-info));
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 
 /* ── ELO chart ── */
@@ -386,7 +394,8 @@
 }
 
 .eloToggleBtn {
-  padding: 3px 10px;
+  /* Audit: normalized chart toggle padding to 4px grid. */
+  padding: 4px 12px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
   background: transparent;
@@ -416,7 +425,8 @@
 
 
 .eloTCBtn {
-  padding: 2px 9px;
+  /* Audit: normalized time-control toggle padding to 4px grid. */
+  padding: 4px 8px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
   background: transparent;
@@ -449,7 +459,8 @@
     linear-gradient(180deg, color-mix(in srgb, var(--color-surface-elevated) 68%, var(--color-surface)), var(--color-surface));
   border: 1px solid color-mix(in srgb, var(--color-info) 18%, var(--color-border));
   border-radius: var(--radius-lg);
-  padding: 18px 20px;
+  /* Audit: normalized group panel padding to 4px grid. */
+  padding: 16px 20px;
 }
 
 .groupHeader {
@@ -557,7 +568,8 @@
   background: var(--color-green);
   color: var(--color-bg);
   border: none;
-  border-radius: 0.375rem;
+  /* Audit: replaced one-off radius with global token. */
+  border-radius: var(--radius-md);
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s;
@@ -597,17 +609,19 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 10px;
+  gap: 8px;
   padding: 12px 16px;
   background: rgba(180, 60, 60, 0.08);
   border: 1px solid rgba(180, 60, 60, 0.25);
-  border-radius: 8px;
+  /* Audit: replaced one-off radius with global token. */
+  border-radius: var(--radius-md);
   margin-top: 8px;
 }
 
 .groupErrorText {
   font-size: 13px;
-  color: #e07070;
+  /* Audit: replaced hardcoded error text with danger token. */
+  color: var(--color-danger);
   line-height: 1.5;
 }
 
