@@ -857,6 +857,14 @@
   color: #fff;
 }
 
+.exploreModeNote {
+  margin: -6px 0 0;
+  font-size: 0.75rem;
+  line-height: 1.3;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
 /* ── Phase accuracy row (below eval chart) ───────────────────────────────── */
 
 .phaseAccuracyGrid {
@@ -1390,4 +1398,3 @@
   line-height: 1.4;
   color: var(--color-text-muted);
 }
-

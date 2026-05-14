@@ -470,6 +470,11 @@ export function GameView({ game }: { game: GameData }) {
             )}
           </div>
         </div>
+        {exploreMode && (
+          <p className={styles.exploreModeNote}>
+            Перетворення пішака: тільки ферзь
+          </p>
+        )}
 
         <PlayerBadge
           name="Ви"

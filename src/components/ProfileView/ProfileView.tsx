@@ -6,24 +6,8 @@ import { useAppUser } from "@/components/AppUserContext";
 import styles from "./ProfileView.module.css";
 import { RouteLoader } from "@/components/RouteLoader/RouteLoader";
 import { GroupAnalysisPanel } from "@/components/GroupAnalysisPanel/GroupAnalysisPanel";
+import { useProfileStats } from "@/hooks/useProfileStats";
 import type { GroupAnalysisJsonV1 } from "@/lib/llm/types";
-
-type ProfileStats = {
-  totalGames: number;
-  totalAvailable: number;
-  accounts: Array<{ platform: "chess_com" | "lichess"; username: string }>;
-  wdl: { wins: number; draws: number; losses: number } | null;
-  byColor: {
-    white: { games: number; wins: number; rate: number };
-    black: { games: number; wins: number; rate: number };
-  } | null;
-  byTimeControl: Array<{ label: string; games: number; rate: number }> | null;
-  openings: Array<{ name: string; games: number; rate: number }> | null;
-  eloHistory: {
-    chess_com: Record<string, Array<{ playedAt: string; rating: number }>>;
-    lichess: Record<string, Array<{ playedAt: string; rating: number }>>;
-  };
-};
 
 type GroupAnalysisRow = {
   id: string;
@@ -42,51 +26,13 @@ export function ProfileView() {
   const validDaysList = [0, 7, 30, 90] as const;
   const validDays = (validDaysList.includes(parsedDays as any) ? parsedDays : 30) as 0 | 7 | 30 | 90;
 
-  const [filterDays, setFilterDays] = useState<0 | 7 | 30 | 90>(validDays);
-
-  const [stats, setStats] = useState<ProfileStats | null>(null);
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [refetching, setRefetching] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const profileStats = useProfileStats(validDays);
+  const { stats, initialLoading, refetching, error } = profileStats;
 
   const [groupAnalysis, setGroupAnalysis] = useState<GroupAnalysisRow | null>(null);
   const [groupLoading, setGroupLoading] = useState(false);
   const [groupReanalyzing, setGroupReanalyzing] = useState(false);
   const [groupError, setGroupError] = useState<string | null>(null);
-
-  // Fetch profile stats
-  useEffect(() => {
-    const controller = new AbortController();
-    if (stats) {
-      setRefetching(true);
-    } else {
-      setInitialLoading(true);
-    }
-    setError(null);
-
-    const params = new URLSearchParams({ days: filterDays.toString() });
-
-    fetch(`/api/profile/stats?${params}`, { signal: controller.signal })
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to load stats");
-        return res.json();
-      })
-      .then((data: ProfileStats) => {
-        setStats(data);
-        setInitialLoading(false);
-        setRefetching(false);
-      })
-      .catch((err) => {
-        if (err.name !== "AbortError") {
-          setError("Не вдалося завантажити статистику");
-          setInitialLoading(false);
-          setRefetching(false);
-        }
-      });
-
-    return () => controller.abort();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterDays]);
 
   // Fetch group analysis
   useEffect(() => {
@@ -105,12 +51,6 @@ export function ProfileView() {
         setGroupLoading(false);
       });
   }, []);
-
-  // Update URL when filters change
-  useEffect(() => {
-    const params = new URLSearchParams({ days: filterDays.toString() });
-    router.replace(`/profile?${params}`, { scroll: false });
-  }, [filterDays, router]);
 
   async function handleGroupAnalyze() {
     setGroupReanalyzing(true);
@@ -150,7 +90,7 @@ export function ProfileView() {
 
   if (!stats) return null;
 
-  if (stats.totalGames < 5) {
+  if (stats.analyzedGames < 5) {
     return (
       <div className={styles.page}>
         <div className={styles.emptyState}>
@@ -214,7 +154,7 @@ export function ProfileView() {
           </div>
         </div>
         <div className={styles.heroTotal}>
-          <span className={styles.heroTotalNum}>{stats.totalGames}</span>
+          <span className={styles.heroTotalNum}>{stats.analyzedGames}</span>
           <span className={styles.heroTotalLabel}>партій</span>
         </div>
       </section>
@@ -226,8 +166,8 @@ export function ProfileView() {
             <button
               type="button"
               key={v}
-              className={`${styles.segBtn} ${filterDays === v ? styles.segBtnActive : ""}`}
-              onClick={() => setFilterDays(v)}
+              className={`${styles.segBtn} ${profileStats.filterDays === v ? styles.segBtnActive : ""}`}
+              onClick={() => profileStats.setFilterDays(v)}
             >
               {v === 0 ? "Всі" : `${v} дн.`}
             </button>

@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
 
   if (accountIdList.length === 0) {
     return NextResponse.json({
-      totalGames: 0,
+      analyzedGames: 0,
       accounts: [],
       wdl: null,
       byColor: null,
@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
 
   if (totalAvailable < MIN_GAMES_FOR_STATS) {
     return NextResponse.json({
-      totalGames: totalAvailable,
+      analyzedGames: totalAvailable,
       accounts,
       wdl: null,
       byColor: null,
@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
 
   if (totalAvailable === 0) {
     return NextResponse.json({
-      totalGames: 0,
+      analyzedGames: 0,
       accounts,
       wdl: null,
       byColor: null,
@@ -90,7 +90,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const totalGames = totalAvailable;
+  const analyzedGames = totalAvailable;
   const gameFilter = filterCondition;
 
   const eloDateFilter =
@@ -215,7 +215,7 @@ export async function GET(req: NextRequest) {
   };
 
   return NextResponse.json({
-    totalGames,
+    analyzedGames,
     totalAvailable,
     accounts,
     wdl,
