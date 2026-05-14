@@ -93,32 +93,70 @@ export async function GET(req: NextRequest) {
   const totalGames = totalAvailable;
   const gameFilter = filterCondition;
 
-  // W/D/L
-  const wdlRows = await db
-    .select({
-      result: games.result,
-      count: sql<number>`COUNT(*)::int`,
-    })
-    .from(games)
-    .where(gameFilter)
-    .groupBy(games.result);
+  const eloDateFilter =
+    days === 0
+      ? sql`${games.playerRating} IS NOT NULL`
+      : and(
+          sql`${games.playerRating} IS NOT NULL`,
+          sql`${games.playedAt} > NOW() - INTERVAL '1 day' * ${days}`
+        );
+
+  const [wdlRows, colorRows, tcRows, openingRows, eloRows] = await Promise.all([
+    db
+      .select({
+        result: games.result,
+        count: sql<number>`COUNT(*)::int`,
+      })
+      .from(games)
+      .where(gameFilter)
+      .groupBy(games.result),
+    db
+      .select({
+        color: games.color,
+        total: sql<number>`COUNT(*)::int`,
+        wins: sql<number>`SUM(CASE WHEN ${games.result} = 'win' THEN 1 ELSE 0 END)::int`,
+      })
+      .from(games)
+      .where(gameFilter)
+      .groupBy(games.color),
+    db
+      .select({
+        category: games.timeControlCategory,
+        total: sql<number>`COUNT(*)::int`,
+        wins: sql<number>`SUM(CASE WHEN ${games.result} = 'win' THEN 1 ELSE 0 END)::int`,
+      })
+      .from(games)
+      .where(gameFilter)
+      .groupBy(games.timeControlCategory),
+    db
+      .select({
+        opening: sql<string>`COALESCE(${games.openingName}, 'Невідомий дебют')`,
+        total: sql<number>`COUNT(*)::int`,
+        wins: sql<number>`SUM(CASE WHEN ${games.result} = 'win' THEN 1 ELSE 0 END)::int`,
+      })
+      .from(games)
+      .where(gameFilter)
+      .groupBy(sql`COALESCE(${games.openingName}, 'Невідомий дебют')`)
+      .orderBy(sql`COUNT(*) DESC`)
+      .limit(5),
+    db
+      .select({
+        platform: chessAccounts.platform,
+        timeControl: games.timeControlCategory,
+        playedAt: games.playedAt,
+        rating: games.playerRating,
+      })
+      .from(games)
+      .innerJoin(chessAccounts, eq(games.chessAccountId, chessAccounts.id))
+      .where(and(eq(chessAccounts.userId, userId), eloDateFilter))
+      .orderBy(asc(games.playedAt)),
+  ]);
 
   const wdl = {
     wins: wdlRows.find((r) => r.result === "win")?.count ?? 0,
     draws: wdlRows.find((r) => r.result === "draw")?.count ?? 0,
     losses: wdlRows.find((r) => r.result === "loss")?.count ?? 0,
   };
-
-  // By color
-  const colorRows = await db
-    .select({
-      color: games.color,
-      total: sql<number>`COUNT(*)::int`,
-      wins: sql<number>`SUM(CASE WHEN ${games.result} = 'win' THEN 1 ELSE 0 END)::int`,
-    })
-    .from(games)
-    .where(gameFilter)
-    .groupBy(games.color);
 
   const whiteRow = colorRows.find((r) => r.color === "white");
   const blackRow = colorRows.find((r) => r.color === "black");
@@ -136,17 +174,6 @@ export async function GET(req: NextRequest) {
     },
   };
 
-  // By time control
-  const tcRows = await db
-    .select({
-      category: games.timeControlCategory,
-      total: sql<number>`COUNT(*)::int`,
-      wins: sql<number>`SUM(CASE WHEN ${games.result} = 'win' THEN 1 ELSE 0 END)::int`,
-    })
-    .from(games)
-    .where(gameFilter)
-    .groupBy(games.timeControlCategory);
-
   const tcLabels: Record<string, string> = {
     bullet: "Bullet",
     blitz: "Blitz",
@@ -162,44 +189,11 @@ export async function GET(req: NextRequest) {
     rate: Math.round(((r.wins ?? 0) / r.total) * 100),
   }));
 
-  // Top 5 openings
-  const openingRows = await db
-    .select({
-      opening: sql<string>`COALESCE(${games.openingName}, 'Невідомий дебют')`,
-      total: sql<number>`COUNT(*)::int`,
-      wins: sql<number>`SUM(CASE WHEN ${games.result} = 'win' THEN 1 ELSE 0 END)::int`,
-    })
-    .from(games)
-    .where(gameFilter)
-    .groupBy(sql`COALESCE(${games.openingName}, 'Невідомий дебют')`)
-    .orderBy(sql`COUNT(*) DESC`)
-    .limit(5);
-
   const openings = openingRows.map((r) => ({
     name: r.opening,
     games: r.total,
     rate: Math.round(((r.wins ?? 0) / r.total) * 100),
   }));
-
-  // ELO history — respects the same period filter as the rest of the stats
-  const eloDateFilter =
-    days === 0
-      ? sql`${games.playerRating} IS NOT NULL`
-      : and(
-          sql`${games.playerRating} IS NOT NULL`,
-          sql`${games.playedAt} > NOW() - INTERVAL '1 day' * ${days}`
-        );
-  const eloRows = await db
-    .select({
-      platform: chessAccounts.platform,
-      timeControl: games.timeControlCategory,
-      playedAt: games.playedAt,
-      rating: games.playerRating,
-    })
-    .from(games)
-    .innerJoin(chessAccounts, eq(games.chessAccountId, chessAccounts.id))
-    .where(and(eq(chessAccounts.userId, userId), eloDateFilter))
-    .orderBy(asc(games.playedAt));
 
   type EloPoint = { playedAt: string; rating: number };
   type EloByTC = Partial<Record<string, EloPoint[]>>;
