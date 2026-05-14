@@ -167,7 +167,7 @@ All 8 original phases are complete. Production is live on Vercel.
   6. Error states покращені (onboarding, SyncStatusBar 429, game/profile)
 **Plans:** 7 plans
 Plans:
-- [ ] 10-01-PLAN.md — Security: RLS migration + Content-Length guard + username regex validation
+- [x] 10-01-PLAN.md — Security: RLS migration + Content-Length guard + username regex validation
 - [ ] 10-02-PLAN.md — Code cleanup: extract llm-lock + groq-client shared libs + fix group cache ordering
 - [ ] 10-03-PLAN.md — Performance: parallelize profile/stats queries + cap sync concurrency + Retry-After propagation
 - [ ] 10-04-PLAN.md — Refactor: split GameView (useGameNavigation + useExploreMode) + useStockfish (useStockfishWorker + useGameAnalysis)
