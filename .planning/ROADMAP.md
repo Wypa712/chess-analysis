@@ -170,9 +170,9 @@ Plans:
 - [x] 10-01-PLAN.md — Security: RLS migration + Content-Length guard + username regex validation
 - [x] 10-02-PLAN.md — Code cleanup: extract llm-lock + groq-client shared libs + fix group cache ordering
 - [x] 10-03-PLAN.md — Performance: parallelize profile/stats queries + cap sync concurrency + Retry-After propagation
-- [ ] 10-04-PLAN.md — Refactor: split GameView (useGameNavigation + useExploreMode) + useStockfish (useStockfishWorker + useGameAnalysis)
-- [ ] 10-05-PLAN.md — Refactor: split ProfileView (useProfileStats) + rename totalGames → analyzedGames + queen-promotion hint
-- [ ] 10-06-PLAN.md — Error states: SyncStatusBar 429/localStorage + onboarding error parsing + game/profile error visibility
+- [x] 10-04-PLAN.md — Refactor: split GameView (useGameNavigation + useExploreMode) + useStockfish (useStockfishWorker + useGameAnalysis)
+- [x] 10-05-PLAN.md — Refactor: split ProfileView (useProfileStats) + rename totalGames → analyzedGames + queen-promotion hint
+- [x] 10-06-PLAN.md — Error states: SyncStatusBar 429/localStorage + onboarding error parsing + game/profile error visibility
 - [ ] 10-07-PLAN.md — UI/UX audit: visual sweep + mobile responsive review (has human-verify checkpoint)
 
 ### v2 Phase 3: Email Auth + Google OAuth
