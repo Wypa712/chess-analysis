@@ -169,7 +169,7 @@ All 8 original phases are complete. Production is live on Vercel.
 Plans:
 - [x] 10-01-PLAN.md — Security: RLS migration + Content-Length guard + username regex validation
 - [x] 10-02-PLAN.md — Code cleanup: extract llm-lock + groq-client shared libs + fix group cache ordering
-- [ ] 10-03-PLAN.md — Performance: parallelize profile/stats queries + cap sync concurrency + Retry-After propagation
+- [x] 10-03-PLAN.md — Performance: parallelize profile/stats queries + cap sync concurrency + Retry-After propagation
 - [ ] 10-04-PLAN.md — Refactor: split GameView (useGameNavigation + useExploreMode) + useStockfish (useStockfishWorker + useGameAnalysis)
 - [ ] 10-05-PLAN.md — Refactor: split ProfileView (useProfileStats) + rename totalGames → analyzedGames + queen-promotion hint
 - [ ] 10-06-PLAN.md — Error states: SyncStatusBar 429/localStorage + onboarding error parsing + game/profile error visibility
