@@ -22,17 +22,17 @@ Last updated: 2026-05-14 (Phase 10 planned)
 ## Project Reference
 
 **Core value:** Україномовний шаховий тренер — Stockfish-аналіз + LLM-коучинг для гравців ~1000 ELO
-**Current focus:** Phase 10 — v2-polish-hardening
+**Current focus:** Phase 12 — react-query-client-caching
 
 ---
 
 ## Current Position
 
-Phase: 10 (v2-polish-hardening) — EXECUTING
-Plan: 7 of 7
+Phase: 12 (react-query-client-caching) — PLANNED
+Plans: 4 plans in 3 waves
 **Milestone:** 2 — v2
-**Current phase:** 10
-**Last completed:** v2 Phase 1 — Onboarding + Auto-Sync (2026-05-10)
+**Current phase:** 12
+**Last completed:** v2 Phase 2 — Polish & Hardening (2026-05-15)
 **Status:** Ready to execute
 
 ```

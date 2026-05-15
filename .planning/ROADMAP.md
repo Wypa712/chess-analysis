@@ -1,6 +1,6 @@
 # ROADMAP.md — Chess Analysis App
 
-Last updated: 2026-05-14
+Last updated: 2026-05-15
 
 ---
 
@@ -198,7 +198,12 @@ Plans:
   1. Список партій не перезавантажується при поверненні на dashboard
   2. Повторний перехід на сторінку партії не робить зайвих API-запитів
   3. Cache invalidation коректна після sync нових партій
-**Plans:** TBD
+**Plans:** 4 plans
+Plans:
+- [ ] 12-01-PLAN.md — Встановити @tanstack/react-query + створити QueryProvider + інтегрувати у (app) layout
+- [ ] 12-02-PLAN.md — Мігрувати DashboardClient/GamesList на useQuery + cache invalidation у SyncStatusBar
+- [ ] 12-03-PLAN.md — Мігрувати GameView GET analysis endpoints на useQuery (staleTime Infinity)
+- [ ] 12-04-PLAN.md — Мігрувати group analysis GET у ProfileView на useQuery
 
 ### v2 Phase 5: LLM Abstraction + Backlog Features
 **Status:** PLANNED
@@ -230,5 +235,5 @@ Plans:
 | M2 — v2 Phase 1: Onboarding + Auto-Sync | Done | Complete | 2026-05-10 |
 | M2 — v2 Phase 2: Polish & Hardening | 0/7 | Planned | - |
 | M2 — v2 Phase 3: Email Auth + Google OAuth | TBD | Planned | - |
-| M2 — v2 Phase 4: React Query + Client Caching | TBD | Planned | - |
+| M2 — v2 Phase 4: React Query + Client Caching | 0/4 | Planned | - |
 | M2 — v2 Phase 5: LLM Abstraction + Backlog | TBD | Planned | - |
