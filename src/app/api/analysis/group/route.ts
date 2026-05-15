@@ -127,18 +127,9 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const lockKey = `group-analysis:${userId}:${inputHash}`;
-  const lockAcquired = await acquireLlmLock(lockKey, userId, "group-analysis");
-  if (!lockAcquired) {
-    return NextResponse.json(
-      { error: "Аналіз уже виконується. Зачекайте кілька секунд." },
-      { status: 429 }
-    );
-  }
-
-  try {
-
   // P1-6: rate-limit — one new group analysis per 60 seconds per user.
+  // This check runs BEFORE acquiring the lock to avoid wasting a lock
+  // insert + release (2 extra DB round-trips) on rate-limited requests.
   const recentRows = await db
     .select({ id: groupAnalyses.id })
     .from(groupAnalyses)
@@ -153,6 +144,17 @@ export async function POST(req: NextRequest) {
       { status: 429 }
     );
   }
+
+  const lockKey = `group-analysis:${userId}:${inputHash}`;
+  const lockAcquired = await acquireLlmLock(lockKey, userId, "group-analysis");
+  if (!lockAcquired) {
+    return NextResponse.json(
+      { error: "Аналіз уже виконується. Зачекайте кілька секунд." },
+      { status: 429 }
+    );
+  }
+
+  try {
 
   const summaries = await buildGameSummaries(ownedGames);
   const prompt = buildGroupPrompt(summaries);
