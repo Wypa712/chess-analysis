@@ -39,7 +39,7 @@ export function ProfileView() {
     isPending: groupLoading,
     isError: groupFetchError,
   } = useQuery({
-    queryKey: ["group-analysis"],
+    queryKey: ["group-analysis", user.id],
     queryFn: async ({ signal }) => {
       const res = await fetch("/api/analysis/group", { signal });
       if (!res.ok) throw new Error("Failed to fetch group analysis");
@@ -62,19 +62,20 @@ export function ProfileView() {
     setGroupError(null);
     try {
       const res = await fetch("/api/analysis/group", { method: "POST" });
-      const data = await res.json();
       if (!res.ok) {
         if (res.status === 429) {
           setGroupError("Ліміт запитів вичерпано — зачекайте хвилину перед повторним аналізом.");
         } else if (res.status === 502 || res.status === 503) {
           setGroupError("Помилка сервера — спробуйте пізніше");
         } else {
-          setGroupError(data.error ?? "Не вдалося запустити аналіз");
+          const errData = await res.json().catch(() => ({})) as { error?: string };
+          setGroupError(errData.error ?? "Не вдалося запустити аналіз");
         }
         return;
       }
+      const data = await res.json();
       if (data?.analysis && isGroupAnalysisJsonV1(data.analysis.analysisJson)) {
-        queryClient.setQueryData(["group-analysis"], data.analysis as GroupAnalysisRow);
+        queryClient.setQueryData(["group-analysis", user.id], data.analysis as GroupAnalysisRow);
       }
     } catch {
       setGroupError("Не вдалося отримати відповідь. Перевірте з'єднання.");
@@ -131,8 +132,8 @@ export function ProfileView() {
 
   const { wdl, byColor, byTimeControl, openings, eloHistory } = stats;
   const total = wdl.wins + wdl.draws + wdl.losses;
-  const wPct = Math.round((wdl.wins / total) * 100);
-  const dPct = Math.round((wdl.draws / total) * 100);
+  const wPct = total > 0 ? Math.round((wdl.wins / total) * 100) : 0;
+  const dPct = total > 0 ? Math.round((wdl.draws / total) * 100) : 0;
   const lPct = 100 - wPct - dPct;
 
   return (
@@ -404,9 +405,10 @@ function EloChartPlaceholder({
 
   // Reset TC to first available when platform changes
   useEffect(() => {
-    const first = TC_ORDER.find((tc) => (activeRecord[tc]?.length ?? 0) > 0);
-    if (first && !activeRecord[activeTC]) setActiveTC(first);
-  }, [activePlatform]); // eslint-disable-line react-hooks/exhaustive-deps
+    const record = activePlatform === "chess_com" ? ccData : liData;
+    const first = TC_ORDER.find((tc) => (record[tc]?.length ?? 0) > 0);
+    if (first) setActiveTC(first);
+  }, [activePlatform, ccData, liData]);
 
   const activeSeries = activeRecord[activeTC] ?? [];
 
