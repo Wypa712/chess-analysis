@@ -1,49 +1,58 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-current_phase: 10
-status: executing
-last_updated: "2026-05-14T19:35:44.196Z"
+milestone: v2
+milestone_name: v2
+current_phase: 12
+status: complete
+last_updated: "2026-05-15T00:00:00Z"
 progress:
-  total_phases: 8
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_phases: 5
+  completed_phases: 2
+  total_plans: 4
+  completed_plans: 4
+  percent: 40
 ---
 
 # STATE.md — Chess Analysis App
 
-Last updated: 2026-05-14 (Phase 10 planned)
+Last updated: 2026-05-15 (Phase 12 complete)
 
 ---
 
 ## Project Reference
 
 **Core value:** Україномовний шаховий тренер — Stockfish-аналіз + LLM-коучинг для гравців ~1000 ELO
-**Current focus:** Phase 12 — react-query-client-caching
+**Current focus:** Phase 12 COMPLETE — Ready for next phase
 
 ---
 
 ## Current Position
 
-Phase: 12 (react-query-client-caching) — PLANNED
-Plans: 4 plans in 3 waves
+Phase: 12 (react-query-client-caching) — COMPLETE (2026-05-15)
+Plans: 4/4 complete
 **Milestone:** 2 — v2
-**Current phase:** 12
-**Last completed:** v2 Phase 2 — Polish & Hardening (2026-05-15)
-**Status:** Ready to execute
+**Last completed:** v2 Phase 4 — React Query + Client Caching (2026-05-15)
+**Status:** Ready for next phase
 
 ```
-Progress: [░░░░░░░░░░] 0%
+Progress: [████░░░░░░] 40%
 Milestone 1: 8/8 phases ✅
-Milestone 2: 1/4 phases ✅ (v2 Phase 1 done)
+Milestone 2: 2/5 phases ✅ (v2 Phase 1 + Phase 4 done)
 ```
 
 ---
 
 ## What Was Last Completed
+
+**v2 Phase 4: React Query + Client Caching** — completed 2026-05-15
+
+Delivered:
+- `@tanstack/react-query v5` встановлено, `QueryProvider` (SSR-safe via useState) обгортає весь (app) layout
+- `GamesList` мігровано на `useQuery(['games', userId, filters])` зі staleTime 5 хвилин
+- `DashboardClient` — `refreshKey` видалено, `invalidateQueries` після sync
+- `GameView` — два GET useEffect → `useQuery` з staleTime Infinity, `initialFetchCount` видалено
+- `ProfileView` — GET group analysis → `useQuery` зі staleTime 10 хвилин, `setQueryData` після POST
+- Повторна навігація між сторінками більше не робить зайвих мережевих запитів
 
 **v2 Phase 1: Onboarding + Auto-Sync** — completed 2026-05-10
 
@@ -63,7 +72,9 @@ Delivered:
 
 ## What Is Next
 
-**v2 Phase 2: Email Auth + Google OAuth** (PLANNED, not urgent)
+**v2 Phase 2: Polish & Hardening** — залишився план 10-07 (UI/UX audit з human-verify checkpoint)
+або
+**v2 Phase 3: Email Auth + Google OAuth** (PLANNED, not urgent)
 
 Priority: Low — GitHub OAuth залишається основним і достатнім методом входу.
 

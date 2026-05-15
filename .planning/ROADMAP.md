@@ -132,7 +132,7 @@ All 8 original phases are complete. Production is live on Vercel.
 - [x] **v2 Phase 1: Onboarding + Auto-Sync** ✅ COMPLETE (2026-05-10)
 - [ ] **v2 Phase 2: Polish & Hardening** — Security, code cleanup, performance wins, UI/UX audit (PLANNED)
 - [ ] **v2 Phase 3: Email Auth + Google OAuth** — Альтернативні методи входу (PLANNED, not urgent)
-- [ ] **v2 Phase 4: React Query + Client Caching** — Покращення UX через client-side кешування (Backlog)
+- [x] **v2 Phase 4: React Query + Client Caching** ✅ COMPLETE (2026-05-15)
 - [ ] **v2 Phase 5: LLM Abstraction + Backlog Features** — LLM multi-provider, PGN export, accuracy trend, game sharing (Backlog)
 
 ---
@@ -190,7 +190,7 @@ Plans:
 **UI hint**: yes
 
 ### v2 Phase 4: React Query + Client Caching
-**Status:** PLANNED
+**Status:** COMPLETE (2026-05-15)
 **Goal:** Навігація між сторінками швидша завдяки client-side кешуванню даних
 **Requirements:** REQ-V2-7
 **Dependencies:** v2 Phase 1
@@ -200,10 +200,11 @@ Plans:
   3. Cache invalidation коректна після sync нових партій
 **Plans:** 4 plans
 Plans:
-- [ ] 12-01-PLAN.md — Встановити @tanstack/react-query + створити QueryProvider + інтегрувати у (app) layout
-- [ ] 12-02-PLAN.md — Мігрувати DashboardClient/GamesList на useQuery + cache invalidation у SyncStatusBar
-- [ ] 12-03-PLAN.md — Мігрувати GameView GET analysis endpoints на useQuery (staleTime Infinity)
-- [ ] 12-04-PLAN.md — Мігрувати group analysis GET у ProfileView на useQuery
+- [x] 12-01-PLAN.md — Встановити @tanstack/react-query + створити QueryProvider + інтегрувати у (app) layout
+- [x] 12-02-PLAN.md — Мігрувати DashboardClient/GamesList на useQuery + cache invalidation у SyncStatusBar
+- [x] 12-03-PLAN.md — Мігрувати GameView GET analysis endpoints на useQuery (staleTime Infinity)
+- [x] 12-04-PLAN.md — Мігрувати group analysis GET у ProfileView на useQuery
+**Completed:** 2026-05-15
 
 ### v2 Phase 5: LLM Abstraction + Backlog Features
 **Status:** PLANNED
@@ -235,5 +236,5 @@ Plans:
 | M2 — v2 Phase 1: Onboarding + Auto-Sync | Done | Complete | 2026-05-10 |
 | M2 — v2 Phase 2: Polish & Hardening | 0/7 | Planned | - |
 | M2 — v2 Phase 3: Email Auth + Google OAuth | TBD | Planned | - |
-| M2 — v2 Phase 4: React Query + Client Caching | 0/4 | Planned | - |
+| M2 — v2 Phase 4: React Query + Client Caching | 4/4 | Complete | 2026-05-15 |
 | M2 — v2 Phase 5: LLM Abstraction + Backlog | TBD | Planned | - |
