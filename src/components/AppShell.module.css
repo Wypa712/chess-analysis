@@ -19,6 +19,28 @@
   min-height: 100%;
 }
 
+.navOverlay {
+  position: fixed;
+  inset: 0 0 0 64px;
+  background: var(--color-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  opacity: 1;
+  transition: opacity 300ms ease;
+}
+
+.navOverlayFading {
+  opacity: 0;
+}
+
+@media (max-width: 768px) {
+  .navOverlay {
+    inset: 0 0 var(--mobile-nav-h) 0;
+  }
+}
+
 @supports (height: 100dvh) {
   .shell {
     height: 100dvh;
