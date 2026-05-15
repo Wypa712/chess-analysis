@@ -3,6 +3,7 @@
 import { Chessboard } from "react-chessboard";
 import type { Arrow, Square } from "react-chessboard/dist/chessboard/types";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { RouteLoader } from "@/components/RouteLoader/RouteLoader";
 import { parsePgn } from "@/lib/chess/pgn";
 import { useExploreMode } from "@/hooks/useExploreMode";
@@ -77,18 +78,71 @@ export function GameView({ game }: { game: GameData }) {
   const layoutRef = useRef<HTMLDivElement>(null);
   const boardAreaRef = useRef<HTMLDivElement>(null);
 
+  const queryClient = useQueryClient();
+
   const [boardSize, setBoardSize] = useState(MAX_BOARD_SIZE);
   const [flipped, setFlipped] = useState(false);
-  const [analysisState, setAnalysisState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [loadingPct, setLoadingPct] = useState(0);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
-  const [analysis, setAnalysis] = useState<EngineAnalysisJsonV1 | null>(null);
   const [activeTab, setActiveTab] = useState<"moves" | "analysis" | "advice">("moves");
-  const [llmStatus, setLlmStatus] = useState<LlmStatus>("idle");
   const [llmError, setLlmError] = useState<string | null>(null);
-  const [llmAnalysis, setLlmAnalysis] = useState<LlmGameAnalysisV1 | null>(null);
   const [llmOpenPhases, setLlmOpenPhases] = useState<Record<string, boolean>>({});
-  const [initialFetchCount, setInitialFetchCount] = useState(0);
+
+  // useQuery for GET engine analysis (staleTime Infinity — results never change once computed)
+  const {
+    data: engineAnalysisData,
+    isPending: enginePending,
+    isError: engineIsError,
+  } = useQuery({
+    queryKey: ['engine-analysis', game.id],
+    queryFn: async ({ signal }) => {
+      const r = await fetch(`/api/games/${game.id}/engine-analysis`, { signal });
+      if (!r.ok) throw new Error("Не вдалося завантажити аналіз двигуна");
+      const d = await r.json();
+      return (d?.analysis && isEngineAnalysisJsonV1(d.analysis)) ? d.analysis as EngineAnalysisJsonV1 : null;
+    },
+    staleTime: Infinity,
+    retry: 1,
+  });
+
+  // useQuery for GET LLM analysis (staleTime Infinity — results never change once computed)
+  const {
+    data: llmAnalysisData,
+    isPending: llmPending,
+  } = useQuery({
+    queryKey: ['llm-analysis', game.id],
+    queryFn: async ({ signal }) => {
+      const r = await fetch(`/api/games/${game.id}/analyze`, { signal });
+      if (!r.ok) return null;
+      const d = await r.json();
+      return (d?.analysis && isLlmGameAnalysisV1(d.analysis)) ? d.analysis as LlmGameAnalysisV1 : null;
+    },
+    staleTime: Infinity,
+    retry: 0,
+  });
+
+  const analysis = engineAnalysisData ?? null;
+  const [analysisState, setAnalysisState] = useState<"idle" | "loading" | "done" | "error">(
+    engineAnalysisData ? "done" : "idle"
+  );
+  const [llmStatus, setLlmStatus] = useState<LlmStatus>(
+    llmAnalysisData ? "done" : "idle"
+  );
+  const [llmAnalysis, setLlmAnalysis] = useState<LlmGameAnalysisV1 | null>(llmAnalysisData ?? null);
+
+  // Sync analysisState when engineAnalysisData arrives from cache/network
+  useEffect(() => {
+    if (engineAnalysisData) setAnalysisState("done");
+    else if (engineIsError) setAnalysisState("error");
+  }, [engineAnalysisData, engineIsError]);
+
+  // Sync llmStatus and llmAnalysis when llmAnalysisData arrives from cache/network
+  useEffect(() => {
+    if (llmAnalysisData) {
+      setLlmAnalysis(llmAnalysisData);
+      setLlmStatus("done");
+    }
+  }, [llmAnalysisData]);
 
   const { analyzeGame, analyzeSinglePosition, terminate } = useStockfish();
 
@@ -102,42 +156,6 @@ export function GameView({ game }: { game: GameData }) {
     goLast: goLastMainline,
     goToMove,
   } = useGameNavigation({ totalMoves });
-
-  // Load cached engine analysis on mount
-  useEffect(() => {
-    fetch(`/api/games/${game.id}/engine-analysis`)
-      .then((r) => {
-        if (!r.ok) throw new Error("Не вдалося завантажити аналіз двигуна");
-        return r.json();
-      })
-      .then((data) => {
-        if (data?.analysis && isEngineAnalysisJsonV1(data.analysis)) {
-          setAnalysis(data.analysis);
-          setAnalysisState("done");
-        }
-      })
-      .catch(() => {
-        setAnalysisError("Не вдалося завантажити аналіз двигуна");
-        setAnalysisState("error");
-      })
-      .finally(() => setInitialFetchCount((c) => c + 1));
-  }, [game.id]);
-
-  // Load cached LLM analysis on mount
-  useEffect(() => {
-    fetch(`/api/games/${game.id}/analyze`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data?.analysis && isLlmGameAnalysisV1(data.analysis)) {
-          setLlmAnalysis(data.analysis);
-          setLlmStatus("done");
-        }
-      })
-      .catch(() => {
-        setLlmStatus("idle");
-      })
-      .finally(() => setInitialFetchCount((c) => c + 1));
-  }, [game.id]);
 
   const movePairs = useMemo<MovePair[]>(() => {
     if (!parsed) return [];
@@ -321,7 +339,7 @@ export function GameView({ game }: { game: GameData }) {
     return () => observer.disconnect();
   // re-run after initial fetches complete so refs are attached to real layout
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialFetchCount]);
+  }, [enginePending, llmPending]);
 
   useEffect(() => {
     return () => terminate();
@@ -354,11 +372,13 @@ export function GameView({ game }: { game: GameData }) {
       }
       setLlmAnalysis(data.analysis);
       setLlmStatus("done");
+      // Update React Query cache directly — avoids re-fetch since staleTime Infinity
+      queryClient.setQueryData(['llm-analysis', game.id], data.analysis);
     } catch {
       setLlmError("Не вдалося отримати відповідь. Перевірте з'єднання.");
       setLlmStatus("error");
     }
-  }, [game.id]);
+  }, [game.id, queryClient]);
 
   const handleStartAnalysis = useCallback(async () => {
     if (!parsed) return;
@@ -375,7 +395,8 @@ export function GameView({ game }: { game: GameData }) {
       );
       // Show the result immediately so a save failure degrades gracefully
       // instead of clearing a valid in-memory analysis.
-      setAnalysis(result);
+      // Update React Query cache now so analysis renders immediately (before POST completes)
+      queryClient.setQueryData(['engine-analysis', game.id], result);
       setAnalysisState("done");
       try {
         const response = await fetch(`/api/games/${game.id}/engine-analysis`, {
@@ -396,9 +417,9 @@ export function GameView({ game }: { game: GameData }) {
       );
       setAnalysisState("error");
     }
-  }, [analyzeGame, parsed, game.id, game.color, exitExploreIfActive, llmStatus, handleLlmAnalyze]);
+  }, [analyzeGame, parsed, game.id, game.color, exitExploreIfActive, llmStatus, handleLlmAnalyze, queryClient]);
 
-  if (initialFetchCount < 2) {
+  if (enginePending || llmPending) {
     return <RouteLoader text="Завантажуємо партію…" />;
   }
 
