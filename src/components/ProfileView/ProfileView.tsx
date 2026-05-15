@@ -7,7 +7,7 @@ import styles from "./ProfileView.module.css";
 import { RouteLoader } from "@/components/RouteLoader/RouteLoader";
 import { GroupAnalysisPanel } from "@/components/GroupAnalysisPanel/GroupAnalysisPanel";
 import { useProfileStats } from "@/hooks/useProfileStats";
-import type { GroupAnalysisJsonV1 } from "@/lib/llm/types";
+import { isGroupAnalysisJsonV1, type GroupAnalysisJsonV1 } from "@/lib/llm/types";
 
 type GroupAnalysisRow = {
   id: string;
@@ -43,7 +43,11 @@ export function ProfileView() {
         return res.json();
       })
       .then((data) => {
-        setGroupAnalysis(data.analysis ?? null);
+        if (data?.analysis && isGroupAnalysisJsonV1(data.analysis.analysisJson)) {
+          setGroupAnalysis(data.analysis);
+        } else {
+          setGroupAnalysis(null);
+        }
         setGroupLoading(false);
       })
       .catch((err) => {
@@ -68,7 +72,9 @@ export function ProfileView() {
         }
         return;
       }
-      setGroupAnalysis(data.analysis);
+      if (data?.analysis && isGroupAnalysisJsonV1(data.analysis.analysisJson)) {
+        setGroupAnalysis(data.analysis);
+      }
     } catch {
       setGroupError("Не вдалося отримати відповідь. Перевірте з'єднання.");
     } finally {
