@@ -43,8 +43,17 @@ export default function OnboardingPage() {
         });
 
         if (!res.ok) {
-          const text = await res.text().catch(() => String(res.status));
-          errorMsg = `Помилка ${res.status}: ${text}`;
+          let serverMessage: string;
+          try {
+            const errBody = await res.json();
+            serverMessage =
+              typeof errBody?.error === "string"
+                ? errBody.error
+                : res.statusText || String(res.status);
+          } catch {
+            serverMessage = res.statusText || String(res.status);
+          }
+          errorMsg = `Помилка ${res.status}: ${serverMessage}`;
           break;
         }
 
@@ -65,7 +74,8 @@ export default function OnboardingPage() {
         cursor = data.nextCursor;
       } catch (err) {
         console.error("[onboarding] import chunk failed:", err);
-        errorMsg = "Помилка мережі";
+        errorMsg =
+          err instanceof Error ? `Помилка мережі: ${err.message}` : "Помилка мережі";
         break;
       }
     }

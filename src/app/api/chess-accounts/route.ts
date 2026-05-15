@@ -5,6 +5,9 @@ import { chessAccounts } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { ImportError } from "@/lib/importers/errors";
 
+const LICHESS_USERNAME_RE = /^[a-zA-Z0-9_-]{2,50}$/;
+const CHESS_COM_USERNAME_RE = /^[a-zA-Z0-9_]{3,50}$/;
+
 // GET /api/chess-accounts — list user's linked chess accounts
 export async function GET() {
   const session = await auth();
@@ -57,12 +60,24 @@ export async function POST(req: NextRequest) {
   if (typeof username !== "string" || !username.trim()) {
     return NextResponse.json({ error: "Нікнейм обов'язковий" }, { status: 400 });
   }
-  if (username.trim().length > 50) {
+  const trimmedUsername = username.trim();
+  if (trimmedUsername.length > 50) {
     return NextResponse.json({ error: "Нікнейм надто довгий" }, { status: 400 });
+  }
+  if (platform === "lichess" && !LICHESS_USERNAME_RE.test(trimmedUsername)) {
+    return NextResponse.json(
+      { error: "Некоректний нікнейм для Lichess (дозволені: літери, цифри, _ та -)" },
+      { status: 400 }
+    );
+  }
+  if (platform === "chess_com" && !CHESS_COM_USERNAME_RE.test(trimmedUsername)) {
+    return NextResponse.json(
+      { error: "Некоректний нікнейм для Chess.com (дозволені: літери, цифри та _)" },
+      { status: 400 }
+    );
   }
 
   const userId = session.user.id;
-  const trimmedUsername = username.trim();
   const normalizedUsername = trimmedUsername.toLowerCase();
   const platformLabel = platform === "chess_com" ? "Chess.com" : "Lichess";
 
@@ -129,19 +144,24 @@ async function validateUsernameExists(
       `https://lichess.org/api/user/${encodeURIComponent(username)}`,
       { redirect: "error", headers: { Accept: "application/json" }, signal: AbortSignal.timeout(5000) }
     );
-    if (res.status === 404) throw new ImportError("user_not_found", "Not found");
-    if (res.status === 429) throw new ImportError("rate_limited", "Rate limited");
-    if (!res.ok) throw new ImportError("api_error", `Lichess error: ${res.status}`);
+    if (!res.ok) {
+      await res.body?.cancel().catch(() => undefined);
+      if (res.status === 404) throw new ImportError("user_not_found", "Not found");
+      if (res.status === 429) throw new ImportError("rate_limited", "Rate limited");
+      throw new ImportError("api_error", `Lichess error: ${res.status}`);
+    }
     await res.body?.cancel();
   } else {
     const res = await fetch(
       `https://api.chess.com/pub/player/${encodeURIComponent(username.toLowerCase())}`,
       { redirect: "error", signal: AbortSignal.timeout(5000) }
     );
-    if (res.status === 404) throw new ImportError("user_not_found", "Not found");
-    if (res.status === 429) throw new ImportError("rate_limited", "Rate limited");
-    if (!res.ok) throw new ImportError("api_error", `Chess.com error: ${res.status}`);
+    if (!res.ok) {
+      await res.body?.cancel().catch(() => undefined);
+      if (res.status === 404) throw new ImportError("user_not_found", "Not found");
+      if (res.status === 429) throw new ImportError("rate_limited", "Rate limited");
+      throw new ImportError("api_error", `Chess.com error: ${res.status}`);
+    }
     await res.body?.cancel();
   }
 }
-

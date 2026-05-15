@@ -10,10 +10,36 @@ import { captureSanitizedException } from "@/lib/observability/sentry";
 
 type LatestPlayedAt = Date | string | null;
 
+const SYNC_CONCURRENCY = 2;
+
 function toTimeMs(value: LatestPlayedAt | undefined): number | undefined {
   if (!value) return undefined;
   const ms = value instanceof Date ? value.getTime() : new Date(value).getTime();
   return Number.isFinite(ms) ? ms : undefined;
+}
+
+async function runWithConcurrencyLimit<T>(
+  tasks: Array<() => Promise<T>>,
+  limit: number
+): Promise<T[]> {
+  const results: T[] = [];
+  const executing: Set<Promise<void>> = new Set();
+
+  for (const task of tasks) {
+    const p = task()
+      .then((result) => {
+        results.push(result);
+      })
+      .finally(() => executing.delete(p));
+    executing.add(p);
+
+    if (executing.size >= limit) {
+      await Promise.race(executing);
+    }
+  }
+
+  await Promise.all(executing);
+  return results;
 }
 
 // POST /api/sync — delta sync: fetch games newer than the latest imported game.
@@ -62,63 +88,68 @@ export async function POST() {
 
   type SyncResult = { accountId: string; outcome: AccountOutcome; failed: boolean };
 
-  const syncResults: SyncResult[] = await Promise.all(
-    accounts.map(async (account): Promise<SyncResult> => {
-      const since =
-        toTimeMs(latestPlayedAt.get(account.id)) ??
-        Date.now() - 7 * 24 * 60 * 60 * 1000;
+  async function syncOneAccount(
+    account: (typeof accounts)[number]
+  ): Promise<SyncResult> {
+    const since =
+      toTimeMs(latestPlayedAt.get(account.id)) ??
+      Date.now() - 7 * 24 * 60 * 60 * 1000;
 
-      try {
-        const result =
-          account.platform === "lichess"
-            ? await importLichessGames(account.id, account.username, { since })
-            : await importChessComGames(account.id, account.username, { since });
+    try {
+      const result =
+        account.platform === "lichess"
+          ? await importLichessGames(account.id, account.username, { since })
+          : await importChessComGames(account.id, account.username, { since });
 
-        return {
-          accountId: account.id,
-          outcome: {
-            platform: account.platform,
-            username: account.username,
-            imported: result.imported,
-            skipped: result.skipped,
-          },
-          failed: false,
+      return {
+        accountId: account.id,
+        outcome: {
+          platform: account.platform,
+          username: account.username,
+          imported: result.imported,
+          skipped: result.skipped,
+        },
+        failed: false,
+      };
+    } catch (err) {
+      let errorMsg = "Помилка синхронізації";
+      if (err instanceof ImportError) {
+        console.error(`[sync] ${account.platform}/${account.username}:`, err.code);
+        const platformLabel = account.platform === "chess_com" ? "Chess.com" : "Lichess";
+        const codeMessages: Record<string, string> = {
+          user_not_found: `Гравця не знайдено на ${platformLabel}`,
+          rate_limited: `${platformLabel} обмежує запити. Спробуйте пізніше`,
+          api_error: `Помилка сервера ${platformLabel}`,
+          network_error: `Не вдалося підключитися до ${platformLabel}`,
         };
-      } catch (err) {
-        let errorMsg = "Помилка синхронізації";
-        if (err instanceof ImportError) {
-          console.error(`[sync] ${account.platform}/${account.username}:`, err.code);
-          const platformLabel = account.platform === "chess_com" ? "Chess.com" : "Lichess";
-          const codeMessages: Record<string, string> = {
-            user_not_found: `Гравця не знайдено на ${platformLabel}`,
-            rate_limited: `${platformLabel} обмежує запити. Спробуйте пізніше`,
-            api_error: `Помилка сервера ${platformLabel}`,
-            network_error: `Не вдалося підключитися до ${platformLabel}`,
-          };
-          errorMsg = codeMessages[err.code] ?? "Помилка синхронізації";
-        } else {
-          captureSanitizedException(err, "SyncError", {
-            route: "/api/sync",
-            platform: account.platform,
-          });
-          console.error(
-            `[sync] ${account.platform}/${account.username}:`,
-            err instanceof Error ? err.message : String(err)
-          );
-        }
-        return {
-          accountId: account.id,
-          outcome: {
-            platform: account.platform,
-            username: account.username,
-            imported: 0,
-            skipped: 0,
-            error: errorMsg,
-          },
-          failed: true,
-        };
+        errorMsg = codeMessages[err.code] ?? "Помилка синхронізації";
+      } else {
+        captureSanitizedException(err, "SyncError", {
+          route: "/api/sync",
+          platform: account.platform,
+        });
+        console.error(
+          `[sync] ${account.platform}/${account.username}:`,
+          err instanceof Error ? err.message : String(err)
+        );
       }
-    })
+      return {
+        accountId: account.id,
+        outcome: {
+          platform: account.platform,
+          username: account.username,
+          imported: 0,
+          skipped: 0,
+          error: errorMsg,
+        },
+        failed: true,
+      };
+    }
+  }
+
+  const syncResults: SyncResult[] = await runWithConcurrencyLimit(
+    accounts.map((account) => () => syncOneAccount(account)),
+    SYNC_CONCURRENCY
   );
 
   const outcomes = syncResults.map((r) => r.outcome);

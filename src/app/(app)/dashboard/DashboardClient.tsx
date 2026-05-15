@@ -3,7 +3,6 @@
 import { useCallback, useState } from "react";
 import { SyncStatusBar } from "@/components/SyncStatusBar/SyncStatusBar";
 import { GamesList } from "@/components/GamesList/GamesList";
-import { RouteLoader } from "@/components/RouteLoader/RouteLoader";
 import styles from "./page.module.css";
 
 type DashboardSummary = {
@@ -41,31 +40,41 @@ export function DashboardClient() {
   ];
 
   return (
-    <>
-      {summaryLoading && <RouteLoader text="Завантажуємо дашборд…" />}
-      <div style={summaryLoading ? { display: "none" } : undefined} className={styles.container}>
-        <section className={styles.hero}>
-          <div>
-            <h1 className={styles.title}>Дашборд</h1>
-            <p className={styles.subtitle}>
-              Ваші партії та статистика. Нові партії підтягуються автоматично.
-            </p>
+    // Hide the entire dashboard until the first GamesList fetch resolves.
+    // The full-screen spinner during the initial load is already provided by
+    // dashboard/loading.tsx (Next.js Suspense boundary). Rendering a second
+    // RouteLoader here caused a visible double-spinner flicker: the Suspense
+    // loader would disappear as the Server Component resolved, then the client
+    // would immediately mount its own identical full-screen spinner, making the
+    // loader appear to restart. Using visibility:hidden keeps layout stable and
+    // avoids any flash of zeroed stat cards while staying imperceptible to the
+    // user (the content area is behind the AppShell until the Suspense loader
+    // is gone anyway).
+    <div
+      style={summaryLoading ? { visibility: "hidden" } : undefined}
+      className={styles.container}
+    >
+      <section className={styles.hero}>
+        <div>
+          <h1 className={styles.title}>Дашборд</h1>
+          <p className={styles.subtitle}>
+            Ваші партії та статистика. Нові партії підтягуються автоматично.
+          </p>
+        </div>
+        <SyncStatusBar onSynced={() => setRefreshKey((k) => k + 1)} />
+      </section>
+
+      <section className={styles.statsGrid} aria-label="Статистика партій">
+        {stats.map((stat) => (
+          <div key={stat.label} className={styles.statCard}>
+            <div className={`${styles.statMark} ${stat.tone}`} />
+            <p className={styles.statValue}>{stat.value}</p>
+            <p className={styles.statLabel}>{stat.label}</p>
           </div>
-          <SyncStatusBar onSynced={() => setRefreshKey((k) => k + 1)} />
-        </section>
+        ))}
+      </section>
 
-        <section className={styles.statsGrid} aria-label="Статистика партій">
-          {stats.map((stat) => (
-            <div key={stat.label} className={styles.statCard}>
-              <div className={`${styles.statMark} ${stat.tone}`} />
-              <p className={styles.statValue}>{stat.value}</p>
-              <p className={styles.statLabel}>{stat.label}</p>
-            </div>
-          ))}
-        </section>
-
-        <GamesList refreshKey={refreshKey} onSummary={handleSummary} />
-      </div>
-    </>
+      <GamesList refreshKey={refreshKey} onSummary={handleSummary} />
+    </div>
   );
 }

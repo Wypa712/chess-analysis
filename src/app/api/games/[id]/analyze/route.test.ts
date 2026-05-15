@@ -29,7 +29,7 @@ vi.mock('drizzle-orm', () => ({
   inArray: vi.fn(),
 }));
 
-// Mock Groq at module level so module-level `new Groq(...)` is also mocked
+// Mock Groq at module level so route-level client construction is also mocked
 // Must use regular function (not arrow) so it can be called with `new`
 const mockGroqCreate = vi.fn();
 vi.mock('groq-sdk', () => ({
