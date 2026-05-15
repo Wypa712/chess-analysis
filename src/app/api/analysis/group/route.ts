@@ -284,6 +284,11 @@ export async function POST(req: NextRequest) {
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
+// NOTE: Cache freshness limitation — the input hash is derived from game IDs,
+// LLM model, and prompt version only. It does NOT include the content of
+// per-game engine or LLM analyses. If a game's analysis is updated after a
+// group analysis is cached, a subsequent POST for the same game IDs will return
+// the old cached group result without re-running the LLM.
 function createGroupInputHash(gameIds: string[]): string {
   return createHash("sha256")
     .update(JSON.stringify({
