@@ -11,7 +11,7 @@ export class LlmRateLimitError extends Error {
 }
 
 function isRetryable(err: unknown): boolean {
-  if (err instanceof TypeError) return true;
+  if (err instanceof TypeError && /fetch|network/i.test(err.message)) return true;
   if (err !== null && typeof err === "object" && "status" in err) {
     const s = (err as { status: number }).status;
     return s === 429 || s === 503;
