@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { AppShell } from "@/components/AppShell";
+import { QueryProvider } from "@/components/QueryProvider/QueryProvider";
 import { redirect } from "next/navigation";
 
 export default async function ProtectedAppLayout({
@@ -13,5 +14,9 @@ export default async function ProtectedAppLayout({
     redirect("/auth/login");
   }
 
-  return <AppShell user={session.user}>{children}</AppShell>;
+  return (
+    <QueryProvider>
+      <AppShell user={session.user}>{children}</AppShell>
+    </QueryProvider>
+  );
 }
