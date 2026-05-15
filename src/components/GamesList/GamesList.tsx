@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { RouteLoader } from "@/components/RouteLoader/RouteLoader";
 import styles from "./GamesList.module.css";
@@ -37,6 +38,8 @@ type GamesResponse = {
   pageSize: number;
   summary: Summary;
 };
+
+const EMPTY_SUMMARY: Summary = { total: 0, wins: 0, draws: 0, losses: 0 };
 
 const TIME_CONTROLS = [
   { value: "", label: "Усі" },
@@ -90,15 +93,12 @@ function analysisStatusLabel(status: "done" | "not_started") {
 }
 
 export function GamesList({
-  refreshKey,
+  userId,
   onSummary,
 }: {
-  refreshKey?: number;
+  userId: string;
   onSummary?: (summary: Summary, loading: boolean) => void;
 }) {
-  const [data, setData] = useState<GamesResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
   const [page, setPage] = useState(1);
   const [platform, setPlatform] = useState("");
   const [timeControlCategory, setTimeControlCategory] = useState("");
@@ -109,46 +109,27 @@ export function GamesList({
   const onSummaryRef = useRef(onSummary);
   useEffect(() => { onSummaryRef.current = onSummary; }, [onSummary]);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const params = new URLSearchParams({ page: String(page) });
-    if (platform) params.set("platform", platform);
-    if (timeControlCategory) params.set("timeControlCategory", timeControlCategory);
-    if (result) params.set("result", result);
+  const { data, isLoading, isError, isFetching } = useQuery<GamesResponse>({
+    queryKey: ["games", userId, { page, platform, timeControlCategory, result }],
+    queryFn: async ({ signal }) => {
+      const params = new URLSearchParams({ page: String(page) });
+      if (platform) params.set("platform", platform);
+      if (timeControlCategory) params.set("timeControlCategory", timeControlCategory);
+      if (result) params.set("result", result);
 
-    async function fetchGames() {
-      setLoading(true);
-      setError(false);
-      onSummaryRef.current?.({ total: 0, wins: 0, draws: 0, losses: 0 }, true);
-
-      try {
-        const res = await fetch(`/api/games?${params}`, {
-          signal: controller.signal,
-        });
-        if (res.ok) {
-          const json: GamesResponse = await res.json();
-          setData(json);
-          onSummaryRef.current?.(json.summary, false);
-        } else {
-          setData(null);
-          setError(true);
-          onSummaryRef.current?.({ total: 0, wins: 0, draws: 0, losses: 0 }, false);
-        }
-      } catch (err) {
-        if ((err as Error).name !== "AbortError") {
-          setError(true);
-          onSummaryRef.current?.({ total: 0, wins: 0, draws: 0, losses: 0 }, false);
-        }
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
+      const res = await fetch(`/api/games?${params}`, { signal });
+      if (!res.ok) {
+        throw new Error(`Failed to fetch games: ${res.status}`);
       }
-    }
+      return res.json() as Promise<GamesResponse>;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-    fetchGames();
-
-    return () => controller.abort();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, platform, timeControlCategory, result, refreshKey]);
+  // Notify parent about summary and loading state
+  useEffect(() => {
+    onSummaryRef.current?.(data?.summary ?? EMPTY_SUMMARY, isLoading);
+  }, [data, isLoading]);
 
   function updatePlatform(value: string) {
     setPage(1);
@@ -207,18 +188,18 @@ export function GamesList({
         </div>
       </div>
 
-      {loading && !data && (
+      {isLoading && !data && (
         <RouteLoader inline text="Завантажуємо партії…" />
       )}
 
-      {!loading && error && (
+      {!isLoading && isError && (
         <div className={styles.empty}>
           <p className={styles.emptyTitle}>Не вдалося завантажити партії</p>
           <p className={styles.emptyText}>Спробуйте оновити сторінку</p>
         </div>
       )}
 
-      {!loading && !error && data?.games.length === 0 && hasActiveFilters && (
+      {!isLoading && !isError && data?.games.length === 0 && hasActiveFilters && (
         <div className={styles.empty}>
           <p className={styles.emptyTitle}>Партій не знайдено</p>
           <p className={styles.emptyText}>
@@ -234,7 +215,7 @@ export function GamesList({
         </div>
       )}
 
-      {!loading && !error && data?.games.length === 0 && !hasActiveFilters && (
+      {!isLoading && !isError && data?.games.length === 0 && !hasActiveFilters && (
         <div className={styles.empty}>
           <div className={styles.emptyIcon} aria-hidden="true">♟</div>
           <p className={styles.emptyTitle}>Партій ще немає</p>
@@ -244,9 +225,9 @@ export function GamesList({
         </div>
       )}
 
-      {!error && data && data.games.length > 0 && (
+      {!isError && data && data.games.length > 0 && (
         <>
-          <div className={`${styles.rows} ${loading ? styles.refetching : ""}`}>
+          <div className={`${styles.rows} ${isFetching && !!data ? styles.refetching : ""}`}>
             {data.games.map((game) => (
               <Link key={game.id} href={`/games/${game.id}`} className={styles.gameRow}>
                 <div className={styles.pieceMark}>
