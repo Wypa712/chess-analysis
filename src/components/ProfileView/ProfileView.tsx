@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useId } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAppUser } from "@/components/AppUserContext";
 import styles from "./ProfileView.module.css";
 import { RouteLoader } from "@/components/RouteLoader/RouteLoader";
@@ -32,33 +33,29 @@ export function ProfileView() {
   const profileStats = useProfileStats(validDays);
   const { stats, initialLoading, refetching, error } = profileStats;
 
-  const [groupAnalysis, setGroupAnalysis] = useState<GroupAnalysisRow | null>(null);
-  const [groupLoading, setGroupLoading] = useState(false);
+  const queryClient = useQueryClient();
+  const {
+    data: groupAnalysisData,
+    isPending: groupLoading,
+    isError: groupFetchError,
+  } = useQuery({
+    queryKey: ["group-analysis"],
+    queryFn: async ({ signal }) => {
+      const res = await fetch("/api/analysis/group", { signal });
+      if (!res.ok) throw new Error("Failed to fetch group analysis");
+      const data = await res.json();
+      if (data?.analysis && isGroupAnalysisJsonV1(data.analysis.analysisJson)) {
+        return data.analysis as GroupAnalysisRow;
+      }
+      return null;
+    },
+    staleTime: 10 * 60 * 1000,
+    retry: 1,
+  });
+  const groupAnalysis = groupAnalysisData ?? null;
+
   const [groupReanalyzing, setGroupReanalyzing] = useState(false);
   const [groupError, setGroupError] = useState<string | null>(null);
-
-  // Fetch group analysis
-  useEffect(() => {
-    setGroupLoading(true);
-    fetch("/api/analysis/group")
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch group analysis");
-        return res.json();
-      })
-      .then((data) => {
-        if (data?.analysis && isGroupAnalysisJsonV1(data.analysis.analysisJson)) {
-          setGroupAnalysis(data.analysis);
-        } else {
-          setGroupAnalysis(null);
-        }
-        setGroupLoading(false);
-      })
-      .catch((err) => {
-        console.error("Group analysis fetch failed:", err);
-        setGroupError("Не вдалося завантажити груповий аналіз. Спробуйте оновити сторінку.");
-        setGroupLoading(false);
-      });
-  }, []);
 
   async function handleGroupAnalyze() {
     setGroupReanalyzing(true);
@@ -77,7 +74,7 @@ export function ProfileView() {
         return;
       }
       if (data?.analysis && isGroupAnalysisJsonV1(data.analysis.analysisJson)) {
-        setGroupAnalysis(data.analysis);
+        queryClient.setQueryData(["group-analysis"], data.analysis as GroupAnalysisRow);
       }
     } catch {
       setGroupError("Не вдалося отримати відповідь. Перевірте з'єднання.");
@@ -321,9 +318,11 @@ export function ProfileView() {
             {groupReanalyzing ? "Аналізуємо…" : "Аналізувати останні партії"}
           </button>
         </div>
-        {groupError && (
+        {(groupError || groupFetchError) && (
           <div className={styles.groupError}>
-            <span className={styles.groupErrorText}>{groupError}</span>
+            <span className={styles.groupErrorText}>
+              {groupError ?? "Не вдалося завантажити груповий аналіз. Спробуйте оновити сторінку."}
+            </span>
             <button
               type="button"
               className={styles.groupAnalyzeBtn}
@@ -334,17 +333,17 @@ export function ProfileView() {
             </button>
           </div>
         )}
-        {!groupError && groupLoading ? (
+        {!groupError && !groupFetchError && groupLoading ? (
           <div className={styles.groupEmpty}>
             <p className={styles.groupEmptyTitle}>Завантаження...</p>
           </div>
-        ) : !groupError && groupAnalysis ? (
+        ) : !groupError && !groupFetchError && groupAnalysis ? (
           <GroupAnalysisPanel
             analysis={groupAnalysis.analysisJson}
             gameCount={groupAnalysis.gameIds.length}
             createdAt={groupAnalysis.createdAt}
           />
-        ) : !groupError ? (
+        ) : !groupError && !groupFetchError ? (
           <div className={styles.groupEmpty}>
             <div className={styles.groupEmptyIcon}>◈</div>
             <p className={styles.groupEmptyTitle}>Груповий аналіз ще не запускався</p>
