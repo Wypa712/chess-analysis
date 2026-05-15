@@ -124,6 +124,7 @@ export function GamesList({
       return res.json() as Promise<GamesResponse>;
     },
     staleTime: 5 * 60 * 1000,
+    enabled: !!userId,
   });
 
   // Notify parent about summary and loading state
