@@ -64,10 +64,11 @@ describe("POST /api/games/[id]/engine-analysis", () => {
   });
 
   it("rejects payloads over 500 KB before parsing JSON", async () => {
-    const json = vi.fn();
+    // Simulate a large body via arrayBuffer (new implementation reads actual bytes)
+    const oversizedBuffer = new ArrayBuffer(500 * 1024 + 1);
     const req = {
-      headers: new Headers({ "content-length": String(500 * 1024 + 1) }),
-      json,
+      headers: new Headers(),
+      arrayBuffer: vi.fn().mockResolvedValue(oversizedBuffer),
     } as unknown as NextRequest;
 
     const { POST } = await import("./route");
@@ -75,6 +76,20 @@ describe("POST /api/games/[id]/engine-analysis", () => {
 
     expect(res.status).toBe(413);
     await expect(res.json()).resolves.toEqual({ error: "Payload too large" });
-    expect(json).not.toHaveBeenCalled();
+  });
+
+  it("rejects payloads over 500 KB via Content-Length fast-path", async () => {
+    const arrayBuffer = vi.fn();
+    const req = {
+      headers: new Headers({ "content-length": String(500 * 1024 + 1) }),
+      arrayBuffer,
+    } as unknown as NextRequest;
+
+    const { POST } = await import("./route");
+    const res = await POST(req, makeParams(VALID_UUID));
+
+    expect(res.status).toBe(413);
+    await expect(res.json()).resolves.toEqual({ error: "Payload too large" });
+    expect(arrayBuffer).not.toHaveBeenCalled();
   });
 });

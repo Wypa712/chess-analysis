@@ -114,6 +114,7 @@ export async function POST(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  // Fast-path: reject based on Content-Length header if present
   const contentLength = req.headers.get("content-length");
   if (contentLength !== null) {
     const payloadBytes = Number.parseInt(contentLength, 10);
@@ -122,9 +123,16 @@ export async function POST(
     }
   }
 
+  // Enforce limit on actual bytes received (guards chunked/streaming requests
+  // that omit Content-Length)
+  const buf = await req.arrayBuffer();
+  if (buf.byteLength > MAX_PAYLOAD_BYTES) {
+    return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+  }
+
   let body: unknown;
   try {
-    body = await req.json();
+    body = JSON.parse(new TextDecoder().decode(buf));
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
