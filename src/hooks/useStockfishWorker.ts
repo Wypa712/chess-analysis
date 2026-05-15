@@ -330,14 +330,16 @@ export function useStockfishWorker() {
 
   function createAnalysisWorker(): StockfishAnalysisWorker {
     const worker = new Worker("/stockfish.js");
-    let ready = false;
+    // Use a shared promise so concurrent callers share one initialization call
+    // rather than each sending their own `uci` command to the worker.
+    let readyPromise: Promise<void> | null = null;
 
     return {
       waitForReady: async (signal?: AbortSignal) => {
-        if (!ready) {
-          await waitForInit(worker, trackTimeout, clearTrackedTimeout, signal);
-          ready = true;
+        if (!readyPromise) {
+          readyPromise = waitForInit(worker, trackTimeout, clearTrackedTimeout, signal);
         }
+        await readyPromise;
       },
       analyzePosition: (fen: string, signal?: AbortSignal) =>
         analyzePosition(worker, fen, trackTimeout, clearTrackedTimeout, signal),
@@ -347,14 +349,16 @@ export function useStockfishWorker() {
 
   function createExploreWorker(): StockfishExploreWorker {
     const worker = new Worker("/stockfish.js");
-    let ready = false;
+    // Use a shared promise so concurrent callers share one initialization call
+    // rather than each sending their own `uci` command to the worker.
+    let readyPromise: Promise<void> | null = null;
 
     return {
       waitForReady: async (signal?: AbortSignal) => {
-        if (!ready) {
-          await waitForInit(worker, trackTimeout, clearTrackedTimeout, signal);
-          ready = true;
+        if (!readyPromise) {
+          readyPromise = waitForInit(worker, trackTimeout, clearTrackedTimeout, signal);
         }
+        await readyPromise;
       },
       analyzePosition: (fen: string, signal?: AbortSignal) =>
         analyzePositionMultiPV(worker, fen, trackTimeout, clearTrackedTimeout, signal),
