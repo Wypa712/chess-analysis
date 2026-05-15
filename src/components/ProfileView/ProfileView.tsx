@@ -352,8 +352,7 @@ export function ProfileView() {
             </p>
             <button
               type="button"
-              className={styles.groupAnalyzeBtn}
-              style={{ marginTop: "1rem" }}
+              className={`${styles.groupAnalyzeBtn} ${styles.groupEmptyAnalyzeBtn}`}
               onClick={handleGroupAnalyze}
               disabled={groupReanalyzing}
             >

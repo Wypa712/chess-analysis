@@ -521,6 +521,10 @@
   text-align: center;
 }
 
+.groupEmptyAnalyzeBtn {
+  margin-top: 1rem;
+}
+
 
 .refetching {
   opacity: 0.5;
