@@ -459,17 +459,17 @@
 
 .win {
   color: var(--color-success);
-  background-color: rgba(95, 168, 84, 0.16);
+  background-color: color-mix(in srgb, var(--color-success) 16%, transparent);
 }
 
 .loss {
   color: var(--color-danger);
-  background-color: rgba(192, 57, 43, 0.16);
+  background-color: color-mix(in srgb, var(--color-danger) 16%, transparent);
 }
 
 .draw {
   color: var(--color-gold);
-  background-color: rgba(201, 148, 90, 0.14);
+  background-color: color-mix(in srgb, var(--color-gold) 14%, transparent);
 }
 
 .moveCount {
@@ -824,7 +824,7 @@
     border-bottom: 1px solid var(--color-border);
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 12px;
+    padding: 20px 12px 12px;
     gap: 12px;
     width: 100%;
     box-sizing: border-box;
@@ -861,13 +861,6 @@
   color: #fff;
 }
 
-.exploreModeNote {
-  margin: -6px 0 0;
-  font-size: 0.75rem;
-  line-height: 1.3;
-  color: var(--color-text-muted);
-  text-align: center;
-}
 
 /* ── Phase accuracy row (below eval chart) ───────────────────────────────── */
 
@@ -1189,9 +1182,10 @@
   align-items: flex-start;
   gap: 6px;
   margin: 0 12px 8px;
-  padding: 7px 10px;
-  background: rgba(201, 148, 90, 0.08);
-  border: 1px solid rgba(201, 148, 90, 0.2);
+  padding: 8px 12px;
+  /* Audit: replaced gold rgba with token-based color-mix; padding normalized to 4px grid. */
+  background: color-mix(in srgb, var(--color-gold) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-gold) 20%, transparent);
   border-radius: var(--radius-sm);
   font-size: 10px;
   color: var(--color-gold);
