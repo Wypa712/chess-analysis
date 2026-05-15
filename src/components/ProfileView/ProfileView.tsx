@@ -55,6 +55,7 @@ export function ProfileView() {
       })
       .catch((err) => {
         console.error("Group analysis fetch failed:", err);
+        setGroupError("Не вдалося завантажити груповий аналіз. Спробуйте оновити сторінку.");
         setGroupLoading(false);
       });
   }, []);
