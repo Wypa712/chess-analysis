@@ -8,7 +8,7 @@ import { RouteLoader } from "./RouteLoader/RouteLoader";
 import styles from "./AppShell.module.css";
 import type { User } from "next-auth";
 
-const MIN_LOADER_MS = 1600;
+const MIN_LOADER_MS = 1000;
 const FADE_MS = 300;
 
 interface AppShellProps {

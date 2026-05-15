@@ -30,7 +30,7 @@
 .cell {
   width: 18px;
   height: 18px;
-  animation: cellFade 1.6s ease-in-out infinite;
+  animation: cellFade 1s ease-in-out infinite;
 }
 
 .cellLight {
