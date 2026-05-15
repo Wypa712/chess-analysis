@@ -24,7 +24,10 @@ export function ProfileView() {
   // Validate and parse filter days from URL
   const parsedDays = parseInt(searchParams.get("days") ?? "30", 10);
   const validDaysList = [0, 7, 30, 90] as const;
-  const validDays = (validDaysList.includes(parsedDays as any) ? parsedDays : 30) as 0 | 7 | 30 | 90;
+  function isValidDays(v: number): v is 0 | 7 | 30 | 90 {
+    return (validDaysList as readonly number[]).includes(v);
+  }
+  const validDays: 0 | 7 | 30 | 90 = isValidDays(parsedDays) ? parsedDays : 30;
 
   const profileStats = useProfileStats(validDays);
   const { stats, initialLoading, refetching, error } = profileStats;
