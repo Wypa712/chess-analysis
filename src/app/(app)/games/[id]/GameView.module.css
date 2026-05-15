@@ -898,7 +898,7 @@
 }
 
 .phaseDotLight {
-  background: rgba(232, 220, 200, 0.85);
+  background: var(--color-board-light);
 }
 
 .phaseDotDark {
