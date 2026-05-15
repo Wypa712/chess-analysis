@@ -144,18 +144,24 @@ async function validateUsernameExists(
       `https://lichess.org/api/user/${encodeURIComponent(username)}`,
       { redirect: "error", headers: { Accept: "application/json" }, signal: AbortSignal.timeout(5000) }
     );
-    if (res.status === 404) throw new ImportError("user_not_found", "Not found");
-    if (res.status === 429) throw new ImportError("rate_limited", "Rate limited");
-    if (!res.ok) throw new ImportError("api_error", `Lichess error: ${res.status}`);
+    if (!res.ok) {
+      await res.body?.cancel().catch(() => undefined);
+      if (res.status === 404) throw new ImportError("user_not_found", "Not found");
+      if (res.status === 429) throw new ImportError("rate_limited", "Rate limited");
+      throw new ImportError("api_error", `Lichess error: ${res.status}`);
+    }
     await res.body?.cancel();
   } else {
     const res = await fetch(
       `https://api.chess.com/pub/player/${encodeURIComponent(username.toLowerCase())}`,
       { redirect: "error", signal: AbortSignal.timeout(5000) }
     );
-    if (res.status === 404) throw new ImportError("user_not_found", "Not found");
-    if (res.status === 429) throw new ImportError("rate_limited", "Rate limited");
-    if (!res.ok) throw new ImportError("api_error", `Chess.com error: ${res.status}`);
+    if (!res.ok) {
+      await res.body?.cancel().catch(() => undefined);
+      if (res.status === 404) throw new ImportError("user_not_found", "Not found");
+      if (res.status === 429) throw new ImportError("rate_limited", "Rate limited");
+      throw new ImportError("api_error", `Chess.com error: ${res.status}`);
+    }
     await res.body?.cancel();
   }
 }
