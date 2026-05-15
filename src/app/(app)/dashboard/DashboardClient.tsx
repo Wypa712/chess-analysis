@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useSession } from "next-auth/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { SyncStatusBar } from "@/components/SyncStatusBar/SyncStatusBar";
 import { GamesList } from "@/components/GamesList/GamesList";
 import styles from "./page.module.css";
@@ -20,7 +22,10 @@ const EMPTY_SUMMARY: DashboardSummary = {
 };
 
 export function DashboardClient() {
-  const [refreshKey, setRefreshKey] = useState(0);
+  const { data: session } = useSession();
+  const userId = session?.user?.id ?? "";
+  const queryClient = useQueryClient();
+
   const [summary, setSummary] = useState<DashboardSummary>(EMPTY_SUMMARY);
   const [summaryLoading, setSummaryLoading] = useState(true);
 
@@ -31,6 +36,10 @@ export function DashboardClient() {
     },
     []
   );
+
+  const handleSynced = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["games", userId] });
+  }, [queryClient, userId]);
 
   const stats = [
     { label: "Партій", value: summary.total, tone: styles.statTotal },
@@ -61,7 +70,7 @@ export function DashboardClient() {
             Ваші партії та статистика. Нові партії підтягуються автоматично.
           </p>
         </div>
-        <SyncStatusBar onSynced={() => setRefreshKey((k) => k + 1)} />
+        <SyncStatusBar onSynced={handleSynced} />
       </section>
 
       <section className={styles.statsGrid} aria-label="Статистика партій">
@@ -74,7 +83,7 @@ export function DashboardClient() {
         ))}
       </section>
 
-      <GamesList refreshKey={refreshKey} onSummary={handleSummary} />
+      <GamesList userId={userId} onSummary={handleSummary} />
     </div>
   );
 }
