@@ -373,16 +373,20 @@ export function GameView({ game }: { game: GameData }) {
         game.color,
         (pct) => setLoadingPct(pct)
       );
-      const response = await fetch(`/api/games/${game.id}/engine-analysis`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ analysis: result }),
-      });
-      if (!response.ok) {
-        throw new Error("Не вдалося зберегти Stockfish-аналіз.");
-      }
+      // Show the result immediately so a save failure degrades gracefully
+      // instead of clearing a valid in-memory analysis.
       setAnalysis(result);
       setAnalysisState("done");
+      try {
+        const response = await fetch(`/api/games/${game.id}/engine-analysis`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ analysis: result }),
+        });
+        if (!response.ok) console.warn("[GameView] Failed to persist analysis");
+      } catch (saveErr) {
+        console.warn("[GameView] Save failed:", saveErr);
+      }
       if (llmStatus !== "analyzing") await handleLlmAnalyze();
     } catch (error) {
       setAnalysisError(
@@ -478,12 +482,6 @@ export function GameView({ game }: { game: GameData }) {
             )}
           </div>
         </div>
-        {exploreMode && (
-          <p className={styles.exploreModeNote}>
-            Перетворення пішака: тільки ферзь
-          </p>
-        )}
-
         <PlayerBadge
           name="Ви"
           rating={game.playerRating}
