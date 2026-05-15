@@ -10,7 +10,7 @@ describe("GET /api/profile/stats query shape", () => {
       /const \[wdlRows, colorRows, tcRows, openingRows, eloRows\]\s*=\s*await Promise\.all\(\[[\s\S]*\]/
     );
 
-    const afterGuard = source.slice(source.indexOf("const totalGames = totalAvailable;"));
+    const afterGuard = source.slice(source.indexOf("const analyzedGames = totalAvailable;"));
     const beforeReturn = afterGuard.slice(0, afterGuard.indexOf("return NextResponse.json"));
 
     expect((beforeReturn.match(/await db\s*\n\s*\.select/g) ?? []).length).toBe(0);
