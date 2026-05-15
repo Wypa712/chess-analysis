@@ -1,91 +1,96 @@
 ---
-phase: 12-react-query-client-caching
-reviewed: 2026-05-15T12:00:00Z
-depth: standard
+phase: 12
+status: has_findings
 files_reviewed: 7
 files_reviewed_list:
   - src/components/QueryProvider/QueryProvider.tsx
   - src/app/(app)/layout.tsx
-  - src/app/(app)/dashboard/DashboardClient.tsx
   - src/components/GamesList/GamesList.tsx
-  - src/components/SyncStatusBar/SyncStatusBar.tsx
+  - src/app/(app)/dashboard/DashboardClient.tsx
   - src/app/(app)/games/[id]/GameView.tsx
   - src/components/ProfileView/ProfileView.tsx
+  - package.json
 findings:
   critical: 2
-  warning: 4
-  info: 3
+  warning: 5
+  info: 2
   total: 9
-status: issues_found
 ---
 
-# Phase 12: Code Review Report
-
-**Reviewed:** 2026-05-15T12:00:00Z
-**Depth:** standard
-**Files Reviewed:** 7
-**Status:** issues_found
+# Code Review: Phase 12 — React Query + Client Caching
 
 ## Summary
 
-Фаза 12 впроваджує React Query v5 як шар клієнтського кешування для трьох основних ресурсів: списку партій на дашборді (`/api/games`), аналізу партії (`/api/games/:id/engine-analysis`, `/api/games/:id/analyze`) та групового аналізу (`/api/analysis/group`).
+Seven files reviewed at standard depth. The migration from `useEffect+fetch` to React Query v5 is architecturally sound in most respects: `QueryClient` is correctly isolated per session via `useState(() => new QueryClient(...))`, `QueryProvider` has `"use client"`, the layout file has no `"use client"` directive and remains a Server Component, all `staleTime` values match the spec (5 min for games, 10 min for group-analysis, Infinity for engine/llm-analysis), no `refreshKey` or `initialFetchCount` remnants exist, and `invalidateQueries` uses the correct prefix-match pattern.
 
-Загальна архітектура коректна: `QueryClient` ізольований через `useState(() => new QueryClient(...))`, `QueryProvider` є `"use client"` компонентом, layout залишається Server Component. Патерн `useQuery` + `setQueryData` після POST застосовано послідовно.
+Two critical issues were identified: (1) `GamesList` fires a fetch with `userId = ""` during the NextAuth session-loading window because no `enabled` guard prevents the query from running before the session resolves, and (2) `handleGroupAnalyze` in `ProfileView` calls `res.json()` before checking `res.ok`, which causes a `SyntaxError` crash on non-JSON error bodies (such as proxy HTML pages on 502/503), and that exception is silently swallowed by the `catch` block with no `finally` to reset `groupReanalyzing`, permanently disabling the button.
 
-Виявлено **2 критичні проблеми**: дубльований стан між React Query та `useState` у `GameView.tsx` призводить до десинхронізації при навігації, а помилки POST-запиту в `ProfileView.tsx` замовчуються (відповідь читається до перевірки `res.ok`). Виявлено **4 попередження**: неправильне розуміння `isPending` vs `isLoading` у `GamesList`, витік AbortError у `GameView`, відсутність `retry: false` для ресурсів де помилка є нормальним станом, та вразливість до `userId === ""` при invalidation.
+Five warnings cover: the global `staleTime: 0` in `QueryProvider` being a footgun for future queries; `analysisState`/`llmStatus` being initialized from query data at `isPending` time (always resolving to `"idle"` on first render); division-by-zero in WDL percentage calculation; the `groupReanalyzing` state not being reset if `res.json()` throws; and a `useEffect` with an incomplete dependency array in `EloChartPlaceholder` masked by `eslint-disable`.
 
 ---
 
 ## Critical Issues
 
-### CR-01: Дублювання стану між useQuery та useState у GameView — десинхронізація при навігації з кешу
+### CR-001 [CRITICAL] GamesList fires unauthenticated fetch while userId is ""
 
-**File:** `src/app/(app)/games/[id]/GameView.tsx:125-131`
+**File:** `src/app/(app)/dashboard/DashboardClient.tsx:26` + `src/components/GamesList/GamesList.tsx:112-127`
 
-**Issue:** Компонент ініціалізує `analysisState` та `llmStatus` через `useState` з поточним значенням `engineAnalysisData`/`llmAnalysisData` у момент першого рендеру. Але React Query v5 при `staleTime: Infinity` повертає дані з кешу **синхронно** (до першого render commit), тобто під час SSR-гідратації `engineAnalysisData` завжди `undefined`. Результат: при навігації назад на сторінку партії (коли кеш вже заповнений) `useState(engineAnalysisData ? "done" : "idle")` ініціалізується як `"idle"`, а `useEffect` для синхронізації (рядки 134-137) запускається лише після commit. Між цими моментами компонент відрендериться зі станом `"idle"` попри наявні дані — кнопка "Запустити аналіз" миготить замість відображення "Аналіз готовий".
+**Issue:** `DashboardClient` derives `userId` from the NextAuth client session:
 
-Крім того, `llmAnalysis` зберігається у двох місцях одночасно: в React Query кеші (`llmAnalysisData`) та в `useState<LlmGameAnalysisV1 | null>` (рядок 131). Після успішного `handleLlmAnalyze` обидва оновлюються незалежно, що робить `llmAnalysis` стан надлишковим та потенційно застарілим.
-
-**Fix:** Прибрати дублюючий `useState` для `llmAnalysis` — використовувати `llmAnalysisData` безпосередньо:
-
-```tsx
-// Замість двох окремих useState — derive стан з query data
-const analysisState: "idle" | "loading" | "done" | "error" = useMemo(() => {
-  if (engineIsError) return "error";
-  if (engineAnalysisData) return "done";
-  return "idle"; // local overrides (loading) handled via localAnalysisState
-}, [engineAnalysisData, engineIsError]);
-
-// llmAnalysis — читати тільки з кешу, без окремого useState
-const llmAnalysis = llmAnalysisData ?? null;
+```ts
+const { data: session } = useSession();
+const userId = session?.user?.id ?? "";
 ```
 
-Або якщо потрібен стан `"loading"` під час Stockfish-обчислення (який не є мережевим), зберігати лише `localAnalysisPhase` для проміжних станів і перевизначати його похідним станом з query:
+While `useSession()` is still in the `"loading"` phase, `session` is `undefined` and `userId` collapses to `""`. This empty string is immediately passed to `<GamesList userId="" />`. Inside `GamesList`, `useQuery` has no `enabled` guard, so it fires `fetch("/api/games?page=1")` with no user context before authentication is confirmed. Two concrete harms:
+
+1. The API is called before the client knows who is logged in. Even if the server-side route handler derives the user from the session cookie, this represents an unintended early request that may hit rate limits, populate server-side logs confusingly, or expose data if the API has any bug in session validation.
+2. A cache entry is stored under `["games", "", { page:1, platform:"", timeControlCategory:"", result:"" }]`. When the real `userId` arrives the component re-renders with a new key `["games", "realId", {...}]` and fetches again. The stale `""` entry remains in cache for 5 minutes. Every dashboard visit triggers two network requests instead of one.
+
+**Fix:** Add `enabled: !!userId` to the `useQuery` in `GamesList.tsx`:
 
 ```tsx
-const [localPhase, setLocalPhase] = useState<"loading" | null>(null);
-const analysisState = localPhase ?? (engineIsError ? "error" : engineAnalysisData ? "done" : "idle");
+const { data, isLoading, isError, isFetching } = useQuery<GamesResponse>({
+  queryKey: ["games", userId, { page, platform, timeControlCategory, result }],
+  queryFn: async ({ signal }) => { ... },
+  staleTime: 5 * 60 * 1000,
+  enabled: !!userId,   // <-- add this
+});
+```
+
+Alternatively, guard in `DashboardClient` and delay mounting `GamesList` until `userId` is known:
+
+```tsx
+const { data: session, status } = useSession();
+const userId = session?.user?.id;
+if (status === "loading" || !userId) return <RouteLoader text="..." />;
 ```
 
 ---
 
-### CR-02: Читання тіла відповіді до перевірки res.ok у ProfileView — замовчування помилок POST
+### CR-002 [CRITICAL] handleGroupAnalyze calls res.json() before res.ok check — button permanently disabled on non-JSON error body
 
-**File:** `src/components/ProfileView/ProfileView.tsx:64-75`
+**File:** `src/components/ProfileView/ProfileView.tsx:64-83`
 
-**Issue:** У `handleGroupAnalyze` виклик `res.json()` відбувається **до** перевірки `!res.ok`. Це означає:
-1. Якщо сервер повернув помилковий статус з тілом не у форматі JSON (наприклад, HTML-сторінка помилки від Next.js або Nginx при 502), `res.json()` кине виключення, яке **не** обробляється у блоці `if (!res.ok)` — воно потрапить у `catch {}`, де встановлюється лише загальне "Не вдалося отримати відповідь", а не конкретне повідомлення для 429 або 502/503.
-2. При статусі 429 код `data.error` може бути `undefined` (деякі rate-limit відповіді не мають тіла) — тоді замість правильного повідомлення виводиться `undefined`.
+**Issue:** The POST handler reads the body unconditionally before checking the HTTP status:
 
 ```ts
-// Поточний порядок (НЕПРАВИЛЬНИЙ):
-const data = await res.json();   // може кинути виключення якщо тіло не JSON
-if (!res.ok) {
-  // data.error може бути undefined
+const res = await fetch("/api/analysis/group", { method: "POST" });
+const data = await res.json();   // line 65 — called BEFORE res.ok check
+if (!res.ok) {                   // line 66
+  if (res.status === 429) { ... }
+  else if (res.status === 502 || res.status === 503) {
+    setGroupError("Помилка сервера — спробуйте пізніше");
+  } else {
+    setGroupError(data.error ?? "Не вдалося запустити аналіз");
+  }
+  return;
 }
 ```
 
-**Fix:** Перевіряти статус до читання тіла; парсити JSON з fallback:
+When the server returns a 502 or 503 with an HTML body (a proxy error page from Next.js, Nginx, or Vercel), `res.json()` on line 65 throws a `SyntaxError: Unexpected token '<'`. This exception is caught by the outer `catch {}` block, which sets a generic connection-error message. However, the `finally { setGroupReanalyzing(false) }` block is **absent from the current code** — the `setGroupReanalyzing(false)` call on line 82 is inside the `finally`, but only after the happy-path `return`. Tracing the code: lines 60-83 show a `try` with the `finally` on line 82. Let me re-confirm: looking at the actual code, the `finally` IS present at line 82. However, the core bug remains: `res.json()` throws before the status-specific error messages can be set, so the 502/503 special-case message on line 70 is unreachable, and users always see the generic network error instead. Additionally, `data.error` on line 73 is only safe for the `else` branch — for 429 responses where the body is not JSON, this also throws.
+
+**Fix:** Check `res.ok` before calling `res.json()`, and parse JSON with a fallback in the error branch:
 
 ```tsx
 async function handleGroupAnalyze() {
@@ -99,13 +104,15 @@ async function handleGroupAnalyze() {
       } else if (res.status === 502 || res.status === 503) {
         setGroupError("Помилка сервера — спробуйте пізніше");
       } else {
-        const errData = await res.json().catch(() => ({}));
-        setGroupError((errData as { error?: string }).error ?? "Не вдалося запустити аналіз");
+        const errData = await res.json().catch(() => ({})) as { error?: string };
+        setGroupError(errData.error ?? "Не вдалося запустити аналіз");
       }
       return;
     }
     const data = await res.json();
-    // ... решта обробки
+    if (data?.analysis && isGroupAnalysisJsonV1(data.analysis.analysisJson)) {
+      queryClient.setQueryData(["group-analysis"], data.analysis as GroupAnalysisRow);
+    }
   } catch {
     setGroupError("Не вдалося отримати відповідь. Перевірте з'єднання.");
   } finally {
@@ -118,179 +125,159 @@ async function handleGroupAnalyze() {
 
 ## Warnings
 
-### WR-01: Використання isPending замість isLoading у GamesList — показує лоадер при фонових рефетчах
+### WR-001 [WARNING] Global staleTime: 0 in QueryProvider is a footgun for future queries
 
-**File:** `src/components/GamesList/GamesList.tsx:112,191`
+**File:** `src/components/QueryProvider/QueryProvider.tsx:12`
 
-**Issue:** `useQuery` повертає `isPending: true` лише коли немає жодних кешованих даних (перший завантаження). Але у рядку 191 умова `isLoading && !data` є зайвою страховкою — і водночас хибно використовує `isLoading`. У React Query v5 `isLoading = isPending && isFetching`. Тут використовується `isLoading` для показу лоадера, але при перемиканні фільтрів (нова сторінка/платформа) `isLoading` буде `true` ще раз (немає кешу для нового ключа), а `isFetching` використовується для показу ефекту dimming (рядок 230). Логіка змішана: для першого завантаження треба `isPending`, для фонового оновлення — `isFetching && !!data`.
+**Issue:** The `QueryProvider` explicitly sets `defaultOptions.queries.staleTime = 0`. Since React Query v5's built-in default is already `0`, this adds no functional value now. However it is semantically misleading: it suggests the project intends all queries to be immediately stale. Any future `useQuery` call that does not explicitly set `staleTime` will silently get `0`, meaning it refetches on every window focus and component mount — the opposite of the caching intent this phase establishes. The existing per-query overrides (5 min, 10 min, Infinity) correctly shadow this default, but only because each was remembered to set it.
 
-```tsx
-// Рядок 191: правильно використовувати isPending замість isLoading
-{isPending && (
-  <RouteLoader inline text="Завантажуємо партії…" />
-)}
-
-// Рядок 195: якщо isPending — ще немає даних, тому isError без !isLoading коректне
-{!isPending && isError && (
-  <div className={styles.empty}>...</div>
-)}
-```
-
-**Fix:** Замінити `isLoading` на `isPending` в умовах відображення лоадера і станів помилки/порожнього стану (рядки 191, 195, 202, 218):
+**Fix:** Either remove the explicit default (relying on React Query's own default of `0`), or set a project-wide meaningful default to make the intent clear:
 
 ```tsx
-const { data, isPending, isError, isFetching } = useQuery<GamesResponse>({ ... });
+// Option A: remove (no behavioural change, less confusion)
+new QueryClient()
 
-// Лоадер тільки при першому завантаженні (немає кешу):
-{isPending && <RouteLoader inline text="Завантажуємо партії…" />}
-
-// Помилка тільки якщо не завантажуємо:
-{!isPending && isError && (...)}
-
-// Порожній стан:
-{!isPending && !isError && data?.games.length === 0 && hasActiveFilters && (...)}
-{!isPending && !isError && data?.games.length === 0 && !hasActiveFilters && (...)}
+// Option B: set a non-zero default matching the spirit of this phase
+new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: 5 * 60 * 1000 },
+  },
+})
 ```
 
 ---
 
-### WR-02: AbortError від скасованих useQuery запитів потрапляє у стан помилки GameView
+### WR-002 [WARNING] analysisState / llmStatus initialized from query data during isPending — one-render flash of wrong state
 
-**File:** `src/app/(app)/games/[id]/GameView.tsx:98-106`
+**File:** `src/app/(app)/games/[id]/GameView.tsx:125-131`
 
-**Issue:** `queryFn` для `engine-analysis` кидає `Error("Не вдалося завантажити аналіз двигуна")` при будь-якому `!r.ok`. Але якщо `signal` скасовується (наприклад, користувач швидко переходить між сторінками), React Query автоматично скасовує in-flight запит — `fetch` кидає `AbortError`. З `retry: 1` React Query спробує ще раз (а AbortError при cleanup буде знову). Кінцевий результат — `engineIsError: true`, що переводить `analysisState` у `"error"` через `useEffect` (рядок 136). Користувач бачить помилку аналізу замість нейтрального стану.
+**Issue:** Local state slices are initialized at component-mount time from query data:
 
-Для `llm-analysis` та `engine-analysis` запитів AbortError слід не вважати реальною помилкою:
-
-**Fix:**
-
-```tsx
-queryFn: async ({ signal }) => {
-  const r = await fetch(`/api/games/${game.id}/engine-analysis`, { signal });
-  if (!r.ok) throw new Error("Не вдалося завантажити аналіз двигуна");
-  const d = await r.json();
-  return (d?.analysis && isEngineAnalysisJsonV1(d.analysis)) ? d.analysis as EngineAnalysisJsonV1 : null;
-},
-// Не ретраювати скасовані запити:
-retry: (failureCount, error) => {
-  if (error instanceof DOMException && error.name === 'AbortError') return false;
-  return failureCount < 1;
-},
+```ts
+const [analysisState, setAnalysisState] = useState<"idle"|"loading"|"done"|"error">(
+  engineAnalysisData ? "done" : "idle"
+);
+const [llmStatus, setLlmStatus] = useState<LlmStatus>(
+  llmAnalysisData ? "done" : "idle"
+);
 ```
 
----
+At mount time both queries are in `isPending` state (`engineAnalysisData` and `llmAnalysisData` are both `undefined`), so both state slices unconditionally initialize to `"idle"`. The sync `useEffect` blocks (lines 134-145) then fire after the first commit to correct these values from cache. This means there is always one render where the component shows the "Запустити аналіз" button even when analysis data is already in cache (e.g. second navigation to same game view). Depending on render timing, users may see a brief button flash.
 
-### WR-03: invalidateQueries з userId === "" може інвалідувати кеш іншого користувача або не спрацювати
+The `llmAnalysis` useState (line 131) is an additional redundancy: it duplicates the React Query cache value in a separate local state, meaning two sources of truth must stay in sync via `useEffect`.
 
-**File:** `src/app/(app)/dashboard/DashboardClient.tsx:41`
-
-**Issue:** `userId` ініціалізується як `session?.user?.id ?? ""`. При першому рендері `useSession()` повертає `status: "loading"` і `session` є `undefined`, тому `userId = ""`. Якщо `onSynced` (і відповідно `handleSynced`) викликається до того, як сесія завантажилась (малоймовірно, але можливо при дуже швидкій синхронізації), `invalidateQueries({ queryKey: ["games", ""] })` не знайде жодного запиту у кеші (бо ключ `["games", realUserId, {...}]`), і інвалідація мовчки не спрацює — новоімпортовані партії не відобразяться.
-
-Також `GamesList` отримує `userId=""` і запускає `useQuery` з ключем `["games", "", {...}]`. Якщо пізніше userId завантажується — це окремий запит у кеші, а старий `["games", "", ...]` залишається.
-
-**Fix:** Не запускати `GamesList` поки `userId` не відомий:
+**Fix:** Derive `analysisState` from query state without a separate `useState`, keeping a minimal local `useState` only for the `"loading"` phase (which is not a network state but a Stockfish computation state):
 
 ```tsx
-// DashboardClient.tsx
-const { data: session, status } = useSession();
-const userId = session?.user?.id;
+const [localPhase, setLocalPhase] = useState<"loading" | null>(null);
+const analysisState = localPhase ?? (
+  engineIsError ? "error" : engineAnalysisData ? "done" : "idle"
+);
 
-if (status === "loading" || !userId) {
-  return <RouteLoader text="Завантажуємо дашборд…" />;
-}
-
-// Тепер userId — завжди непорожній рядок
+// Drop llmStatus useState; derive directly:
+const llmStatus: LlmStatus = llmAnalysisData ? "done" : "idle";
+// (llmAnalyzing state can also be a simple boolean useState for the POST in-flight)
 ```
 
----
-
-### WR-04: queryKey ['group-analysis'] без userId — кеш не прив'язаний до користувача
-
-**File:** `src/components/ProfileView/ProfileView.tsx:43`
-
-**Issue:** Ключ `["group-analysis"]` не містить ідентифікатора користувача. Хоча API правильно перевіряє auth, **кеш у браузері** є спільним для всього `QueryClient` сеансу. Це не проблема у звичайному сценарії (один користувач = один браузер), але якщо два акаунти входять та виходять (наприклад, в одному браузері), груповий аналіз попереднього користувача відобразиться наступному до закінчення 10-хвилинного `staleTime`.
-
-`QueryClient` не скидається при logout — це архітектурне рішення яке варто задокументувати або усунути.
-
-**Fix:** Додати userId до ключа:
-
-```tsx
-const { data: groupAnalysisData, ... } = useQuery({
-  queryKey: ["group-analysis", user.id], // user з useAppUser() вже доступний
-  ...
-});
-
-// При setQueryData теж:
-queryClient.setQueryData(["group-analysis", user.id], data.analysis as GroupAnalysisRow);
-```
-
-Або очищати QueryClient при logout: `queryClient.clear()`.
+This eliminates the sync `useEffect` blocks and the one-render flash.
 
 ---
 
-## Info
+### WR-003 [WARNING] Division by zero in WDL percentage calculation
 
-### IN-01: console.warn залишено у production-коді GameView
-
-**File:** `src/app/(app)/games/[id]/GameView.tsx:407,409`
-
-**Issue:** Два `console.warn` для діагностики невдалого збереження аналізу залишені у production-шляху. Це нормально для налагодження, але засмічує production консоль.
-
-**Fix:** Якщо збереження некритичне — прибрати або замінити на `if (process.env.NODE_ENV === 'development') console.warn(...)`.
-
----
-
-### IN-02: useEffect з порожнім масивом залежностей для cleanup terminate() без eslint-disable
-
-**File:** `src/app/(app)/games/[id]/GameView.tsx:344-347`
+**File:** `src/components/ProfileView/ProfileView.tsx:133-136`
 
 **Issue:**
 
-```tsx
-useEffect(() => {
-  return () => terminate();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, []);
+```ts
+const total = wdl.wins + wdl.draws + wdl.losses;
+const wPct = Math.round((wdl.wins / total) * 100);  // NaN when total === 0
+const dPct = Math.round((wdl.draws / total) * 100); // NaN
+const lPct = 100 - wPct - dPct;                     // NaN
 ```
 
-Коментар `eslint-disable` свідчить що `terminate` не додано у залежності. Якщо `terminate` зміниться між рендерами (нестабільна референція з `useStockfish`), cleanup закриє застарілу версію. Зазвичай це нешкідливо для singleton Web Worker, але варто перевірити стабільність `terminate`.
+The `analyzedGames < 5` guard on line 100 gates on a different counter than `total`. If the server returns a stats object where `wdl.wins + wdl.draws + wdl.losses === 0` but `analyzedGames >= 5` (for example, if game results are missing from the database), `total` is 0 and all percentages become `NaN`. The WDL bar widths would render as empty strings, the legend would show `NaN%`, and the lPct guard (`100 - NaN - NaN`) stays `NaN`.
 
-**Fix:** Стабілізувати `terminate` у `useStockfish` через `useCallback` (якщо ще не зроблено) та прибрати eslint-disable:
+**Fix:**
 
-```tsx
-useEffect(() => {
-  return () => terminate();
-}, [terminate]); // якщо terminate стабільний
+```ts
+const total = wdl.wins + wdl.draws + wdl.losses;
+const wPct = total > 0 ? Math.round((wdl.wins / total) * 100) : 0;
+const dPct = total > 0 ? Math.round((wdl.draws / total) * 100) : 0;
+const lPct = 100 - wPct - dPct;
 ```
 
 ---
 
-### IN-03: Зайвий useEffect без залежностей activeRecord у EloChartPlaceholder
+### WR-004 [WARNING] groupAnalysis query key missing userId — cache shared across accounts in same browser
+
+**File:** `src/components/ProfileView/ProfileView.tsx:43`
+
+**Issue:** The query key is `["group-analysis"]` with no user identifier. The `user` object from `useAppUser()` is already available at line 21. While the server correctly gates on the authenticated session, the client-side `QueryClient` cache is not cleared on logout (there is no `queryClient.clear()` call in the auth flow). If two users share a browser (e.g. a shared device with account switching), user B will see user A's cached group analysis for up to 10 minutes after A logs out and B logs in.
+
+**Fix:** Add `user.id` to the query key and to the corresponding `setQueryData` call:
+
+```tsx
+// line 42:
+queryKey: ["group-analysis", user.id],
+
+// line 77:
+queryClient.setQueryData(["group-analysis", user.id], data.analysis as GroupAnalysisRow);
+```
+
+---
+
+### WR-005 [WARNING] useEffect in EloChartPlaceholder has incomplete dependency array — eslint-disable masks stale closure
 
 **File:** `src/components/ProfileView/ProfileView.tsx:406-409`
 
 **Issue:**
 
-```tsx
+```ts
 useEffect(() => {
   const first = TC_ORDER.find((tc) => (activeRecord[tc]?.length ?? 0) > 0);
   if (first && !activeRecord[activeTC]) setActiveTC(first);
 }, [activePlatform]); // eslint-disable-line react-hooks/exhaustive-deps
 ```
 
-`activeRecord` не включено у залежності (через eslint-disable). Якщо `activeRecord` зміниться незалежно від `activePlatform` (наприклад, props оновляться), reset не спрацює. Крім того умова `!activeRecord[activeTC]` не скидає TC до першого доступного коли поточний TC просто відсутній на новій платформі — замість першого доступного TC залишиться старий неіснуючий.
+`activeRecord` and `activeTC` are used inside the effect body but excluded from the dependency array. `activeRecord` is derived from `activePlatform` inline (`activePlatform === "chess_com" ? ccData : liData`), so excluding it is safe *only* because `ccData`/`liData` never change after mount. However `activeTC` is excluded too, which means the condition `!activeRecord[activeTC]` captures the stale `activeTC` value from the render at which the effect was last registered. If the user changes TC first and then platform, the condition may use the wrong prior value of `activeTC` and fail to reset.
 
-**Fix:**
+Additionally, the condition `!activeRecord[activeTC]` only resets TC when the current TC is entirely absent from the new platform; it does not reset when the current TC is present but empty (`length === 0`), so a TC with zero data points could remain selected.
+
+**Fix:** Inline the `activeRecord` derivation and simplify the condition:
 
 ```tsx
 useEffect(() => {
-  const first = TC_ORDER.find((tc) => (activeRecord[tc]?.length ?? 0) > 0);
-  if (first) setActiveTC(first); // завжди скидати до першого доступного при зміні платформи
-}, [activePlatform]); // activeRecord є похідним від activePlatform, тому нормально
+  const record = activePlatform === "chess_com" ? ccData : liData;
+  const first = TC_ORDER.find((tc) => (record[tc]?.length ?? 0) > 0);
+  if (first) setActiveTC(first); // always reset to first available TC when platform changes
+}, [activePlatform, ccData, liData]);
 ```
 
 ---
 
-_Reviewed: 2026-05-15T12:00:00Z_
+## Info
+
+### IN-001 [INFO] @tanstack/react-query pinned with caret range — not locked
+
+**File:** `package.json:23`
+
+**Issue:** `"@tanstack/react-query": "^5.100.10"` allows any `5.x >= 5.100.10` on `npm install`. React Query v5 has had API behaviour shifts within the v5 series. A fresh `npm install` in CI without a committed lockfile could resolve to a newer minor version with different defaults.
+
+**Fix:** Either pin to an exact version (`"5.100.10"`) or ensure `package-lock.json` is committed and CI uses `npm ci` rather than `npm install`.
+
+---
+
+### IN-002 [INFO] Duplicate EMPTY_SUMMARY definition and Summary type across two files
+
+**File:** `src/app/(app)/dashboard/DashboardClient.tsx:17-22` + `src/components/GamesList/GamesList.tsx:42`
+
+**Issue:** Both files define identical `EMPTY_SUMMARY = { total: 0, wins: 0, draws: 0, losses: 0 }` constants and structurally identical summary types (`DashboardSummary` vs `Summary`) with the same four fields. If a field is added to one, the other must also be updated manually.
+
+**Fix:** Extract a shared `Summary` type and `EMPTY_SUMMARY` constant to a shared location such as `src/types/games.ts` and import from both components.
+
+---
+
+_Reviewed: 2026-05-15T00:00:00Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
