@@ -79,27 +79,6 @@
   transition: height 0.45s ease;
 }
 
-.evalBarLabel {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 10px;
-  font-family: var(--font-mono);
-  font-weight: 500;
-  letter-spacing: -0.5px;
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  padding: 2px 1px;
-  pointer-events: none;
-}
-
-.evalBarLabelTop {
-  bottom: 50%;
-}
-
-.evalBarLabelBottom {
-  top: 50%;
-}
 
 /* ── Board wrapper + overlay ─────────────────────────────────────────────── */
 
