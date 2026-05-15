@@ -6,6 +6,7 @@ import styles from "./SyncStatusBar.module.css";
 const SESSION_KEY = "chess_sync_ts";
 const RATE_LIMIT_KEY = "chess_sync_rate_limited_until";
 const RATE_LIMIT_DURATION_MS = 60_000;
+const RATE_LIMIT_MESSAGE = "Синхронізацію тимчасово обмежено — повторіть спробу через 60 сек";
 
 interface SyncResult {
   imported: number;
@@ -42,7 +43,7 @@ export function SyncStatusBar({ onSynced }: SyncStatusBarProps) {
       if (res.status === 429) {
         const until = Date.now() + RATE_LIMIT_DURATION_MS;
         try { localStorage.setItem(RATE_LIMIT_KEY, String(until)); } catch { /* storage unavailable */ }
-        setError("Синхронізацію rate-limited — спробуй через 60 сек");
+        setError(RATE_LIMIT_MESSAGE);
         return;
       }
 
@@ -88,7 +89,7 @@ export function SyncStatusBar({ onSynced }: SyncStatusBarProps) {
       }
     })();
     if (Date.now() < rateLimitedUntil) {
-      setError("Синхронізацію rate-limited — спробуй через 60 сек");
+      setError(RATE_LIMIT_MESSAGE);
       return;
     }
 
@@ -122,7 +123,7 @@ export function SyncStatusBar({ onSynced }: SyncStatusBarProps) {
           <span className={styles.badge}>+{result.imported} нових</span>
         )}
         {error && <span className={styles.errorText}>{error}</span>}
-        {error && (
+        {error && error !== RATE_LIMIT_MESSAGE && (
           <span className={styles.syncHint}>
             Перевірте акаунти в налаштуваннях або оновіть сторінку.
           </span>
