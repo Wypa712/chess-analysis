@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2
 milestone_name: v2
-current_phase: 12
-status: complete
-last_updated: "2026-05-15T00:00:00Z"
+status: Ready for next phase
+last_updated: "2026-05-16T00:00:00Z"
+current_phase: 13
 progress:
-  total_phases: 5
+  total_phases: 3
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
-  percent: 40
+  total_plans: 14
+  completed_plans: 12
+  percent: 86
 ---
 
 # STATE.md — Chess Analysis App
@@ -28,25 +28,34 @@ Last updated: 2026-05-15 (Phase 12 complete)
 
 ## Current Position
 
-Phase: 12 (react-query-client-caching) — COMPLETE (2026-05-15)
-Plans: 4/4 complete
+Phase: 13 (mobile-ui-ux-improvements) — IN PROGRESS (2026-05-16)
+Plans: 1/3 complete
 **Milestone:** 2 — v2
-**Last completed:** v2 Phase 4 — React Query + Client Caching (2026-05-15)
-**Status:** Ready for next phase
+**Last completed:** Phase 13 Plan 01 — Pull-to-Refresh on Dashboard (2026-05-16)
+**Status:** Executing Phase 13
 
 ```
-Progress: [████░░░░░░] 40%
+Progress: [████░░░░░░] 86%
 Milestone 1: 8/8 phases ✅
-Milestone 2: 2/5 phases ✅ (v2 Phase 1 + Phase 4 done)
+Milestone 2: Phase 13 in progress (1/3 plans done)
 ```
 
 ---
 
 ## What Was Last Completed
 
+**Phase 13 Plan 01: Pull-to-Refresh on Dashboard** — completed 2026-05-16
+
+Delivered:
+
+- `usePullToRefresh` hook — кастомний gesture hook (touchstart/touchmove/touchend, поріг 60px, клампінг 80px)
+- `SyncStatusBar` — `forwardRef` + `useImperativeHandle` expose `runSync` через `SyncStatusBarHandle`
+- `DashboardClient` — інтеграція hook + ref, SVG-спінер з `ptr-spin` анімацією
+
 **v2 Phase 4: React Query + Client Caching** — completed 2026-05-15
 
 Delivered:
+
 - `@tanstack/react-query v5` встановлено, `QueryProvider` (SSR-safe via useState) обгортає весь (app) layout
 - `GamesList` мігровано на `useQuery(['games', userId, filters])` зі staleTime 5 хвилин
 - `DashboardClient` — `refreshKey` видалено, `invalidateQueries` після sync

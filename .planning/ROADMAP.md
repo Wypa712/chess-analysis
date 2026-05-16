@@ -1,6 +1,6 @@
 # ROADMAP.md — Chess Analysis App
 
-Last updated: 2026-05-15
+Last updated: 2026-05-16
 
 ---
 
@@ -218,7 +218,11 @@ Plans:
   3. Кнопки навігації по ходах достатньо великі для тапу пальцем
   4. Список ходів відображається у вигляді горизонтальної смуги над шахівницею
   5. Внизу залишаються тільки вкладки Аналіз та Поради
-**Plans:** TBD
+**Plans:** 3 plans
+Plans:
+- [x] 13-01-PLAN.md — Pull-to-refresh: usePullToRefresh hook + SyncStatusBar forwardRef + DashboardClient інтеграція
+- [ ] 13-02-PLAN.md — GameView мобільний лейаут: горизонтальний eval bar, MoveStrip, boardSize calc, 48px кнопки
+- [ ] 13-03-PLAN.md — LlmTabsPanel мобайл: приховати вкладку "Ходи" через data-tab + CSS
 **UI hint**: yes
 
 ### v2 Phase 5: LLM Abstraction + Backlog Features
@@ -252,5 +256,5 @@ Plans:
 | M2 — v2 Phase 2: Polish & Hardening | 0/7 | Planned | - |
 | M2 — v2 Phase 3: Email Auth + Google OAuth | TBD | Planned | - |
 | M2 — v2 Phase 4: React Query + Client Caching | 4/4 | Complete | 2026-05-15 |
-| M2 — v2 Phase 6: Mobile UI/UX Improvements | TBD | Planned | - |
+| M2 — v2 Phase 6: Mobile UI/UX Improvements | 0/3 | Planned | - |
 | M2 — v2 Phase 5: LLM Abstraction + Backlog | TBD | Planned | - |
