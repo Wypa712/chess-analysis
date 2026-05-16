@@ -15,8 +15,8 @@ type PlayMoveSoundParams = {
 const SOUNDS = {
   move:     "/sounds/Move.ogg",
   capture:  "/sounds/Capture.ogg",
-  check:    "/sounds/Check.ogg",    // sfx set — real file
-  gameOver: "/sounds/Victory.ogg",  // sfx set — real file
+  check:    "/sounds/Capture.ogg",  // check → capture sound
+  gameOver: "/sounds/Check.ogg",    // checkmate → check sound
 } as const;
 
 // Preload all sounds once at module level so first play is instant.
