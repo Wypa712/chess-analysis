@@ -34,7 +34,7 @@ export function usePullToRefresh(onTrigger: () => void): {
     if (!el) return;
 
     function onTouchStart(e: TouchEvent) {
-      if (window.scrollY > 0) return;
+      if (el.scrollTop > 0) return;
       startYRef.current = e.touches[0].clientY;
       isDraggingRef.current = true;
       setIsDragging(true);
@@ -85,11 +85,13 @@ export function usePullToRefresh(onTrigger: () => void): {
     el.addEventListener("touchstart", onTouchStart, { passive: true });
     el.addEventListener("touchmove", onTouchMove, { passive: false });
     el.addEventListener("touchend", onTouchEnd, { passive: true });
+    el.addEventListener("touchcancel", reset, { passive: true });
 
     return () => {
       el.removeEventListener("touchstart", onTouchStart);
       el.removeEventListener("touchmove", onTouchMove);
       el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("touchcancel", reset);
     };
   }, [reset]);
 
