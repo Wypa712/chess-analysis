@@ -206,6 +206,21 @@ Plans:
 - [x] 12-04-PLAN.md — Мігрувати group analysis GET у ProfileView на useQuery
 **Completed:** 2026-05-15
 
+### v2 Phase 6: Mobile UI/UX Improvements
+**Status:** PLANNED
+**Phase number:** 13
+**Goal:** Мобільна версія зручніша — pull-to-refresh на дашборді, більша шахівниця та кнопки на сторінці аналізу, ходи у рядок над полем
+**Requirements:** mobile-ux
+**Dependencies:** v2 Phase 4
+**Success Criteria:**
+  1. Pull-to-refresh жест на /dashboard оновлює список партій (PWA mobile)
+  2. Шахівниця займає максимум доступної ширини на мобайлі
+  3. Кнопки навігації по ходах достатньо великі для тапу пальцем
+  4. Список ходів відображається у вигляді горизонтальної смуги над шахівницею
+  5. Внизу залишаються тільки вкладки Аналіз та Поради
+**Plans:** TBD
+**UI hint**: yes
+
 ### v2 Phase 5: LLM Abstraction + Backlog Features
 **Status:** PLANNED
 **Goal:** LLM-клієнт абстрагований від провайдера; PGN export, accuracy trend та sharing доступні
@@ -237,4 +252,5 @@ Plans:
 | M2 — v2 Phase 2: Polish & Hardening | 0/7 | Planned | - |
 | M2 — v2 Phase 3: Email Auth + Google OAuth | TBD | Planned | - |
 | M2 — v2 Phase 4: React Query + Client Caching | 4/4 | Complete | 2026-05-15 |
+| M2 — v2 Phase 6: Mobile UI/UX Improvements | TBD | Planned | - |
 | M2 — v2 Phase 5: LLM Abstraction + Backlog | TBD | Planned | - |
