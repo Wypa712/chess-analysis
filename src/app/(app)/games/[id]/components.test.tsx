@@ -217,6 +217,24 @@ describe('LlmTabsPanel', () => {
       render(<LlmTabsPanel {...baseProps} activeTab="advice" />)
     ).not.toThrow();
   });
+
+  it('does not render explore candidate suggestions', () => {
+    render(
+      <LlmTabsPanel
+        {...baseProps}
+        exploreMode
+        exploreEvalResult={{
+          eval: { type: 'cp', value: 25 },
+          candidates: [
+            { uci: 'b1c3', san: 'Nc3', eval: { type: 'cp', value: 25 } },
+          ],
+        }}
+      />
+    );
+
+    expect(screen.queryByText('Кандидати')).not.toBeInTheDocument();
+    expect(screen.queryByText('Nc3')).not.toBeInTheDocument();
+  });
 });
 
 // ── GameView hook order regression ───────────────────────────────────────────

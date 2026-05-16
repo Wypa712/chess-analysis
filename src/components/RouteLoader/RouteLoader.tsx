@@ -26,7 +26,7 @@ export function RouteLoader({
           />
         ))}
       </div>
-      {text && <p className={styles.text}>{text}</p>}
+      {inline && text && <p className={styles.text}>{text}</p>}
     </div>
   );
 }

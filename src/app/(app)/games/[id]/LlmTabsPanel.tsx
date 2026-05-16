@@ -1,10 +1,7 @@
-import { evalToPawns } from "@/lib/chess/engine-analysis";
 import { LlmAnalysis, type LlmStatus } from "./LlmAnalysis";
 import { type LlmGameAnalysisV1 } from "@/lib/llm/types";
 import { type MovePair, type ExploreEvalResult } from "./types";
 import styles from "./GameView.module.css";
-
-const MATE_THRESHOLD_PAWNS = 50;
 
 // ── LlmTabsPanel ──────────────────────────────────────────────────────────────
 
@@ -27,9 +24,7 @@ interface LlmTabsPanelProps {
 }
 
 export function LlmTabsPanel({
-  exploreMode,
   exploreAnalyzing,
-  exploreEvalResult,
   activeTab,
   onTabChange,
   movePairs,
@@ -45,44 +40,6 @@ export function LlmTabsPanel({
 }: LlmTabsPanelProps) {
   return (
     <>
-      {/* Explore candidates — visible only in explore mode */}
-      {exploreMode && (
-        <div className={styles.exploreCandidatesPanel}>
-          <span className={styles.exploreCandidatesTitle}>
-            {exploreAnalyzing ? "Аналізую…" : "Кандидати"}
-          </span>
-          {!exploreAnalyzing && exploreEvalResult && exploreEvalResult.candidates.length > 0 ? (
-            <div className={styles.exploreCandidatesList}>
-              {exploreEvalResult.candidates.slice(0, 3).map((c, i) => {
-                const pawns = evalToPawns(c.eval) ?? 0;
-                const sign  = pawns > 0 ? "+" : "";
-                const isMate = Math.abs(pawns) >= MATE_THRESHOLD_PAWNS;
-                const mateVal = typeof c.eval?.value === "number" ? Math.abs(c.eval.value) : null;
-                const evalStr = isMate
-                  ? (mateVal !== null ? `${pawns < 0 ? "-" : ""}M${mateVal}` : "?")
-                  : `${sign}${pawns.toFixed(2)}`;
-                return (
-                  <div key={c.uci} className={styles.exploreCandidateRow}>
-                    <span className={styles.exploreCandidateRank}>{i + 1}.</span>
-                    <span className={styles.exploreCandidateSan}>
-                      {c.san ?? c.uci}
-                    </span>
-                    <span
-                      className={styles.exploreCandidateEval}
-                      style={{ color: pawns >= 0 ? "rgba(232,220,200,0.8)" : "var(--color-text-faded)" }}
-                    >
-                      {evalStr}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          ) : !exploreAnalyzing ? (
-            <span className={styles.exploreCandidatesEmpty}>Зробіть хід</span>
-          ) : null}
-        </div>
-      )}
-
       {/* Tab bar */}
       <div className={styles.tabBar}>
         {(["moves", "analysis", "advice"] as const).map((tab) => (
