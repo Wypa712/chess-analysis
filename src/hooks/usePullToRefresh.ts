@@ -34,7 +34,7 @@ export function usePullToRefresh(onTrigger: () => void): {
     if (!el) return;
 
     function onTouchStart(e: TouchEvent) {
-      if (el.scrollTop > 0) return;
+      if (!el || el.scrollTop > 0) return;
       startYRef.current = e.touches[0].clientY;
       isDraggingRef.current = true;
       setIsDragging(true);
