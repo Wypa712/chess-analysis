@@ -280,6 +280,12 @@ describe('GameView desktop layout', () => {
     expect(source).toContain('const EVAL_BAR_WIDTH = 32;');
     expect(css).toMatch(/\.evalBarWrap\s*{[^}]*width:\s*32px;/s);
   });
+
+  it('uses a tighter desktop vertical chrome budget so the board can grow', () => {
+    const source = readFileSync(resolve(__dirname, 'GameView.tsx'), 'utf8');
+
+    expect(source).toContain('const DESKTOP_VERTICAL_CHROME = 240;');
+  });
 });
 
 describe('EvalSection chart layout', () => {

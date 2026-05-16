@@ -41,10 +41,10 @@ const MAX_BOARD_SIZE = 760;
 const MIN_BOARD_SIZE = 200;
 const EVAL_BAR_WIDTH = 32;
 const BOARD_ROW_GAP = 10;
-// Approximate combined height of fixed vertical chrome on desktop:
-// app header (~56px) + bottom nav bar (~56px) + player badges 2×(~48px) +
-// move-strip/nav controls row (~64px) + analyse-wrap (~52px) + gaps/padding (~16px) ≈ 290px
-const DESKTOP_VERTICAL_CHROME = 290;
+// Approximate combined height of fixed vertical chrome on desktop after UI cleanup.
+// Keeping this budget tight lets the board use the free desktop space without
+// changing the mobile viewport contract.
+const DESKTOP_VERTICAL_CHROME = 240;
 
 function snapBoardSize(size: number): number {
   const clamped = Math.min(Math.max(size, MIN_BOARD_SIZE), MAX_BOARD_SIZE);
