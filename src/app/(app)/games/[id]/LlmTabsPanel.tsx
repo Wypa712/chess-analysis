@@ -89,6 +89,7 @@ export function LlmTabsPanel({
           <button
             key={tab}
             type="button"
+            data-tab={tab}
             className={`${styles.tabItem} ${activeTab === tab ? styles.tabItemActive : ""}`}
             onClick={() => onTabChange(tab)}
           >
