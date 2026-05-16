@@ -1,6 +1,6 @@
 ---
 phase: 13-mobile-ui-ux-improvements
-reviewed: 2026-05-16T12:00:00Z
+reviewed: 2026-05-16T15:20:00Z
 depth: standard
 files_reviewed: 6
 files_reviewed_list:
@@ -11,243 +11,92 @@ files_reviewed_list:
   - src/app/(app)/games/[id]/GameView.module.css
   - src/app/(app)/games/[id]/LlmTabsPanel.tsx
 findings:
-  critical: 3
-  warning: 4
-  info: 3
-  total: 10
-status: fixed
-fixes_applied:
-  - CR-01
-  - CR-02
-  - CR-03
-  - WR-01
-  - WR-02
-  - WR-03
-  - WR-04
-fixes_skipped: []
-fixed_at: 2026-05-16T12:30:00Z
+  critical: 1
+  warning: 1
+  info: 2
+  total: 4
+status: issues_found
 ---
 
 # Phase 13: Code Review Report
 
-**Reviewed:** 2026-05-16T12:00:00Z
-**Depth:** standard
-**Files Reviewed:** 6
+**Reviewed:** 2026-05-16T15:20:00Z  
+**Depth:** standard  
+**Files Reviewed:** 6  
 **Status:** issues_found
 
 ## Summary
 
-Фаза 13 додає pull-to-refresh на дашборді, горизонтальний eval-бар та мобільний move-strip для перегляду партії. Загальна якість коду хороша: стабільні ref-замикання для обробників подій, правильне очищення addEventListener, захист від race condition у sync. Виявлено 2 блокери та 4 попередження, що потребують виправлення.
+Phase 13's previous critical fixes are mostly present: `touchcancel` cleanup exists, the React hook-order issue is covered by a regression test, mobile `analysisPanel` now uses `70dvh`, and `evalToPawns` now returns `number | null` with guarded `EvalBar` usage.
+
+I found one remaining critical mobile interaction bug and one responsive-state warning.
 
 ---
 
 ## Critical Issues
 
-### CR-03: Post-deploy React #310 через `useMemo` після loading early return
+### CR-01: Pull-to-refresh still checks the wrong scroll container, breaking normal downward scroll inside AppShell
 
-**File:** `src/app/(app)/games/[id]/GameView.tsx`
+**File:** `src/hooks/usePullToRefresh.ts:36-68`  
+**Related container:** `src/components/AppShell.module.css:9-15`
 
-**Issue:** Після деплою сторінка гри падала з minified React error #310. Офіційна розшифровка React: `Rendered more hooks than during the previous render`.
+**Issue:** `usePullToRefresh` now guards with `el.scrollTop > 0`, but `el` is the dashboard wrapper from `DashboardClient`, not the actual scroll container. The app scroll container is `.content` in `AppShell.module.css` (`overflow-y: auto; -webkit-overflow-scrolling: touch`). The dashboard wrapper normally has `scrollTop === 0` even when the page is scrolled down inside AppShell.
 
-Root cause: `if (enginePending || llmPending) return <RouteLoader ... />` стояв перед двома новими `useMemo` (`evalWhitePercent`, `evalDisplayStr`). Перший render під час pending-запитів викликав менше hooks, наступний render після завершення queries доходив до цих `useMemo`, і React валив компонент через зміну порядку hooks.
+That means any downward touch gesture inside the dashboard can enter pull-to-refresh mode and `preventDefault()` at `usePullToRefresh.ts:68`, blocking the user from naturally scrolling back up through the dashboard. It can also trigger sync while the user is not at the top of the actual scroll viewport.
 
-**Fix applied:** loading return перенесено нижче всіх hook calls у `GameView`, перед основним JSX return. Додано regression test у `components.test.tsx`, який забороняє hook calls після loading early return.
+**Fix recommendation:** Make the hook check the real scroll root, or accept a `scrollContainerRef` / predicate:
 
-**Verification:**
-- `npm.cmd run test:run -- "src/app/(app)/games/[id]/components.test.tsx"` — 10 passed
-- `npm.cmd run build` — passed
-
----
-
-### CR-01: `touchcancel` не обробляється — дотяг-індикатор залишається "застряглим"
-
-**File:** `src/hooks/usePullToRefresh.ts:85-93`
-
-**Issue:** Гак реєструє `touchstart`, `touchmove` та `touchend`, але **не обробляє `touchcancel`**. Браузер генерує `touchcancel` коли система перехоплює дотик (сповіщення, скролл браузера, incoming call, тощо). Якщо `touchcancel` спрацьовує після початку драгу — `isDraggingRef.current` залишається `true`, `dragYRef.current > 0`, а `isReadyRef.current` може бути `true`. При наступному `touchstart` код перевіряє лише `window.scrollY > 0`, тому наступний `onTouchEnd` може мимоволі тригернути sync без реальної дії користувача. Крім того, індикатор залишається видимим (ненульовий `dragY`, ненульова `opacity`).
-
-**Fix:**
 ```ts
-el.addEventListener("touchstart", onTouchStart, { passive: true });
-el.addEventListener("touchmove", onTouchMove, { passive: false });
-el.addEventListener("touchend", onTouchEnd, { passive: true });
-el.addEventListener("touchcancel", reset, { passive: true }); // <-- додати
-
-return () => {
-  el.removeEventListener("touchstart", onTouchStart);
-  el.removeEventListener("touchmove", onTouchMove);
-  el.removeEventListener("touchend", onTouchEnd);
-  el.removeEventListener("touchcancel", reset);              // <-- додати
-};
+const scrollRoot = el.closest("[data-scroll-root]") as HTMLElement | null;
+if ((scrollRoot?.scrollTop ?? window.scrollY) > 0) return;
 ```
 
----
-
-### CR-02: `evalToPawns` ніколи не повертає `null`/`undefined`, але код перевіряє саме це — маємо приховану семантичну помилку
-
-**File:** `src/app/(app)/games/[id]/GameView.tsx:472,478`
-
-**Issue:** Тип `evalToPawns` оголошений як `(evalScore: EngineEval | undefined): number` і **завжди повертає `number`** (0, якщо `evalScore` — `undefined` або `null`). Перевірки на рядках 472 і 478:
-```ts
-if (evalValue === null || evalValue === undefined) return 50;
-```
-ніколи не спрацьовують. Це означає, що коли аналіз ще не запущений і `analysis === null`, `evalToPawns(undefined)` повертає `0`, а `evalValue === 0` — цілком валідне число. Код *вважає*, що відображає "нейтральний" стан (50%), але насправді відображає "рівна позиція +0.00", що вводить в оману. Горизонтальний бар також відображає 50% (ширина) і показує "+0.00" — виглядає наче аналіз вже є.
-
-Справжня помилка: при `!analysis` має повертатися sentinel-значення `null`, щоб компоненти могли відрізнити "немає даних" від "справді 0".
-
-**Fix:**
-```ts
-// engine-analysis.ts
-export function evalToPawns(evalScore: EngineEval | undefined): number | null {
-  if (!evalScore) return null;
-  return evalToCentipawns(evalScore) / 100;
-}
-
-// GameView.tsx — після цього null-перевірки стануть коректними
-const mainlineEvalValue: number | null =
-  analysis && currentMove >= 0
-    ? evalToPawns(analysis.moves[currentMove]?.evalAfter)
-    : evalToPawns(analysis?.evalGraph[0]?.eval);
-```
-Увага: `EvalBar` приймає `value: number` — треба також оновити пропс до `value: number | null` і прибрати `Math.abs(value)` без null-guard.
+Alternatively, attach the gesture ref directly to the AppShell scroll container and only enable it on dashboard routes.
 
 ---
 
 ## Warnings
 
-### WR-01: Мобільна висота `analysisPanel` жорстко задана `70vh` — некоректно на iOS з address bar
+### WR-01: Mobile hides the Moves tab button, but `activeTab` can remain `"moves"` after resize
 
-**File:** `src/app/(app)/games/[id]/GameView.module.css:820-823`
+**File:** `src/app/(app)/games/[id]/GameView.tsx:92-100`  
+**Related CSS:** `src/app/(app)/games/[id]/GameView.module.css:859-861`
 
-**Issue:**
-```css
-.analysisPanel {
-  height: 70vh;
-}
-```
-На iOS Safari `100vh` враховує адресний рядок, тому `70vh` при відкритому браузері і при прокрутці до `100dvh` дають різні значення. Панель або обрізається, або залишає порожнє місце. Сусідній `.layout` вже використовує `height: 100dvh` — варто бути послідовним.
+**Issue:** The `"Ходи"` tab button is hidden on mobile with CSS, and `activeTab` is switched to `"analysis"` only once on mount. If the user opens the game on desktop, stays on `"moves"`, then resizes or rotates into a mobile viewport, the `"Ходи"` button disappears but the moves tab content remains active because `activeTab` is still `"moves"`.
 
-**Fix:**
-```css
-.analysisPanel {
-  height: 70dvh; /* або flex-based замість фіксованої висоти */
-}
-```
+This violates the mobile tab contract: the hidden tab can still be the selected content state.
 
----
+**Fix recommendation:** Reuse the existing breakpoint detection that sets `isMobile` and coerce `activeTab` when mobile becomes true:
 
-### WR-02: `window.scrollY` у `onTouchStart` перевіряє скрол усієї сторінки, а не контейнера
-
-**File:** `src/hooks/usePullToRefresh.ts:37`
-
-**Issue:** Хук прикріплюється до `containerRef` (div усередині дашборду), але гард `if (window.scrollY > 0) return` перевіряє скрол **вікна**, а не самого контейнера. Якщо AppShell обгортає контент у власний scrollable div (що типово для mobile PWA layout), `window.scrollY` завжди буде `0`, а реальний скрол відбувається всередині flex-контейнера. Тоді pull-to-refresh спрацьовуватиме навіть коли контент проскролено вниз, конфліктуючи зі звичайним скролом.
-
-**Fix:**
 ```ts
-function onTouchStart(e: TouchEvent) {
-  const scrollTop = el.scrollTop ?? 0; // el — containerRef.current
-  if (scrollTop > 0) return;
-  // ...
-}
+useEffect(() => {
+  if (isMobile && activeTab === "moves") setActiveTab("analysis");
+}, [isMobile, activeTab]);
 ```
-
----
-
-### WR-03: `DESKTOP_VERTICAL_CHROME = 290` — магічна константа без прив'язки до реального layout
-
-**File:** `src/app/(app)/games/[id]/GameView.tsx:44,341`
-
-**Issue:** Константа `290px` у `availableH = layoutEl.clientHeight - DESKTOP_VERTICAL_CHROME` жорстко кодує "хром" інтерфейсу (хедер, нав-бар, відступи). Якщо будь-який компонент змінить висоту або з'являться нові елементи, дошка або виходитиме за межі, або матиме надлишковий відступ. ResizeObserver спостерігає за `layoutEl`, але не розраховує хром динамічно.
-
-**Fix:**
-Замість `DESKTOP_VERTICAL_CHROME` вираховувати реальну висоту всіх елементів крім дошки:
-```ts
-const boardAreaChildren = Array.from(boardAreaEl.children);
-const nonBoardHeight = boardAreaChildren
-  .filter(child => child !== boardRowEl)
-  .reduce((sum, el) => sum + el.getBoundingClientRect().height, 0);
-const availableH = boardAreaEl.clientHeight - nonBoardHeight;
-```
-Або, як мінімум, задокументувати з чого складаються ці 290px.
-
----
-
-### WR-04: Стан `llmStatus` та `analysisState` ініціалізується зі snapshot квері до mount — може не синхронізуватися
-
-**File:** `src/app/(app)/games/[id]/GameView.tsx:129-135`
-
-**Issue:**
-```ts
-const [analysisState, setAnalysisState] = useState<...>(
-  engineAnalysisData ? "done" : "idle"
-);
-const [llmStatus, setLlmStatus] = useState<LlmStatus>(
-  llmAnalysisData ? "done" : "idle"
-);
-```
-`engineAnalysisData` та `llmAnalysisData` під час першого рендеру завжди `undefined` (запит ще не завершений — `isPending: true`), оскільки компонент відрендерений за умови `if (enginePending || llmPending) return <RouteLoader>`. Тому обидва `useState` завжди ініціалізуються як `"idle"`, попри наявність даних у кеші. Синхронізацію закрито через два окремих `useEffect` (рядки 138-149), але між першим рендером і першим ефектом є короткий момент де стан — `"idle"` замість `"done"`, що може спричинити миготіння кнопки "Запустити аналіз".
-
-**Fix:**
-Прибрати ранній `return` або ініціалізувати стан після перевірки `isPending`:
-```ts
-// Оскільки рядок 434 гарантує що ми тут тільки коли !enginePending && !llmPending:
-const [analysisState, setAnalysisState] = useState(
-  engineAnalysisData ? "done" as const : "idle" as const
-);
-```
-Але для цього потрібно перемістити `useState`-виклики після `if (enginePending || llmPending)` — що порушує правила hooks. Правильне рішення: видалити дублювання стану, використовувати `engineAnalysisData` напряму як джерело правди, а `analysisState` — тільки для відстеження *поточного* локального аналізу Stockfish.
 
 ---
 
 ## Info
 
-### IN-01: Вбудований `<style>` з `@keyframes` у тіло компонента рендериться при кожному ре-рендері
+### IN-01: Inline pull-to-refresh keyframes should move out of DashboardClient
 
 **File:** `src/app/(app)/dashboard/DashboardClient.tsx:73`
 
-**Issue:**
-```tsx
-<style>{`@keyframes ptr-spin { to { transform: rotate(360deg); } }`}</style>
-```
-Цей `<style>` тег вставляється у DOM при кожному рендері компонента. Хоча браузер ігнорує дублікати, це нестандартна практика в Next.js App Router і може конфліктувати з CSS Streaming. Краще оголосити анімацію у CSS-модулі.
+The inline `<style>` tag works, but it is re-rendered with the component and mixes animation CSS into the client component body. Prefer moving `@keyframes ptr-spin` into `page.module.css` and applying an animation class to the SVG circle.
 
-**Fix:**
-Перенести у `page.module.css` або окремий CSS-файл:
-```css
-@keyframes ptr-spin {
-  to { transform: rotate(360deg); }
-}
-```
+### IN-02: Desktop board chrome budget is still approximate
+
+**File:** `src/app/(app)/games/[id]/GameView.tsx:43-47,346`
+
+`DESKTOP_VERTICAL_CHROME = 240` is now documented and covered by a layout expectation test, so this is not blocking. It remains a fixed budget that can drift when player badges, nav controls, or analysis controls change height. A dynamic measurement would be more resilient.
 
 ---
 
-### IN-02: Відсутня обробка `touchcancel` у `usePullToRefresh` — дублювання з CR-01 (якісний аспект)
+## Verification Notes
 
-Додатково до безпекового аспекту (CR-01): відсутність `touchcancel` робить хук несумісним зі стандартом Pointer Events та майбутніми браузерними оновленнями, які активніше використовують скасування дотиків.
+- Reviewed current code for all 6 files listed in phase summaries.
+- Did not modify production code.
+- Did not run the full test suite during review; this report is static code review.
 
----
-
-### IN-03: Mate-значення у `LlmTabsPanel` ігнорує знак — від'ємний мат не відображається
-
-**File:** `src/app/(app)/games/[id]/LlmTabsPanel.tsx:61-63`
-
-**Issue:**
-```ts
-const mateVal = typeof c.eval?.value === "number" ? Math.abs(c.eval.value) : null;
-const evalStr = isMate
-  ? (mateVal !== null ? `M${mateVal}` : "?")
-  : `${sign}${pawns.toFixed(2)}`;
-```
-Якщо `pawns < -50` (опонент матує), `sign` буде `""` (порожній рядок, бо `pawns > 0` — false), але `evalStr` формується як `M${mateVal}` (без мінуса). Результат: "-M3" відображається як "M3" — користувач бачить що він матує, хоча насправді його матують.
-
-**Fix:**
-```ts
-const evalStr = isMate
-  ? (mateVal !== null ? `${pawns < 0 ? "-" : ""}M${mateVal}` : "?")
-  : `${sign}${pawns.toFixed(2)}`;
-```
-
----
-
-_Reviewed: 2026-05-16T12:00:00Z_
-_Reviewer: Claude (gsd-code-reviewer)_
+_Reviewer: Codex inline code-reviewer_  
 _Depth: standard_
