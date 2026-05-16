@@ -1,11 +1,9 @@
 import { useId, useMemo } from "react";
-import Link from "next/link";
 import {
   evalToPawns,
   type EngineAnalysisJsonV1,
 } from "@/lib/chess/engine-analysis";
-import { PrevIcon } from "./icons";
-import { PHASE_OPENING_END_PLY, PHASE_MIDDLEGAME_END_PLY, type GameData } from "./types";
+import { type GameData } from "./types";
 import styles from "./GameView.module.css";
 
 // ── EvalChart constants ────────────────────────────────────────────────────────
@@ -47,15 +45,11 @@ function EvalChart({
   currentIndex,
   onSeek,
   keyMoments = [],
-  phaseAccuracy = null,
-  userColor = "white",
 }: {
   evals: number[];
   currentIndex: number;
   onSeek: (i: number) => void;
   keyMoments?: EngineAnalysisJsonV1["keyMoments"];
-  phaseAccuracy?: Array<{ white: number | null; black: number | null }> | null;
-  userColor?: "white" | "black";
 }) {
   const uid = useId();
   const n = evals.length;
@@ -192,23 +186,6 @@ function EvalChart({
           stroke="var(--color-teal-soft)"
           strokeWidth={1.5}
         />
-        {/* Phase dividers */}
-        {n >= 2 && [PHASE_OPENING_END_PLY, PHASE_MIDDLEGAME_END_PLY]
-          .filter((divPly) => divPly < n)
-          .map((divPly) => {
-            const x = AXIS_W + (divPly / (n - 1)) * CHART_CONTENT_W;
-            return (
-              <line
-                key={divPly}
-                x1={x} y1={0}
-                x2={x} y2={CHART_H}
-                stroke="rgba(255,255,255,0.18)"
-                strokeWidth={1}
-                strokeDasharray="2,2"
-              />
-            );
-          })
-        }
         {/* Key moment dots */}
         {keyMoments.map((km) => {
           if (km.ply >= n) return null;
@@ -259,50 +236,11 @@ function EvalChart({
           </>
         )}
       </svg>
-      {phaseAccuracy && n >= 2 && (() => {
-        const fmt = (v: number | null) => v !== null ? `${v}%` : "–";
-        const oppColor = userColor === "white" ? "black" : "white";
-        const phases = ["Дебют", "Мідл", "Кінець"] as const;
-        return (
-          <div className={styles.phaseAccuracyGrid}>
-            <div />
-            {phases.map(label => (
-              <div key={label} className={styles.phaseAccuracyHeader}>{label}</div>
-            ))}
-            <div className={styles.phaseAccuracyPlayer}>
-              <span className={`${styles.phaseDot} ${userColor === "white" ? styles.phaseDotLight : styles.phaseDotDark}`} />
-              <span className={styles.phasePlayerLabel}>Ви</span>
-            </div>
-            {phaseAccuracy.map((pa, i) => (
-              <div key={i} className={`${styles.phaseAccuracyVal} ${styles.phaseAccuracyValUser}`}>
-                {fmt(pa?.[userColor] ?? null)}
-              </div>
-            ))}
-            <div className={styles.phaseAccuracyPlayer}>
-              <span className={`${styles.phaseDot} ${oppColor === "white" ? styles.phaseDotLight : styles.phaseDotDark}`} />
-              <span className={styles.phasePlayerLabel}>Суп.</span>
-            </div>
-            {phaseAccuracy.map((pa, i) => (
-              <div key={i} className={`${styles.phaseAccuracyVal} ${styles.phaseAccuracyValOpp}`}>
-                {fmt(pa?.[oppColor] ?? null)}
-              </div>
-            ))}
-          </div>
-        );
-      })()}
     </div>
   );
 }
 
 // ── EvalSection ────────────────────────────────────────────────────────────────
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("uk-UA", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
 
 interface EvalSectionProps {
   game: GameData;
@@ -318,8 +256,6 @@ export function EvalSection({
   game,
   analysis,
   currentMove,
-  userColor,
-  phaseAccuracy,
   onSeek,
   resultLabel,
 }: EvalSectionProps) {
@@ -327,17 +263,7 @@ export function EvalSection({
     <>
       {/* Header — always visible */}
       <div className={styles.panelHeader}>
-        <Link href="/dashboard" className={styles.backLink}>
-          <PrevIcon size={11} />
-          Назад
-        </Link>
         <h1 className={styles.gameTitle}>Ви — {game.opponent}</h1>
-        <div className={styles.gameMeta}>
-          {game.openingName ?? "Дебют невідомий"}
-          {game.timeControl ? ` · ${game.timeControl}` : ""}
-          {" · "}
-          {formatDate(game.playedAt)}
-        </div>
         <div className={styles.resultRow}>
           <span className={`${styles.resultBadge} ${styles[game.result]}`}>
             {resultLabel}
@@ -349,8 +275,6 @@ export function EvalSection({
           currentIndex={currentMove + 1}
           onSeek={(i) => onSeek(i - 1)}
           keyMoments={analysis?.keyMoments}
-          phaseAccuracy={phaseAccuracy}
-          userColor={userColor}
         />
       </div>
 
@@ -358,13 +282,13 @@ export function EvalSection({
       <div className={styles.accuracyStrip}>
         {[
           {
-            label: "Точність Б.",
-            value: analysis ? `${analysis.accuracy.white}%` : "–",
+            label: "Точність",
+            value: analysis ? `${analysis.accuracy.player}%` : "–",
             color: analysis ? "var(--color-text)" : undefined,
           },
           {
-            label: "Точність Ч.",
-            value: analysis ? `${analysis.accuracy.black}%` : "–",
+            label: "Суперник",
+            value: analysis ? `${analysis.accuracy.opponent}%` : "–",
             color: analysis ? "var(--color-text-muted)" : undefined,
           },
           {

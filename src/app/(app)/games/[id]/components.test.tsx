@@ -19,6 +19,12 @@ vi.mock('./GameView.module.css', () => ({ default: new Proxy({}, { get: (_t, pro
 
 import { EvalSection } from './EvalSection';
 import { LlmTabsPanel } from './LlmTabsPanel';
+import {
+  STOCKFISH_ENGINE_NAME,
+  STOCKFISH_ENGINE_VERSION,
+  STOCKFISH_PROFILE_KEY,
+  type EngineAnalysisJsonV1,
+} from '@/lib/chess/engine-analysis';
 import type { GameData } from './types';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -35,6 +41,36 @@ const GAME_DATA: GameData = {
   timeControl: '300+3',
   playedAt: new Date().toISOString(),
   moveCount: 20,
+};
+
+const ENGINE_ANALYSIS: EngineAnalysisJsonV1 = {
+  version: 1,
+  profileKey: STOCKFISH_PROFILE_KEY,
+  engine: {
+    name: STOCKFISH_ENGINE_NAME,
+    version: STOCKFISH_ENGINE_VERSION,
+    depth: 13,
+  },
+  accuracy: {
+    white: 85.6,
+    black: 92.4,
+    player: 85.6,
+    opponent: 92.4,
+  },
+  summary: {
+    bestMoveCount: 12,
+    goodMoveCount: 20,
+    inaccuracyCount: 2,
+    mistakeCount: 1,
+    blunderCount: 1,
+  },
+  moves: [],
+  keyMoments: [],
+  evalGraph: [
+    { ply: 0, eval: { type: 'cp', value: 0 } },
+    { ply: 1, eval: { type: 'cp', value: 20 } },
+    { ply: 2, eval: { type: 'cp', value: -35 } },
+  ],
 };
 
 // ── EvalSection ───────────────────────────────────────────────────────────────
@@ -101,6 +137,33 @@ describe('EvalSection', () => {
     // Accuracy cells should show "–" when no analysis
     const dashes = screen.getAllByText('–');
     expect(dashes.length).toBeGreaterThan(0);
+  });
+
+  it('keeps the summary compact without back link, game metadata, or phase accuracy rows', () => {
+    render(
+      <EvalSection
+        game={GAME_DATA}
+        analysis={ENGINE_ANALYSIS}
+        currentMove={0}
+        userColor="white"
+        phaseAccuracy={[
+          { white: 91.6, black: 92.2 },
+          { white: 92.9, black: 80.5 },
+          { white: null, black: null },
+        ]}
+        onSeek={() => {}}
+        resultLabel="Перемога"
+      />
+    );
+
+    expect(screen.queryByText('Назад')).not.toBeInTheDocument();
+    expect(screen.queryByText(/King's Pawn/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/300\+3/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Дебют')).not.toBeInTheDocument();
+    expect(screen.queryByText('Мідл')).not.toBeInTheDocument();
+    expect(screen.queryByText('Кінець')).not.toBeInTheDocument();
+    expect(screen.getByText('Точність')).toBeInTheDocument();
+    expect(screen.getByText('Суперник')).toBeInTheDocument();
   });
 });
 
