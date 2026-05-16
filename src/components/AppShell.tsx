@@ -27,7 +27,7 @@ export function AppShell({ user, children }: AppShellProps) {
     <AppUserProvider user={user}>
       <div className={styles.shell}>
         <SidebarNav user={user} />
-        <main ref={contentRef} className={styles.content}>
+        <main ref={contentRef} className={styles.content} data-scroll-root>
           <div key={pathname} className={styles.routeFrame}>
             {children}
           </div>

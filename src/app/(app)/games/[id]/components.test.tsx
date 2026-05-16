@@ -226,7 +226,7 @@ describe('LlmTabsPanel', () => {
         exploreEvalResult={{
           eval: { type: 'cp', value: 25 },
           candidates: [
-            { uci: 'b1c3', san: 'Nc3', eval: { type: 'cp', value: 25 } },
+            { rank: 1, uci: 'b1c3', san: 'Nc3', eval: { type: 'cp', value: 25 } },
           ],
         }}
       />
@@ -257,8 +257,15 @@ describe('GameView mobile layout', () => {
     const mobileCss = css.slice(mobileBlockStart);
 
     expect(mobileBlockStart).toBeGreaterThan(-1);
-    expect(mobileCss).toMatch(/\.boardArea\s*{[^}]*min-height:\s*calc\(100svh - var\(--mobile-nav-h\)\)/s);
-    expect(mobileCss).toMatch(/\.boardArea\s*{[^}]*max-height:\s*calc\(100svh - var\(--mobile-nav-h\)\)/s);
+    expect(mobileCss).toMatch(/\.boardArea\s*{[\s\S]*min-height:\s*calc\(100svh - var\(--mobile-nav-h\)\)/);
+    expect(mobileCss).toMatch(/\.boardArea\s*{[\s\S]*max-height:\s*calc\(100svh - var\(--mobile-nav-h\)\)/);
+  });
+
+  it('switches away from the hidden moves tab when the layout becomes mobile', () => {
+    const source = readFileSync(resolve(__dirname, 'GameView.tsx'), 'utf8');
+
+    expect(source).toMatch(/if\s*\(\s*isMobile\s*&&\s*activeTab\s*===\s*["']moves["']\s*\)/);
+    expect(source).toMatch(/setActiveTab\(["']analysis["']\)/);
   });
 });
 
@@ -269,8 +276,8 @@ describe('GameView desktop layout', () => {
 
     expect(source).toContain(`className={styles.boardStack}`);
     expect(source).not.toContain('"--board-size": `${boardSize}px`');
-    expect(css).toMatch(/\.boardArea\s*{[^}]*align-items:\s*center;[^}]*justify-content:\s*center;/s);
-    expect(css).toMatch(/\.boardStack\s*{[^}]*width:\s*max-content;[^}]*max-width:\s*100%;/s);
+    expect(css).toMatch(/\.boardArea\s*{[\s\S]*align-items:\s*center;[\s\S]*justify-content:\s*center;/);
+    expect(css).toMatch(/\.boardStack\s*{[\s\S]*width:\s*max-content;[\s\S]*max-width:\s*100%;/);
   });
 
   it('reserves enough width for the desktop eval bar labels', () => {
@@ -278,7 +285,7 @@ describe('GameView desktop layout', () => {
     const css = readFileSync(resolve(__dirname, 'GameView.module.css'), 'utf8');
 
     expect(source).toContain('const EVAL_BAR_WIDTH = 32;');
-    expect(css).toMatch(/\.evalBarWrap\s*{[^}]*width:\s*32px;/s);
+    expect(css).toMatch(/\.evalBarWrap\s*{[\s\S]*width:\s*32px;/);
   });
 
   it('uses a tighter desktop vertical chrome budget so the board can grow', () => {

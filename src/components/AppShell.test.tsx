@@ -9,4 +9,10 @@ describe("AppShell route transitions", () => {
     expect(source).not.toContain("navOverlay");
     expect(source).not.toContain("RouteLoader");
   });
+
+  it("marks the app content as the scroll root for gesture hooks", () => {
+    const source = readFileSync(resolve(__dirname, "AppShell.tsx"), "utf8");
+
+    expect(source).toContain("data-scroll-root");
+  });
 });

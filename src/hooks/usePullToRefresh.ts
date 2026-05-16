@@ -32,9 +32,11 @@ export function usePullToRefresh(onTrigger: () => void): {
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
+    const target = el;
 
     function onTouchStart(e: TouchEvent) {
-      if (!el || el.scrollTop > 0) return;
+      const scrollRoot = target.closest<HTMLElement>("[data-scroll-root]") ?? target;
+      if (scrollRoot.scrollTop > 0) return;
       startYRef.current = e.touches[0].clientY;
       isDraggingRef.current = true;
       setIsDragging(true);
@@ -82,16 +84,16 @@ export function usePullToRefresh(onTrigger: () => void): {
       }
     }
 
-    el.addEventListener("touchstart", onTouchStart, { passive: true });
-    el.addEventListener("touchmove", onTouchMove, { passive: false });
-    el.addEventListener("touchend", onTouchEnd, { passive: true });
-    el.addEventListener("touchcancel", reset, { passive: true });
+    target.addEventListener("touchstart", onTouchStart, { passive: true });
+    target.addEventListener("touchmove", onTouchMove, { passive: false });
+    target.addEventListener("touchend", onTouchEnd, { passive: true });
+    target.addEventListener("touchcancel", reset, { passive: true });
 
     return () => {
-      el.removeEventListener("touchstart", onTouchStart);
-      el.removeEventListener("touchmove", onTouchMove);
-      el.removeEventListener("touchend", onTouchEnd);
-      el.removeEventListener("touchcancel", reset);
+      target.removeEventListener("touchstart", onTouchStart);
+      target.removeEventListener("touchmove", onTouchMove);
+      target.removeEventListener("touchend", onTouchEnd);
+      target.removeEventListener("touchcancel", reset);
     };
   }, [reset]);
 

@@ -99,6 +99,12 @@ export function GameView({ game }: { game: GameData }) {
     }
   }, []);
 
+  useEffect(() => {
+    if (isMobile && activeTab === "moves") {
+      setActiveTab("analysis");
+    }
+  }, [isMobile, activeTab]);
+
   // useQuery for GET engine analysis (staleTime Infinity — results never change once computed)
   const {
     data: engineAnalysisData,

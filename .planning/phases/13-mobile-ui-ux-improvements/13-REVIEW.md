@@ -11,72 +11,63 @@ files_reviewed_list:
   - src/app/(app)/games/[id]/GameView.module.css
   - src/app/(app)/games/[id]/LlmTabsPanel.tsx
 findings:
-  critical: 1
-  warning: 1
+  critical: 0
+  warning: 0
   info: 2
-  total: 4
-status: issues_found
+  total: 2
+status: fixed
+fixes_applied:
+  - CR-01
+  - WR-01
+fixes_skipped:
+  - IN-01
+  - IN-02
+fixed_at: 2026-05-16T18:35:00+02:00
 ---
 
 # Phase 13: Code Review Report
 
 **Reviewed:** 2026-05-16T15:20:00Z  
+**Fixed:** 2026-05-16T18:35:00+02:00
 **Depth:** standard  
 **Files Reviewed:** 6  
-**Status:** issues_found
+**Status:** fixed
 
 ## Summary
 
-Phase 13's previous critical fixes are mostly present: `touchcancel` cleanup exists, the React hook-order issue is covered by a regression test, mobile `analysisPanel` now uses `70dvh`, and `evalToPawns` now returns `number | null` with guarded `EvalBar` usage.
+The Critical and Warning findings from the Phase 13 review are fixed:
 
-I found one remaining critical mobile interaction bug and one responsive-state warning.
+- CR-01: pull-to-refresh now checks the AppShell scroll root instead of the dashboard wrapper.
+- WR-01: GameView now switches away from the hidden `"moves"` tab when the layout becomes mobile.
 
----
-
-## Critical Issues
-
-### CR-01: Pull-to-refresh still checks the wrong scroll container, breaking normal downward scroll inside AppShell
-
-**File:** `src/hooks/usePullToRefresh.ts:36-68`  
-**Related container:** `src/components/AppShell.module.css:9-15`
-
-**Issue:** `usePullToRefresh` now guards with `el.scrollTop > 0`, but `el` is the dashboard wrapper from `DashboardClient`, not the actual scroll container. The app scroll container is `.content` in `AppShell.module.css` (`overflow-y: auto; -webkit-overflow-scrolling: touch`). The dashboard wrapper normally has `scrollTop === 0` even when the page is scrolled down inside AppShell.
-
-That means any downward touch gesture inside the dashboard can enter pull-to-refresh mode and `preventDefault()` at `usePullToRefresh.ts:68`, blocking the user from naturally scrolling back up through the dashboard. It can also trigger sync while the user is not at the top of the actual scroll viewport.
-
-**Fix recommendation:** Make the hook check the real scroll root, or accept a `scrollContainerRef` / predicate:
-
-```ts
-const scrollRoot = el.closest("[data-scroll-root]") as HTMLElement | null;
-if ((scrollRoot?.scrollTop ?? window.scrollY) > 0) return;
-```
-
-Alternatively, attach the gesture ref directly to the AppShell scroll container and only enable it on dashboard routes.
+Info findings remain as non-blocking cleanup recommendations because `$gsd-code-review 13 --fix` fixes Critical + Warning findings by default. Use `--all` if Info findings should be included in fix scope.
 
 ---
 
-## Warnings
+## Fixed Issues
 
-### WR-01: Mobile hides the Moves tab button, but `activeTab` can remain `"moves"` after resize
+### CR-01: Pull-to-refresh checked the wrong scroll container
 
-**File:** `src/app/(app)/games/[id]/GameView.tsx:92-100`  
-**Related CSS:** `src/app/(app)/games/[id]/GameView.module.css:859-861`
+**Files modified:**
 
-**Issue:** The `"Ходи"` tab button is hidden on mobile with CSS, and `activeTab` is switched to `"analysis"` only once on mount. If the user opens the game on desktop, stays on `"moves"`, then resizes or rotates into a mobile viewport, the `"Ходи"` button disappears but the moves tab content remains active because `activeTab` is still `"moves"`.
+- `src/components/AppShell.tsx`
+- `src/components/AppShell.test.tsx`
+- `src/hooks/usePullToRefresh.ts`
 
-This violates the mobile tab contract: the hidden tab can still be the selected content state.
+**Applied fix:** `AppShell` marks the real scroll viewport with `data-scroll-root`, and `usePullToRefresh` resolves the closest `[data-scroll-root]` before allowing a pull gesture. If that scroll root is not at the top, the gesture does not enter pull-to-refresh mode.
 
-**Fix recommendation:** Reuse the existing breakpoint detection that sets `isMobile` and coerce `activeTab` when mobile becomes true:
+### WR-01: Hidden mobile Moves tab could remain active after resize
 
-```ts
-useEffect(() => {
-  if (isMobile && activeTab === "moves") setActiveTab("analysis");
-}, [isMobile, activeTab]);
-```
+**Files modified:**
+
+- `src/app/(app)/games/[id]/GameView.tsx`
+- `src/app/(app)/games/[id]/components.test.tsx`
+
+**Applied fix:** `GameView` now coerces `activeTab` from `"moves"` to `"analysis"` whenever `isMobile` becomes true.
 
 ---
 
-## Info
+## Remaining Info
 
 ### IN-01: Inline pull-to-refresh keyframes should move out of DashboardClient
 
@@ -88,15 +79,16 @@ The inline `<style>` tag works, but it is re-rendered with the component and mix
 
 **File:** `src/app/(app)/games/[id]/GameView.tsx:43-47,346`
 
-`DESKTOP_VERTICAL_CHROME = 240` is now documented and covered by a layout expectation test, so this is not blocking. It remains a fixed budget that can drift when player badges, nav controls, or analysis controls change height. A dynamic measurement would be more resilient.
+`DESKTOP_VERTICAL_CHROME = 240` is documented and covered by a layout expectation test. It remains a fixed budget that can drift when player badges, nav controls, or analysis controls change height. A dynamic measurement would be more resilient.
 
 ---
 
-## Verification Notes
+## Verification
 
-- Reviewed current code for all 6 files listed in phase summaries.
-- Did not modify production code.
-- Did not run the full test suite during review; this report is static code review.
+- `npm.cmd run test:run -- src/components/AppShell.test.tsx "src/app/(app)/games/[id]/components.test.tsx"` — 20 passed
+- `npm.cmd run test:run` — 155 passed
+- `npx.cmd tsc --noEmit` — passed
 
 _Reviewer: Codex inline code-reviewer_  
+_Fixer: Codex inline code-fixer_
 _Depth: standard_
