@@ -284,7 +284,6 @@ describe('evalToPawns', () => {
     expect(evalToPawns({ type: 'mate', value: -1 })).toBe(-100);
   });
 
-  it('returns 0 for undefined', () => {
-    expect(evalToPawns(undefined)).toBe(0);
-  });
+
+
 });

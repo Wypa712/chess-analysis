@@ -54,12 +54,12 @@ export function LlmTabsPanel({
           {!exploreAnalyzing && exploreEvalResult && exploreEvalResult.candidates.length > 0 ? (
             <div className={styles.exploreCandidatesList}>
               {exploreEvalResult.candidates.slice(0, 3).map((c, i) => {
-                const pawns = evalToPawns(c.eval);
+                const pawns = evalToPawns(c.eval) ?? 0;
                 const sign  = pawns > 0 ? "+" : "";
                 const isMate = Math.abs(pawns) >= MATE_THRESHOLD_PAWNS;
                 const mateVal = typeof c.eval?.value === "number" ? Math.abs(c.eval.value) : null;
                 const evalStr = isMate
-                  ? (mateVal !== null ? `M${mateVal}` : "?")
+                  ? (mateVal !== null ? `${pawns < 0 ? "-" : ""}M${mateVal}` : "?")
                   : `${sign}${pawns.toFixed(2)}`;
                 return (
                   <div key={c.uci} className={styles.exploreCandidateRow}>
