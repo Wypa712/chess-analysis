@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { SyncStatusBar } from "@/components/SyncStatusBar/SyncStatusBar";
+import { SyncStatusBar, type SyncStatusBarHandle } from "@/components/SyncStatusBar/SyncStatusBar";
 import { GamesList } from "@/components/GamesList/GamesList";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import styles from "./page.module.css";
 
 type DashboardSummary = {
@@ -29,6 +30,8 @@ export function DashboardClient() {
   const [summary, setSummary] = useState<DashboardSummary>(EMPTY_SUMMARY);
   const [summaryLoading, setSummaryLoading] = useState(true);
 
+  const syncBarRef = useRef<SyncStatusBarHandle>(null);
+
   const handleSummary = useCallback(
     (s: DashboardSummary, loading: boolean) => {
       setSummary(s);
@@ -40,6 +43,12 @@ export function DashboardClient() {
   const handleSynced = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["games", userId] });
   }, [queryClient, userId]);
+
+  const triggerSync = useCallback(() => {
+    syncBarRef.current?.runSync();
+  }, []);
+
+  const { containerRef, indicatorStyle, isReady } = usePullToRefresh(triggerSync);
 
   const stats = [
     { label: "Партій", value: summary.total, tone: styles.statTotal },
@@ -59,31 +68,70 @@ export function DashboardClient() {
     // avoids any flash of zeroed stat cards while staying imperceptible to the
     // user (the content area is behind the AppShell until the Suspense loader
     // is gone anyway).
-    <div
-      style={summaryLoading ? { visibility: "hidden" } : undefined}
-      className={styles.container}
-    >
-      <section className={styles.hero}>
-        <div>
-          <h1 className={styles.title}>Дашборд</h1>
-          <p className={styles.subtitle}>
-            Ваші партії та статистика. Нові партії підтягуються автоматично.
-          </p>
-        </div>
-        <SyncStatusBar onSynced={handleSynced} />
-      </section>
+    <div ref={containerRef} style={{ position: "relative" }}>
+      {/* @keyframes for pull-to-refresh spinner */}
+      <style>{`@keyframes ptr-spin { to { transform: rotate(360deg); } }`}</style>
 
-      <section className={styles.statsGrid} aria-label="Статистика партій">
-        {stats.map((stat) => (
-          <div key={stat.label} className={styles.statCard}>
-            <div className={`${styles.statMark} ${stat.tone}`} />
-            <p className={styles.statValue}>{stat.value}</p>
-            <p className={styles.statLabel}>{stat.label}</p>
+      {/* Pull-to-refresh indicator */}
+      <div
+        style={{
+          ...indicatorStyle,
+          position: "absolute",
+          zIndex: 50,
+          borderRadius: "50%",
+          background: "var(--color-bg3)",
+          border: "1px solid var(--color-border)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 36,
+          height: 36,
+          pointerEvents: "none",
+        }}
+      >
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
+          <circle
+            cx="10"
+            cy="10"
+            r="7"
+            stroke="var(--color-teal-soft)"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeDasharray="22 22"
+            style={{
+              animation: isReady ? "ptr-spin 0.8s linear infinite" : "none",
+              transformOrigin: "center",
+            }}
+          />
+        </svg>
+      </div>
+
+      <div
+        style={summaryLoading ? { visibility: "hidden" } : undefined}
+        className={styles.container}
+      >
+        <section className={styles.hero}>
+          <div>
+            <h1 className={styles.title}>Дашборд</h1>
+            <p className={styles.subtitle}>
+              Ваші партії та статистика. Нові партії підтягуються автоматично.
+            </p>
           </div>
-        ))}
-      </section>
+          <SyncStatusBar ref={syncBarRef} onSynced={handleSynced} />
+        </section>
 
-      <GamesList userId={userId} onSummary={handleSummary} />
+        <section className={styles.statsGrid} aria-label="Статистика партій">
+          {stats.map((stat) => (
+            <div key={stat.label} className={styles.statCard}>
+              <div className={`${styles.statMark} ${stat.tone}`} />
+              <p className={styles.statValue}>{stat.value}</p>
+              <p className={styles.statLabel}>{stat.label}</p>
+            </div>
+          ))}
+        </section>
+
+        <GamesList userId={userId} onSummary={handleSummary} />
+      </div>
     </div>
   );
 }

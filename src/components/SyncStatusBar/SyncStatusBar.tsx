@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from "react";
 import styles from "./SyncStatusBar.module.css";
 
 const SESSION_KEY = "chess_sync_ts";
@@ -13,11 +13,14 @@ interface SyncResult {
   skipped: number;
 }
 
+export type SyncStatusBarHandle = { runSync: () => void };
+
 interface SyncStatusBarProps {
   onSynced?: () => void;
 }
 
-export function SyncStatusBar({ onSynced }: SyncStatusBarProps) {
+export const SyncStatusBar = forwardRef<SyncStatusBarHandle, SyncStatusBarProps>(
+  function SyncStatusBar({ onSynced }, ref) {
   const [syncing, setSyncing] = useState(false);
   const [lastSyncTs, setLastSyncTs] = useState<string | null>(null);
   const [result, setResult] = useState<SyncResult | null>(null);
@@ -70,6 +73,8 @@ export function SyncStatusBar({ onSynced }: SyncStatusBarProps) {
       setSyncing(false);
     }
   }, []);
+
+  useImperativeHandle(ref, () => ({ runSync }), [runSync]);
 
   // On mount: restore last timestamp for display, then sync unless rate-limited.
   const hasMountedRef = useRef(false);
@@ -131,4 +136,5 @@ export function SyncStatusBar({ onSynced }: SyncStatusBarProps) {
       </div>
     </div>
   );
-}
+});
+
