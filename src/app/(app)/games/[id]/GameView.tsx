@@ -41,6 +41,9 @@ const MAX_BOARD_SIZE = 760;
 const MIN_BOARD_SIZE = 200;
 const EVAL_BAR_WIDTH = 24;
 const BOARD_ROW_GAP = 10;
+// Approximate combined height of fixed vertical chrome on desktop:
+// app header (~56px) + bottom nav bar (~56px) + player badges 2×(~48px) +
+// move-strip/nav controls row (~64px) + analyse-wrap (~52px) + gaps/padding (~16px) ≈ 290px
 const DESKTOP_VERTICAL_CHROME = 290;
 
 function snapBoardSize(size: number): number {
