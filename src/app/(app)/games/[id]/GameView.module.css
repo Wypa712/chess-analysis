@@ -1278,7 +1278,7 @@
   font-size: 12px;
   line-height: 1.55;
   color: var(--color-text);
-  margin: 0 0 6px;
+  margin: 6px 0 6px;
 }
 
 .llmAccordionList {
