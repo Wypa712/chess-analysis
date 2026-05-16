@@ -263,19 +263,27 @@ describe('GameView mobile layout', () => {
 });
 
 describe('GameView desktop layout', () => {
-  it('keeps desktop board controls aligned to the rendered board size', () => {
+  it('centers the board group horizontally without the board-size variable approach', () => {
     const source = readFileSync(resolve(__dirname, 'GameView.tsx'), 'utf8');
     const css = readFileSync(resolve(__dirname, 'GameView.module.css'), 'utf8');
 
-    expect(source).toContain('"--board-size": `${boardSize}px`');
-    expect(css).toMatch(/\.playerBadge\s*{[^}]*width:\s*min\(100%, var\(--board-size\)\)/s);
-    expect(css).toMatch(/\.navControls\s*{[^}]*width:\s*min\(100%, var\(--board-size\)\)/s);
-    expect(css).toMatch(/\.analyzeWrap\s*{[^}]*width:\s*min\(100%, var\(--board-size\)\)/s);
+    expect(source).toContain(`className={styles.boardStack}`);
+    expect(source).not.toContain('"--board-size": `${boardSize}px`');
+    expect(css).toMatch(/\.boardArea\s*{[^}]*align-items:\s*center;[^}]*justify-content:\s*center;/s);
+    expect(css).toMatch(/\.boardStack\s*{[^}]*width:\s*max-content;[^}]*max-width:\s*100%;/s);
+  });
+
+  it('reserves enough width for the desktop eval bar labels', () => {
+    const source = readFileSync(resolve(__dirname, 'GameView.tsx'), 'utf8');
+    const css = readFileSync(resolve(__dirname, 'GameView.module.css'), 'utf8');
+
+    expect(source).toContain('const EVAL_BAR_WIDTH = 32;');
+    expect(css).toMatch(/\.evalBarWrap\s*{[^}]*width:\s*32px;/s);
   });
 });
 
 describe('EvalSection chart layout', () => {
-  it('keeps chart content inside the right edge of the SVG viewBox', () => {
+  it('keeps right-panel chart content inside the SVG viewBox', () => {
     const source = readFileSync(resolve(__dirname, 'EvalSection.tsx'), 'utf8');
 
     expect(source).toContain('const CHART_RIGHT_X = CHART_W - CHART_PADDING;');

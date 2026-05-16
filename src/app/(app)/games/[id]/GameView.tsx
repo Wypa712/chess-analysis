@@ -39,7 +39,7 @@ import styles from "./GameView.module.css";
 
 const MAX_BOARD_SIZE = 760;
 const MIN_BOARD_SIZE = 200;
-const EVAL_BAR_WIDTH = 24;
+const EVAL_BAR_WIDTH = 32;
 const BOARD_ROW_GAP = 10;
 // Approximate combined height of fixed vertical chrome on desktop:
 // app header (~56px) + bottom nav bar (~56px) + player badges 2×(~48px) +
@@ -487,264 +487,262 @@ export function GameView({ game }: { game: GameData }) {
   }
 
   return (
-    <div
-      className={styles.layout}
-      ref={layoutRef}
-      style={{ "--board-size": `${boardSize}px` } as React.CSSProperties}
-    >
+    <div className={styles.layout} ref={layoutRef}>
       {/* ── Left: board area ── */}
       <div className={styles.boardArea} ref={boardAreaRef}>
-        <PlayerBadge
-          name={game.opponent}
-          rating={game.opponentRating}
-          color={opponentColor}
-          accuracy={analysis?.accuracy[opponentColor === "white" ? "white" : "black"]}
-          mistakes={analysis ? countClassifications(analysis, opponentColor, "mistake") : undefined}
-          blunders={analysis ? countClassifications(analysis, opponentColor, "blunder") : undefined}
-        />
-
-        {isMobile && (
-          <div className={styles.evalBarHorizontalWrap}>
-            <div className={styles.evalBarHorizontal}>
-              <div
-                className={styles.evalBarHorizontalWhite}
-                style={{ width: evalActive ? `${Math.round(evalWhitePercent)}%` : "50%" }}
-              />
-              <div className={styles.evalBarHorizontalBlack} />
-            </div>
-            <span className={styles.evalBarHorizontalLabel}>
-              {evalActive ? evalDisplayStr : "–"}
-            </span>
-          </div>
-        )}
-
-        <div className={styles.boardRow}>
-          <EvalBar
-            value={evalValue}
-            boardSize={boardSize}
-            active={evalActive}
-            pending={evalPending}
+        <div className={styles.boardStack}>
+          <PlayerBadge
+            name={game.opponent}
+            rating={game.opponentRating}
+            color={opponentColor}
+            accuracy={analysis?.accuracy[opponentColor === "white" ? "white" : "black"]}
+            mistakes={analysis ? countClassifications(analysis, opponentColor, "mistake") : undefined}
+            blunders={analysis ? countClassifications(analysis, opponentColor, "blunder") : undefined}
           />
-          <div className={styles.boardWrapper} style={{ width: boardSize, height: boardSize }}>
-            <Chessboard
-              id="game-board"
-              position={displayFen}
-              boardWidth={boardSize}
-              boardOrientation={boardOrientation}
-              arePiecesDraggable={!!parsed}
-              onPieceDrop={parsed ? handleBoardDrop : undefined}
-              customSquareStyles={displaySquareStyles}
-              customArrows={bestMoveArrow}
-              customBoardStyle={{
-                borderRadius: "4px",
-                boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
-              }}
-              customDarkSquareStyle={{ backgroundColor: "var(--color-board-dark)" }}
-              customLightSquareStyle={{ backgroundColor: "var(--color-board-light)" }}
-            />
-            {!exploreMode && currentMoveAnalysis && currentMoveTo && (
-              <MoveOverlayIcon
-                square={currentMoveTo}
-                classification={currentMoveAnalysis.classification}
-                boardSize={boardSize}
-                whiteOnBottom={boardOrientation === "white"}
-              />
-            )}
-          </div>
-        </div>
-        <PlayerBadge
-          name="Ви"
-          rating={game.playerRating}
-          color={userColor}
-          accuracy={analysis?.accuracy[userColor === "white" ? "white" : "black"]}
-          mistakes={analysis ? countClassifications(analysis, userColor, "mistake") : undefined}
-          blunders={analysis ? countClassifications(analysis, userColor, "blunder") : undefined}
-        />
 
-        {isMobile && movePairs.length > 0 && (
-          <div className={styles.moveStrip}>
-            {movePairs.map((pair) => {
-              const whiteIdx = (pair.num - 1) * 2;
-              const blackIdx = whiteIdx + 1;
-              return (
-                <div key={pair.num} className={styles.movePairGroup}>
-                  <span className={styles.moveStripNum}>{pair.num}.</span>
-                  {pair.white && (
-                    <button
-                      type="button"
-                      ref={currentMove === whiteIdx ? activeTokenRef : null}
-                      className={`${styles.moveStripToken} ${currentMove === whiteIdx ? styles.moveStripTokenActive : ""}`}
-                      onClick={() => seekMainline(whiteIdx)}
-                      aria-pressed={currentMove === whiteIdx}
-                    >
-                      {pair.white}
-                    </button>
-                  )}
-                  {pair.black !== undefined && (
-                    <button
-                      type="button"
-                      ref={currentMove === blackIdx ? activeTokenRef : null}
-                      className={`${styles.moveStripToken} ${currentMove === blackIdx ? styles.moveStripTokenActive : ""}`}
-                      onClick={() => seekMainline(blackIdx)}
-                      aria-pressed={currentMove === blackIdx}
-                    >
-                      {pair.black}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        <div className={styles.navControls}>
-          <button
-            type="button"
-            className={styles.navBtn}
-            aria-label="Перевернути дошку"
-            onClick={() => setFlipped((f) => !f)}
-          >
-            <FlipIcon />
-          </button>
-          <div className={styles.navDivider} />
-          <div className={styles.navMoveGroup}>
-            <button
-              type="button"
-              className={styles.navBtn}
-              aria-label="Перший хід"
-              onClick={goFirst}
-              disabled={currentMove === -1}
-            >
-              <FirstIcon />
-            </button>
-            <button
-              type="button"
-              className={styles.navBtn}
-              aria-label="Попередній хід"
-              onClick={goPrev}
-              disabled={exploreMode ? explorationMoves.length === 0 : currentMove === -1}
-            >
-              <PrevIcon />
-            </button>
-            <button
-              type="button"
-              className={styles.navBtn}
-              aria-label="Наступний хід"
-              onClick={goNext}
-              disabled={currentMove === totalMoves - 1}
-            >
-              <NextIcon />
-            </button>
-            <button
-              type="button"
-              className={styles.navBtn}
-              aria-label="Останній хід"
-              onClick={goLast}
-              disabled={currentMove === totalMoves - 1}
-            >
-              <LastIcon />
-            </button>
-          </div>
-          <div className={styles.navDivider} />
-          <button
-            type="button"
-            className={`${styles.navBtn} ${exploreMode ? styles.navBtnActive : ""}`}
-            onClick={exitExploreMode}
-            disabled={!exploreMode}
-            aria-label="Повернутися до основної лінії"
-            title={
-              exploreMode
-                ? "Повернутися до основної лінії"
-                : "Зробіть хід на дошці, щоб створити варіант"
-            }
-          >
-            <ReturnToMainlineIcon />
-          </button>
-        </div>
-
-        <div className={styles.analyzeWrap}>
-          {analysisState === "idle" && (
-            <button
-              type="button"
-              className={styles.analyzeBtn}
-              onClick={handleStartAnalysis}
-            >
-              <StockfishIcon />
-              Запустити аналіз
-            </button>
-          )}
-          {analysisState === "loading" && (
-            <div className={styles.analyzeProgress}>
-              <div className={styles.analyzeProgressLabel}>
-                <StockfishIcon />
-                Аналіз партії… {loadingPct}%
-              </div>
-              <div className={styles.progressTrack}>
+          {isMobile && (
+            <div className={styles.evalBarHorizontalWrap}>
+              <div className={styles.evalBarHorizontal}>
                 <div
-                  className={styles.progressFill}
-                  style={{ width: `${loadingPct}%` }}
+                  className={styles.evalBarHorizontalWhite}
+                  style={{ width: evalActive ? `${Math.round(evalWhitePercent)}%` : "50%" }}
                 />
+                <div className={styles.evalBarHorizontalBlack} />
               </div>
+              <span className={styles.evalBarHorizontalLabel}>
+                {evalActive ? evalDisplayStr : "–"}
+              </span>
             </div>
           )}
-          {analysisState === "done" && llmStatus === "analyzing" && (
-            <div className={styles.analyzeProgress}>
-              <div className={styles.analyzeProgressLabel}>
-                <StockfishIcon />
-                Готуємо поради…
-              </div>
-              <div className={styles.progressTrack}>
-                <div className={styles.progressFill} style={{ width: "100%" }} />
-              </div>
+
+          <div className={styles.boardRow}>
+            <EvalBar
+              value={evalValue}
+              boardSize={boardSize}
+              active={evalActive}
+              pending={evalPending}
+            />
+            <div className={styles.boardWrapper} style={{ width: boardSize, height: boardSize }}>
+              <Chessboard
+                id="game-board"
+                position={displayFen}
+                boardWidth={boardSize}
+                boardOrientation={boardOrientation}
+                arePiecesDraggable={!!parsed}
+                onPieceDrop={parsed ? handleBoardDrop : undefined}
+                customSquareStyles={displaySquareStyles}
+                customArrows={bestMoveArrow}
+                customBoardStyle={{
+                  borderRadius: "4px",
+                  boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
+                }}
+                customDarkSquareStyle={{ backgroundColor: "var(--color-board-dark)" }}
+                customLightSquareStyle={{ backgroundColor: "var(--color-board-light)" }}
+              />
+              {!exploreMode && currentMoveAnalysis && currentMoveTo && (
+                <MoveOverlayIcon
+                  square={currentMoveTo}
+                  classification={currentMoveAnalysis.classification}
+                  boardSize={boardSize}
+                  whiteOnBottom={boardOrientation === "white"}
+                />
+              )}
+            </div>
+          </div>
+          <PlayerBadge
+            name="Ви"
+            rating={game.playerRating}
+            color={userColor}
+            accuracy={analysis?.accuracy[userColor === "white" ? "white" : "black"]}
+            mistakes={analysis ? countClassifications(analysis, userColor, "mistake") : undefined}
+            blunders={analysis ? countClassifications(analysis, userColor, "blunder") : undefined}
+          />
+
+          {isMobile && movePairs.length > 0 && (
+            <div className={styles.moveStrip}>
+              {movePairs.map((pair) => {
+                const whiteIdx = (pair.num - 1) * 2;
+                const blackIdx = whiteIdx + 1;
+                return (
+                  <div key={pair.num} className={styles.movePairGroup}>
+                    <span className={styles.moveStripNum}>{pair.num}.</span>
+                    {pair.white && (
+                      <button
+                        type="button"
+                        ref={currentMove === whiteIdx ? activeTokenRef : null}
+                        className={`${styles.moveStripToken} ${currentMove === whiteIdx ? styles.moveStripTokenActive : ""}`}
+                        onClick={() => seekMainline(whiteIdx)}
+                        aria-pressed={currentMove === whiteIdx}
+                      >
+                        {pair.white}
+                      </button>
+                    )}
+                    {pair.black !== undefined && (
+                      <button
+                        type="button"
+                        ref={currentMove === blackIdx ? activeTokenRef : null}
+                        className={`${styles.moveStripToken} ${currentMove === blackIdx ? styles.moveStripTokenActive : ""}`}
+                        onClick={() => seekMainline(blackIdx)}
+                        aria-pressed={currentMove === blackIdx}
+                      >
+                        {pair.black}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
-          {analysisState === "done" && llmStatus === "idle" && (
+
+          <div className={styles.navControls}>
             <button
               type="button"
-              className={styles.analyzeBtn}
-              onClick={handleLlmAnalyze}
+              className={styles.navBtn}
+              aria-label="Перевернути дошку"
+              onClick={() => setFlipped((f) => !f)}
             >
-              <StockfishIcon />
-              Завершити аналіз
+              <FlipIcon />
             </button>
-          )}
-          {analysisState === "done" && llmStatus === "error" && (
-            <div className={styles.analyzeError}>
-              <span>{llmError ?? "Не вдалося отримати LLM-поради"}</span>
+            <div className={styles.navDivider} />
+            <div className={styles.navMoveGroup}>
               <button
                 type="button"
-                className={styles.rerunBtn}
+                className={styles.navBtn}
+                aria-label="Перший хід"
+                onClick={goFirst}
+                disabled={currentMove === -1}
+              >
+                <FirstIcon />
+              </button>
+              <button
+                type="button"
+                className={styles.navBtn}
+                aria-label="Попередній хід"
+                onClick={goPrev}
+                disabled={exploreMode ? explorationMoves.length === 0 : currentMove === -1}
+              >
+                <PrevIcon />
+              </button>
+              <button
+                type="button"
+                className={styles.navBtn}
+                aria-label="Наступний хід"
+                onClick={goNext}
+                disabled={currentMove === totalMoves - 1}
+              >
+                <NextIcon />
+              </button>
+              <button
+                type="button"
+                className={styles.navBtn}
+                aria-label="Останній хід"
+                onClick={goLast}
+                disabled={currentMove === totalMoves - 1}
+              >
+                <LastIcon />
+              </button>
+            </div>
+            <div className={styles.navDivider} />
+            <button
+              type="button"
+              className={`${styles.navBtn} ${exploreMode ? styles.navBtnActive : ""}`}
+              onClick={exitExploreMode}
+              disabled={!exploreMode}
+              aria-label="Повернутися до основної лінії"
+              title={
+                exploreMode
+                  ? "Повернутися до основної лінії"
+                  : "Зробіть хід на дошці, щоб створити варіант"
+              }
+            >
+              <ReturnToMainlineIcon />
+            </button>
+          </div>
+
+          <div className={styles.analyzeWrap}>
+            {analysisState === "idle" && (
+              <button
+                type="button"
+                className={styles.analyzeBtn}
+                onClick={handleStartAnalysis}
+              >
+                <StockfishIcon />
+                Запустити аналіз
+              </button>
+            )}
+            {analysisState === "loading" && (
+              <div className={styles.analyzeProgress}>
+                <div className={styles.analyzeProgressLabel}>
+                  <StockfishIcon />
+                  Аналіз партії… {loadingPct}%
+                </div>
+                <div className={styles.progressTrack}>
+                  <div
+                    className={styles.progressFill}
+                    style={{ width: `${loadingPct}%` }}
+                  />
+                </div>
+              </div>
+            )}
+            {analysisState === "done" && llmStatus === "analyzing" && (
+              <div className={styles.analyzeProgress}>
+                <div className={styles.analyzeProgressLabel}>
+                  <StockfishIcon />
+                  Готуємо поради…
+                </div>
+                <div className={styles.progressTrack}>
+                  <div className={styles.progressFill} style={{ width: "100%" }} />
+                </div>
+              </div>
+            )}
+            {analysisState === "done" && llmStatus === "idle" && (
+              <button
+                type="button"
+                className={styles.analyzeBtn}
                 onClick={handleLlmAnalyze}
               >
-                Спробувати ще
+                <StockfishIcon />
+                Завершити аналіз
               </button>
-            </div>
-          )}
-          {analysisState === "done" && llmStatus === "done" && (
-            <div className={styles.analyzeDone}>
-              <span className={styles.analyzeDoneCheck}>✓</span>
-              Аналіз готовий
-              <button
-                type="button"
-                className={styles.rerunBtn}
-                onClick={handleStartAnalysis}
-              >
-                Повторити
-              </button>
-            </div>
-          )}
-          {analysisState === "error" && (
-            <div className={styles.analyzeError}>
-              <span>{analysisError ?? "Аналіз не завершився"}</span>
-              <button
-                type="button"
-                className={styles.rerunBtn}
-                onClick={handleStartAnalysis}
-              >
-                Спробувати ще
-              </button>
-            </div>
-          )}
+            )}
+            {analysisState === "done" && llmStatus === "error" && (
+              <div className={styles.analyzeError}>
+                <span>{llmError ?? "Не вдалося отримати LLM-поради"}</span>
+                <button
+                  type="button"
+                  className={styles.rerunBtn}
+                  onClick={handleLlmAnalyze}
+                >
+                  Спробувати ще
+                </button>
+              </div>
+            )}
+            {analysisState === "done" && llmStatus === "done" && (
+              <div className={styles.analyzeDone}>
+                <span className={styles.analyzeDoneCheck}>✓</span>
+                Аналіз готовий
+                <button
+                  type="button"
+                  className={styles.rerunBtn}
+                  onClick={handleStartAnalysis}
+                >
+                  Повторити
+                </button>
+              </div>
+            )}
+            {analysisState === "error" && (
+              <div className={styles.analyzeError}>
+                <span>{analysisError ?? "Аналіз не завершився"}</span>
+                <button
+                  type="button"
+                  className={styles.rerunBtn}
+                  onClick={handleStartAnalysis}
+                >
+                  Спробувати ще
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
