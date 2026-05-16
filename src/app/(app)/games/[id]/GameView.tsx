@@ -129,6 +129,10 @@ export function GameView({ game }: { game: GameData }) {
   });
 
   const analysis = engineAnalysisData ?? null;
+  // Note: useState initializers here always evaluate to "idle" on first render
+  // because engineAnalysisData/llmAnalysisData are undefined until the query
+  // resolves (even from cache). The useEffect hooks below sync these to "done"
+  // on the immediately following render (~1-frame flicker is acceptable here).
   const [analysisState, setAnalysisState] = useState<"idle" | "loading" | "done" | "error">(
     engineAnalysisData ? "done" : "idle"
   );
