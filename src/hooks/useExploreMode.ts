@@ -13,6 +13,7 @@ type UseExploreModeOptions = {
   analyzeSinglePosition: (fen: string) => Promise<ExploreEvalResult>;
   onEnterExplore?: () => void;
   onExitExplore?: () => void;
+  onExploreMove?: (san: string, isCapture: boolean, isCheck: boolean, isCastle: boolean, isGameOver: boolean) => void;
 };
 
 export function useExploreMode({
@@ -20,6 +21,7 @@ export function useExploreMode({
   analyzeSinglePosition,
   onEnterExplore,
   onExitExplore,
+  onExploreMove,
 }: UseExploreModeOptions) {
   const exploreAnalysisRequestRef = useRef(0);
   const [exploreMode, setExploreMode] = useState(false);
@@ -114,6 +116,15 @@ export function useExploreMode({
       to: move.to,
       uci: `${move.from}${move.to}${move.promotion ?? ""}`,
     };
+
+    // Determine sound parameters from move result
+    const flags = move.flags;
+    const isCapture = flags.includes("c") || flags.includes("e"); // capture or en-passant
+    const isCastle = flags.includes("k") || flags.includes("q"); // kingside or queenside
+    const isCheck = chessCopy.isCheck();
+    const isGameOver = chessCopy.isGameOver();
+    onExploreMove?.(move.san, isCapture, isCheck, isCastle, isGameOver);
+
     setExplorationChess(chessCopy);
     setExplorationMoves((prev) => (exploreMode ? [...prev, newMove] : [newMove]));
     setExploreMode(true);
@@ -125,6 +136,7 @@ export function useExploreMode({
     exploreMode,
     getMainlineFen,
     onEnterExplore,
+    onExploreMove,
     runExploreAnalysis,
   ]);
 

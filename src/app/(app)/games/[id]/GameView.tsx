@@ -9,6 +9,7 @@ import { parsePgn } from "@/lib/chess/pgn";
 import { useExploreMode } from "@/hooks/useExploreMode";
 import { useClickToMove } from "@/hooks/useClickToMove";
 import { useGameNavigation } from "@/hooks/useGameNavigation";
+import { useChessSound } from "@/hooks/useChessSound";
 import { useStockfish } from "@/hooks/useStockfish";
 import {
   evalToPawns,
@@ -164,6 +165,23 @@ export function GameView({ game }: { game: GameData }) {
 
   const parsed = useMemo(() => parsePgn(game.pgn), [game.pgn]);
   const totalMoves = parsed?.positions.length ?? 0;
+
+  const { playMoveSound } = useChessSound();
+
+  // Build sound params from mainline position SAN and game result (D-14)
+  const handleSoundTrigger = useCallback((moveIndex: number) => {
+    if (!parsed || moveIndex < 0) return;
+    const pos = parsed.positions[moveIndex];
+    if (!pos) return;
+    const san = pos.san ?? "";
+    const isCastle = san.startsWith("O");
+    const isCapture = san.includes("x");
+    const isCheck = san.includes("+") || san.includes("#");
+    const isGameOver =
+      moveIndex === parsed.positions.length - 1 && game.result !== undefined;
+    playMoveSound({ san, isCastle, isCapture, isCheck, isGameOver });
+  }, [parsed, game.result, playMoveSound]);
+
   const {
     currentMove,
     goFirst: goFirstMainline,
@@ -171,7 +189,15 @@ export function GameView({ game }: { game: GameData }) {
     goNext: goNextMainline,
     goLast: goLastMainline,
     goToMove,
-  } = useGameNavigation({ totalMoves });
+  } = useGameNavigation({ totalMoves, onSoundTrigger: handleSoundTrigger });
+
+  // Explore-move sound callback (D-15)
+  const handleExploreMove = useCallback(
+    (san: string, isCapture: boolean, isCheck: boolean, isCastle: boolean, isGameOver: boolean) => {
+      playMoveSound({ san, isCapture, isCheck, isCastle, isGameOver });
+    },
+    [playMoveSound]
+  );
 
   const movePairs = useMemo<MovePair[]>(() => {
     if (!parsed) return [];
@@ -242,6 +268,7 @@ export function GameView({ game }: { game: GameData }) {
   } = useExploreMode({
     getMainlineFen,
     analyzeSinglePosition,
+    onExploreMove: handleExploreMove,
   });
 
   const getActiveFen = useCallback(() => {
