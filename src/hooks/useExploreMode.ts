@@ -78,8 +78,13 @@ export function useExploreMode({
     const baseFen = getMainlineFen();
     const chess = new Chess(baseFen === "start" ? undefined : baseFen);
     for (const move of movesToReplay) {
-      // D-09: queen-only promotion - see separate fix.
-      chess.move({ from: move.from, to: move.to, promotion: "q" });
+      try {
+        // D-09: queen-only promotion - see separate fix.
+        chess.move({ from: move.from, to: move.to, promotion: "q" });
+      } catch {
+        exitExploreMode();
+        return;
+      }
     }
 
     setExploreMode(true);

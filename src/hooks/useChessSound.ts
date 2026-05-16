@@ -1,29 +1,22 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 // Synthesised chess sounds via Web Audio API — no external dependency needed.
 // Priority order: gameOver > check > castle > capture > move  (D-13)
 //
 // Debounce: each playMoveSound call cancels a pending timeout so rapid
 // navigation does not accumulate queued sounds  (T-14-03).
+//
+// Single shared AudioContext per hook instance — avoids browser limit on
+// concurrent contexts (Chrome: 6) during rapid navigation.
 
 type PlayMoveSoundParams = {
-  san?: string;
   isCapture?: boolean;
   isCheck?: boolean;
   isCastle?: boolean;
   isGameOver?: boolean;
 };
-
-function getAudioContext(): AudioContext | null {
-  if (typeof window === "undefined") return null;
-  try {
-    return new AudioContext();
-  } catch {
-    return null;
-  }
-}
 
 /** Play a short synthesised tone using Web Audio API. */
 function playTone(
@@ -51,73 +44,39 @@ function playTone(
     osc.start(t0);
     osc.stop(t0 + duration + 0.01);
   }
-
-  // Auto-close context after all tones finish to release resources.
-  const totalDuration = Math.max(...notes.map((n) => n.startAt + n.duration));
-  setTimeout(() => {
-    ctx.close().catch(() => {});
-  }, (totalDuration + 0.1) * 1000);
-}
-
-function soundMove() {
-  const ctx = getAudioContext();
-  if (!ctx) return;
-  playTone(ctx, [
-    { freq: 880, startAt: 0,    duration: 0.06 },
-    { freq: 660, startAt: 0.06, duration: 0.08 },
-  ]);
-}
-
-function soundCapture() {
-  const ctx = getAudioContext();
-  if (!ctx) return;
-  playTone(ctx, [
-    { freq: 440,  startAt: 0,    duration: 0.05 },
-    { freq: 330,  startAt: 0.04, duration: 0.07 },
-    { freq: 220,  startAt: 0.09, duration: 0.1  },
-  ]);
-}
-
-function soundCheck() {
-  const ctx = getAudioContext();
-  if (!ctx) return;
-  playTone(ctx, [
-    { freq: 1046, startAt: 0,    duration: 0.07 },
-    { freq: 1318, startAt: 0.07, duration: 0.07 },
-    { freq: 1046, startAt: 0.14, duration: 0.09 },
-  ]);
-}
-
-function soundCastle() {
-  const ctx = getAudioContext();
-  if (!ctx) return;
-  // Two quick clicks — king then rook
-  playTone(ctx, [
-    { freq: 700, startAt: 0,   duration: 0.06 },
-    { freq: 750, startAt: 0.1, duration: 0.06 },
-  ]);
-}
-
-function soundGameEnd() {
-  const ctx = getAudioContext();
-  if (!ctx) return;
-  // Descending cadence
-  playTone(ctx, [
-    { freq: 523, startAt: 0,    duration: 0.12 },
-    { freq: 440, startAt: 0.13, duration: 0.12 },
-    { freq: 349, startAt: 0.26, duration: 0.18 },
-  ]);
 }
 
 // ── Hook ────────────────────────────────────────────────────────────────────────
 
 export function useChessSound() {
-  // Debounce ref — cancels pending sound on rapid navigation (T-14-03)
+  const ctxRef = useRef<AudioContext | null>(null);
   const pendingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (pendingRef.current !== null) clearTimeout(pendingRef.current);
+      ctxRef.current?.close().catch(() => {});
+      ctxRef.current = null;
+    };
+  }, []);
+
+  function getOrCreateCtx(): AudioContext | null {
+    if (typeof window === "undefined") return null;
+    try {
+      if (!ctxRef.current || ctxRef.current.state === "closed") {
+        ctxRef.current = new AudioContext();
+      }
+      if (ctxRef.current.state === "suspended") {
+        ctxRef.current.resume().catch(() => {});
+      }
+      return ctxRef.current;
+    } catch {
+      return null;
+    }
+  }
 
   const playMoveSound = useCallback(
     ({ isCapture, isCheck, isCastle, isGameOver }: PlayMoveSoundParams) => {
-      // Cancel any queued sound
       if (pendingRef.current !== null) {
         clearTimeout(pendingRef.current);
         pendingRef.current = null;
@@ -125,20 +84,42 @@ export function useChessSound() {
 
       pendingRef.current = setTimeout(() => {
         pendingRef.current = null;
+        const ctx = getOrCreateCtx();
+        if (!ctx) return;
+
         // Priority: gameOver > check > castle > capture > move
         if (isGameOver) {
-          soundGameEnd();
+          playTone(ctx, [
+            { freq: 523, startAt: 0,    duration: 0.12 },
+            { freq: 440, startAt: 0.13, duration: 0.12 },
+            { freq: 349, startAt: 0.26, duration: 0.18 },
+          ]);
         } else if (isCheck) {
-          soundCheck();
+          playTone(ctx, [
+            { freq: 1046, startAt: 0,    duration: 0.07 },
+            { freq: 1318, startAt: 0.07, duration: 0.07 },
+            { freq: 1046, startAt: 0.14, duration: 0.09 },
+          ]);
         } else if (isCastle) {
-          soundCastle();
+          playTone(ctx, [
+            { freq: 700, startAt: 0,   duration: 0.06 },
+            { freq: 750, startAt: 0.1, duration: 0.06 },
+          ]);
         } else if (isCapture) {
-          soundCapture();
+          playTone(ctx, [
+            { freq: 440,  startAt: 0,    duration: 0.05 },
+            { freq: 330,  startAt: 0.04, duration: 0.07 },
+            { freq: 220,  startAt: 0.09, duration: 0.1  },
+          ]);
         } else {
-          soundMove();
+          playTone(ctx, [
+            { freq: 880, startAt: 0,    duration: 0.06 },
+            { freq: 660, startAt: 0.06, duration: 0.08 },
+          ]);
         }
       }, 30);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 

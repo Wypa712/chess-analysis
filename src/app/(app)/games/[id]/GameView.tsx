@@ -177,9 +177,10 @@ export function GameView({ game }: { game: GameData }) {
     const isCastle = san.startsWith("O");
     const isCapture = san.includes("x");
     const isCheck = san.includes("+") || san.includes("#");
-    const isGameOver =
-      moveIndex === parsed.positions.length - 1 && game.result !== undefined;
-    playMoveSound({ san, isCastle, isCapture, isCheck, isGameOver });
+    // Never play game-over sound during mainline navigation — only explore moves
+    // that actually end the game should trigger it (WR-04).
+    const isGameOver = false;
+    playMoveSound({ isCastle, isCapture, isCheck, isGameOver });
   }, [parsed, game.result, playMoveSound]);
 
   const {
@@ -193,8 +194,8 @@ export function GameView({ game }: { game: GameData }) {
 
   // Explore-move sound callback (D-15)
   const handleExploreMove = useCallback(
-    (san: string, isCapture: boolean, isCheck: boolean, isCastle: boolean, isGameOver: boolean) => {
-      playMoveSound({ san, isCapture, isCheck, isCastle, isGameOver });
+    (_san: string, isCapture: boolean, isCheck: boolean, isCastle: boolean, isGameOver: boolean) => {
+      playMoveSound({ isCapture, isCheck, isCastle, isGameOver });
     },
     [playMoveSound]
   );
@@ -336,17 +337,15 @@ export function GameView({ game }: { game: GameData }) {
 
   const goFirst = () => {
     exitExploreIfActive();
-    clearSelection();
     goFirstMainline();
   };
   const goPrev  = () => {
     if (stepExploreBackward()) return;
     goPrevMainline();
   };
-  const goNext  = () => { exitExploreIfActive(); clearSelection(); goNextMainline(); };
+  const goNext  = () => { exitExploreIfActive(); goNextMainline(); };
   const goLast  = () => {
     exitExploreIfActive();
-    clearSelection();
     goLastMainline();
   };
 

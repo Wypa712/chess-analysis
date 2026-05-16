@@ -57,20 +57,21 @@ export function useClickToMove({
       const fen = getActiveFen();
       const chess = new Chess(fen === "start" ? undefined : fen);
       const piece = chess.get(square);
+      const turnColor = chess.turn();
 
-      if (piece) {
+      if (piece && piece.color === turnColor) {
         const moves = chess.moves({ square, verbose: true }) as Move[];
         if (moves.length > 0) {
           // Select the piece and show legal moves
           setSelectedSquare(square);
           setLegalMoves(moves);
         } else {
-          // Own piece with no legal moves (pinned or no moves) — deselect
+          // Own piece with no legal moves (pinned) — deselect
           setSelectedSquare(null);
           setLegalMoves([]);
         }
       } else {
-        // Clicked empty square without highlight — deselect (D-07)
+        // Clicked empty square or opponent piece — deselect (D-07)
         setSelectedSquare(null);
         setLegalMoves([]);
       }
