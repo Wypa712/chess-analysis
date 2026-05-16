@@ -249,3 +249,15 @@ describe('GameView hook order', () => {
     expect(source.slice(loadingReturnIndex)).not.toMatch(/\buse(?:Memo|Effect|LayoutEffect|Callback|Ref|State)\s*\(/);
   });
 });
+
+describe('GameView mobile layout', () => {
+  it('keeps the board controls section as the first mobile viewport', () => {
+    const css = readFileSync(resolve(__dirname, 'GameView.module.css'), 'utf8');
+    const mobileBlockStart = css.indexOf('@media (max-width: 768px)');
+    const mobileCss = css.slice(mobileBlockStart);
+
+    expect(mobileBlockStart).toBeGreaterThan(-1);
+    expect(mobileCss).toMatch(/\.boardArea\s*{[^}]*min-height:\s*calc\(100svh - var\(--mobile-nav-h\)\)/s);
+    expect(mobileCss).toMatch(/\.boardArea\s*{[^}]*max-height:\s*calc\(100svh - var\(--mobile-nav-h\)\)/s);
+  });
+});
