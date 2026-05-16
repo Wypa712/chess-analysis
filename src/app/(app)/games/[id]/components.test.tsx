@@ -261,3 +261,25 @@ describe('GameView mobile layout', () => {
     expect(mobileCss).toMatch(/\.boardArea\s*{[^}]*max-height:\s*calc\(100svh - var\(--mobile-nav-h\)\)/s);
   });
 });
+
+describe('GameView desktop layout', () => {
+  it('keeps desktop board controls aligned to the rendered board size', () => {
+    const source = readFileSync(resolve(__dirname, 'GameView.tsx'), 'utf8');
+    const css = readFileSync(resolve(__dirname, 'GameView.module.css'), 'utf8');
+
+    expect(source).toContain('"--board-size": `${boardSize}px`');
+    expect(css).toMatch(/\.playerBadge\s*{[^}]*width:\s*min\(100%, var\(--board-size\)\)/s);
+    expect(css).toMatch(/\.navControls\s*{[^}]*width:\s*min\(100%, var\(--board-size\)\)/s);
+    expect(css).toMatch(/\.analyzeWrap\s*{[^}]*width:\s*min\(100%, var\(--board-size\)\)/s);
+  });
+});
+
+describe('EvalSection chart layout', () => {
+  it('keeps chart content inside the right edge of the SVG viewBox', () => {
+    const source = readFileSync(resolve(__dirname, 'EvalSection.tsx'), 'utf8');
+
+    expect(source).toContain('const CHART_RIGHT_X = CHART_W - CHART_PADDING;');
+    expect(source).toContain('const CHART_CONTENT_W = CHART_RIGHT_X - AXIS_W;');
+    expect(source).not.toContain('const CHART_CONTENT_W = CHART_W - AXIS_W;');
+  });
+});

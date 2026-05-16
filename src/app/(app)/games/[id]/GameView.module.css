@@ -123,7 +123,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  width: 100%;
+  width: min(100%, var(--board-size));
   min-width: 0;
 }
 
@@ -200,6 +200,7 @@
 /* ── Nav controls ────────────────────────────────────────────────────────── */
 
 .navControls {
+  width: min(100%, var(--board-size));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -252,7 +253,7 @@
 /* ── Analyze button ──────────────────────────────────────────────────────── */
 
 .analyzeWrap {
-  width: 100%;
+  width: min(100%, var(--board-size));
 }
 
 .analyzeBtn {
@@ -809,6 +810,12 @@
     min-height: calc(100svh - var(--mobile-nav-h));
     max-height: calc(100svh - var(--mobile-nav-h));
     box-sizing: border-box;
+  }
+
+  .playerBadge,
+  .navControls,
+  .analyzeWrap {
+    width: 100%;
   }
 
   .boardRow {

@@ -11,8 +11,9 @@ import styles from "./GameView.module.css";
 const CHART_W = 320;
 const CHART_H = 80;
 const AXIS_W = 28;
-const CHART_CONTENT_W = CHART_W - AXIS_W;
 const CHART_PADDING = 5;
+const CHART_RIGHT_X = CHART_W - CHART_PADDING;
+const CHART_CONTENT_W = CHART_RIGHT_X - AXIS_W;
 
 function evalToChartY(pawns: number): number {
   const usable = CHART_H - 2 * CHART_PADDING;
@@ -148,7 +149,7 @@ function EvalChart({
               <line
                 x1={AXIS_W}
                 y1={y}
-                x2={CHART_W}
+                x2={CHART_RIGHT_X}
                 y2={y}
                 stroke={pawnVal === 0 ? "var(--color-border)" : "rgba(255,255,255,0.12)"}
                 strokeWidth={1}

@@ -487,7 +487,11 @@ export function GameView({ game }: { game: GameData }) {
   }
 
   return (
-    <div className={styles.layout} ref={layoutRef}>
+    <div
+      className={styles.layout}
+      ref={layoutRef}
+      style={{ "--board-size": `${boardSize}px` } as React.CSSProperties}
+    >
       {/* ── Left: board area ── */}
       <div className={styles.boardArea} ref={boardAreaRef}>
         <PlayerBadge
