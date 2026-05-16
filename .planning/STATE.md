@@ -3,45 +3,53 @@ gsd_state_version: 1.0
 milestone: v2
 milestone_name: v2
 status: executing
-last_updated: "2026-05-16T13:48:21.099Z"
+last_updated: "2026-05-16T13:51:56.273Z"
 progress:
   total_phases: 3
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 14
-  completed_plans: 13
-  percent: 93
+  completed_plans: 14
+  percent: 100
 ---
 
 # STATE.md — Chess Analysis App
 
-Last updated: 2026-05-15 (Phase 12 complete)
+Last updated: 2026-05-16 (Phase 13 complete)
 
 ---
 
 ## Project Reference
 
 **Core value:** Україномовний шаховий тренер — Stockfish-аналіз + LLM-коучинг для гравців ~1000 ELO
-**Current focus:** Phase 12 COMPLETE — Ready for next phase
+**Current focus:** Phase 13 COMPLETE — Mobile UI/UX Improvements done
 
 ---
 
 ## Current Position
 
-Phase: 13 (mobile-ui-ux-improvements) — IN PROGRESS (2026-05-16)
-Plans: 2/3 complete
+Phase: 13 (mobile-ui-ux-improvements) — COMPLETE (2026-05-16)
+Plans: 3/3 complete
 **Milestone:** 2 — v2
-**Last completed:** Phase 13 Plan 02 — Mobile GameView Layout (2026-05-16)
-**Status:** Executing Phase 13
+**Last completed:** Phase 13 Plan 03 — Hide Moves Tab on Mobile (2026-05-16)
+**Status:** Phase 13 complete
 
 ```
-Progress: [█████████░] 93%
+Progress: [██████████] 100%
 Milestone 1: 8/8 phases ✅
-Milestone 2: Phase 13 in progress (2/3 plans done)
+Milestone 2: Phase 13 complete (3/3 plans done) ✅
 ```
 
 ---
 
 ## What Was Last Completed
+
+**Phase 13 Plan 03: Hide Moves Tab on Mobile** — completed 2026-05-16
+
+Delivered:
+
+- `data-tab={tab}` атрибут на кожному tab button у LlmTabsPanel
+- `.tabItem[data-tab="moves"] { display: none; }` CSS rule в `@media (max-width: 768px)` у GameView.module.css
+- CSS-only рішення — без JS умов; flex автоматично дає 50%/50% для Аналіз/Поради на мобайлі
 
 **Phase 13 Plan 02: Mobile GameView Layout** — completed 2026-05-16
 
