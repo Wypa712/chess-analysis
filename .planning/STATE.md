@@ -2,15 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2
 milestone_name: v2
-status: Ready for next phase
-last_updated: "2026-05-16T00:00:00Z"
-current_phase: 13
+status: executing
+last_updated: "2026-05-16T13:48:21.099Z"
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 14
-  completed_plans: 12
-  percent: 86
+  completed_plans: 13
+  percent: 93
 ---
 
 # STATE.md — Chess Analysis App
@@ -29,20 +28,31 @@ Last updated: 2026-05-15 (Phase 12 complete)
 ## Current Position
 
 Phase: 13 (mobile-ui-ux-improvements) — IN PROGRESS (2026-05-16)
-Plans: 1/3 complete
+Plans: 2/3 complete
 **Milestone:** 2 — v2
-**Last completed:** Phase 13 Plan 01 — Pull-to-Refresh on Dashboard (2026-05-16)
+**Last completed:** Phase 13 Plan 02 — Mobile GameView Layout (2026-05-16)
 **Status:** Executing Phase 13
 
 ```
-Progress: [████░░░░░░] 86%
+Progress: [█████████░] 93%
 Milestone 1: 8/8 phases ✅
-Milestone 2: Phase 13 in progress (1/3 plans done)
+Milestone 2: Phase 13 in progress (2/3 plans done)
 ```
 
 ---
 
 ## What Was Last Completed
+
+**Phase 13 Plan 02: Mobile GameView Layout** — completed 2026-05-16
+
+Delivered:
+
+- `isMobile` state в GameView, встановлюється через ResizeObserver compute
+- Горизонтальний eval bar (12px) над шахівницею на мобайлі
+- MoveStrip (44px, overflow-x scroll, авто-скрол до активного ходу) під шахівницею
+- Шахівниця на повну ширину на мобайлі (без відступу для вертикального eval bar)
+- activeTab default "analysis" на мобайлі (SSR-безпечно)
+- Кнопки навігації 48×48px на мобайлі
 
 **Phase 13 Plan 01: Pull-to-Refresh on Dashboard** — completed 2026-05-16
 

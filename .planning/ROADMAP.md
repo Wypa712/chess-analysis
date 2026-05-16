@@ -221,7 +221,7 @@ Plans:
 **Plans:** 3 plans
 Plans:
 - [x] 13-01-PLAN.md — Pull-to-refresh: usePullToRefresh hook + SyncStatusBar forwardRef + DashboardClient інтеграція
-- [ ] 13-02-PLAN.md — GameView мобільний лейаут: горизонтальний eval bar, MoveStrip, boardSize calc, 48px кнопки
+- [x] 13-02-PLAN.md — GameView мобільний лейаут: горизонтальний eval bar, MoveStrip, boardSize calc, 48px кнопки
 - [ ] 13-03-PLAN.md — LlmTabsPanel мобайл: приховати вкладку "Ходи" через data-tab + CSS
 **UI hint**: yes
 
