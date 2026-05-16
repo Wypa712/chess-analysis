@@ -252,6 +252,7 @@ export function evalToCentipawns(evalScore: EngineEval | undefined): number {
   return evalScore.value >= 0 ? 10000 : -10000;
 }
 
-export function evalToPawns(evalScore: EngineEval | undefined): number {
+export function evalToPawns(evalScore: EngineEval | undefined): number | null {
+  if (!evalScore) return null;
   return evalToCentipawns(evalScore) / 100;
 }

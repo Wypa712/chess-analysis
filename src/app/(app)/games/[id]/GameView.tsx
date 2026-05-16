@@ -781,17 +781,17 @@ function EvalBar({
   active,
   pending,
 }: {
-  value: number;
+  value: number | null;
   boardSize: number;
   active: boolean;
   pending: boolean;
 }) {
-  const clamped = Math.max(-5, Math.min(5, value));
-  const whitePct = active ? 50 + (clamped / 5) * 45 : 50;
-  const isMate = Math.abs(value) >= 50;
+  const clamped = value !== null ? Math.max(-5, Math.min(5, value)) : 0;
+  const whitePct = active && value !== null ? 50 + (clamped / 5) * 45 : 50;
+  const isMate = value !== null && Math.abs(value) >= 50;
   const labelText = pending
     ? "..."
-    : active
+    : active && value !== null
     ? isMate ? "M" : Math.abs(value).toFixed(1)
     : null;
 
