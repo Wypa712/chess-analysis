@@ -40,13 +40,6 @@ export function useClickToMove({
 
       // Step 2: If a piece is selected and the clicked square is a legal move target
       if (selectedSquare !== null && legalMoves.some((m) => m.to === square)) {
-        // In mainline mode (D-02): show preview only, don't execute move
-        if (!exploreMode) {
-          setSelectedSquare(null);
-          setLegalMoves([]);
-          return;
-        }
-        // In explore mode (D-03): execute the move
         onMove(selectedSquare, square);
         setSelectedSquare(null);
         setLegalMoves([]);
@@ -111,7 +104,7 @@ export function useClickToMove({
         // Dot for empty squares (~25% width, D-09)
         styles[move.to] = {
           background:
-            "radial-gradient(circle, rgba(79, 183, 162, 0.65) 25%, transparent 25%)",
+            "radial-gradient(circle, rgba(79, 183, 162, 0.65) 18%, transparent 18%)",
         };
       }
     }
