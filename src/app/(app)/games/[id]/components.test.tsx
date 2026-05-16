@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 // Smoke tests — verify Phase 7C components render without crashing.
 import React from 'react';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
@@ -151,5 +153,18 @@ describe('LlmTabsPanel', () => {
     expect(() =>
       render(<LlmTabsPanel {...baseProps} activeTab="advice" />)
     ).not.toThrow();
+  });
+});
+
+// ── GameView hook order regression ───────────────────────────────────────────
+
+describe('GameView hook order', () => {
+  it('does not call React hooks after the loading early return', () => {
+    const source = readFileSync(resolve(__dirname, 'GameView.tsx'), 'utf8');
+    const loadingReturn = 'if (enginePending || llmPending) {';
+    const loadingReturnIndex = source.indexOf(loadingReturn);
+
+    expect(loadingReturnIndex).toBeGreaterThan(-1);
+    expect(source.slice(loadingReturnIndex)).not.toMatch(/\buse(?:Memo|Effect|LayoutEffect|Callback|Ref|State)\s*\(/);
   });
 });

@@ -11,14 +11,15 @@ files_reviewed_list:
   - src/app/(app)/games/[id]/GameView.module.css
   - src/app/(app)/games/[id]/LlmTabsPanel.tsx
 findings:
-  critical: 2
+  critical: 3
   warning: 4
   info: 3
-  total: 9
+  total: 10
 status: fixed
 fixes_applied:
   - CR-01
   - CR-02
+  - CR-03
   - WR-01
   - WR-02
   - WR-03
@@ -41,6 +42,22 @@ fixed_at: 2026-05-16T12:30:00Z
 ---
 
 ## Critical Issues
+
+### CR-03: Post-deploy React #310 через `useMemo` після loading early return
+
+**File:** `src/app/(app)/games/[id]/GameView.tsx`
+
+**Issue:** Після деплою сторінка гри падала з minified React error #310. Офіційна розшифровка React: `Rendered more hooks than during the previous render`.
+
+Root cause: `if (enginePending || llmPending) return <RouteLoader ... />` стояв перед двома новими `useMemo` (`evalWhitePercent`, `evalDisplayStr`). Перший render під час pending-запитів викликав менше hooks, наступний render після завершення queries доходив до цих `useMemo`, і React валив компонент через зміну порядку hooks.
+
+**Fix applied:** loading return перенесено нижче всіх hook calls у `GameView`, перед основним JSX return. Додано regression test у `components.test.tsx`, який забороняє hook calls після loading early return.
+
+**Verification:**
+- `npm.cmd run test:run -- "src/app/(app)/games/[id]/components.test.tsx"` — 10 passed
+- `npm.cmd run build` — passed
+
+---
 
 ### CR-01: `touchcancel` не обробляється — дотяг-індикатор залишається "застряглим"
 

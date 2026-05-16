@@ -89,11 +89,15 @@ export function GameView({ game }: { game: GameData }) {
   const [flipped, setFlipped] = useState(false);
   const [loadingPct, setLoadingPct] = useState(0);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"moves" | "analysis" | "advice">(
-    typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches ? "analysis" : "moves"
-  );
+  const [activeTab, setActiveTab] = useState<"moves" | "analysis" | "advice">("moves");
   const [llmError, setLlmError] = useState<string | null>(null);
   const [llmOpenPhases, setLlmOpenPhases] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 768px)").matches) {
+      setActiveTab("analysis");
+    }
+  }, []);
 
   // useQuery for GET engine analysis (staleTime Infinity — results never change once computed)
   const {
@@ -129,17 +133,11 @@ export function GameView({ game }: { game: GameData }) {
   });
 
   const analysis = engineAnalysisData ?? null;
-  // Note: useState initializers here always evaluate to "idle" on first render
-  // because engineAnalysisData/llmAnalysisData are undefined until the query
-  // resolves (even from cache). The useEffect hooks below sync these to "done"
-  // on the immediately following render (~1-frame flicker is acceptable here).
-  const [analysisState, setAnalysisState] = useState<"idle" | "loading" | "done" | "error">(
-    engineAnalysisData ? "done" : "idle"
-  );
-  const [llmStatus, setLlmStatus] = useState<LlmStatus>(
-    llmAnalysisData ? "done" : "idle"
-  );
-  const [llmAnalysis, setLlmAnalysis] = useState<LlmGameAnalysisV1 | null>(llmAnalysisData ?? null);
+  // Keep the first render stable between server and client.
+  // The query results are synchronized in effects immediately after mount.
+  const [analysisState, setAnalysisState] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [llmStatus, setLlmStatus] = useState<LlmStatus>("idle");
+  const [llmAnalysis, setLlmAnalysis] = useState<LlmGameAnalysisV1 | null>(null);
 
   // Sync analysisState when engineAnalysisData arrives from cache/network
   useEffect(() => {
@@ -438,10 +436,6 @@ export function GameView({ game }: { game: GameData }) {
     }
   }, [analyzeGame, parsed, game.id, game.color, exitExploreIfActive, llmStatus, handleLlmAnalyze, queryClient]);
 
-  if (enginePending || llmPending) {
-    return <RouteLoader text="Завантажуємо партію…" />;
-  }
-
   const resultLabel =
     game.result === "win"
       ? "Перемога"
@@ -487,6 +481,10 @@ export function GameView({ game }: { game: GameData }) {
     const sign = evalValue > 0 ? "+" : "";
     return `${sign}${evalValue.toFixed(2)}`;
   }, [evalValue]);
+
+  if (enginePending || llmPending) {
+    return <RouteLoader text="Завантажуємо партію…" />;
+  }
 
   return (
     <div className={styles.layout} ref={layoutRef}>
