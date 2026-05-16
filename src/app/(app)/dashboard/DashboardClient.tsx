@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { useSession } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { SyncStatusBar, type SyncStatusBarHandle } from "@/components/SyncStatusBar/SyncStatusBar";
 import { GamesList } from "@/components/GamesList/GamesList";
@@ -22,9 +21,7 @@ const EMPTY_SUMMARY: DashboardSummary = {
   losses: 0,
 };
 
-export function DashboardClient() {
-  const { data: session } = useSession();
-  const userId = session?.user?.id ?? "";
+export function DashboardClient({ userId }: { userId: string }) {
   const queryClient = useQueryClient();
 
   const [summary, setSummary] = useState<DashboardSummary>(EMPTY_SUMMARY);

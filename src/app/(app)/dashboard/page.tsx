@@ -29,5 +29,5 @@ export default async function DashboardPage() {
     redirect("/onboarding");
   }
 
-  return <DashboardClient />;
+  return <DashboardClient userId={session.user.id} />;
 }
