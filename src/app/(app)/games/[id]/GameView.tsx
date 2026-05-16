@@ -7,6 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { RouteLoader } from "@/components/RouteLoader/RouteLoader";
 import { parsePgn } from "@/lib/chess/pgn";
 import { useExploreMode } from "@/hooks/useExploreMode";
+import { useClickToMove } from "@/hooks/useClickToMove";
 import { useGameNavigation } from "@/hooks/useGameNavigation";
 import { useStockfish } from "@/hooks/useStockfish";
 import {
@@ -243,6 +244,22 @@ export function GameView({ game }: { game: GameData }) {
     analyzeSinglePosition,
   });
 
+  const getActiveFen = useCallback(() => {
+    if (exploreMode && explorationChess) return explorationChess.fen();
+    return getMainlineFen();
+  }, [exploreMode, explorationChess, getMainlineFen]);
+
+  const {
+    highlightStyles,
+    handleSquareClick,
+    handlePieceDragBegin,
+    clearSelection,
+  } = useClickToMove({
+    exploreMode,
+    getActiveFen,
+    onMove: handleBoardDrop,
+  });
+
   const currentPositionBestMove = useMemo(() => {
     if (!analysis) return null;
     const positionIndex = currentMove + 1;
@@ -282,7 +299,8 @@ export function GameView({ game }: { game: GameData }) {
 
   const exitExploreIfActive = useCallback(() => {
     if (exploreMode) exitExploreMode();
-  }, [exploreMode, exitExploreMode]);
+    clearSelection();
+  }, [exploreMode, exitExploreMode, clearSelection]);
 
   const seekMainline = useCallback((moveIndex: number) => {
     exitExploreIfActive();
@@ -291,15 +309,17 @@ export function GameView({ game }: { game: GameData }) {
 
   const goFirst = () => {
     exitExploreIfActive();
+    clearSelection();
     goFirstMainline();
   };
   const goPrev  = () => {
     if (stepExploreBackward()) return;
     goPrevMainline();
   };
-  const goNext  = () => { exitExploreIfActive(); goNextMainline(); };
+  const goNext  = () => { exitExploreIfActive(); clearSelection(); goNextMainline(); };
   const goLast  = () => {
     exitExploreIfActive();
+    clearSelection();
     goLastMainline();
   };
 
@@ -317,6 +337,7 @@ export function GameView({ game }: { game: GameData }) {
       }
       if (e.key === "ArrowLeft") {
         e.preventDefault();
+        clearSelection();
         if (stepExploreBackward()) return;
         goPrevMainline();
       } else if (e.key === "ArrowRight") {
@@ -327,7 +348,7 @@ export function GameView({ game }: { game: GameData }) {
     }
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [exitExploreIfActive, goNextMainline, goPrevMainline, stepExploreBackward]);
+  }, [clearSelection, exitExploreIfActive, goNextMainline, goPrevMainline, stepExploreBackward]);
 
   useEffect(() => {
     if (activeTokenRef.current) {
@@ -454,12 +475,15 @@ export function GameView({ game }: { game: GameData }) {
     : boardFen;
 
   const exploreLastMove = explorationMoves[explorationMoves.length - 1];
-  const displaySquareStyles = exploreMode && exploreLastMove
-    ? {
-        [exploreLastMove.from]: { background: "rgba(109, 174, 219, 0.24)" },
-        [exploreLastMove.to]:   { background: "rgba(79, 183, 162, 0.38)" },
-      }
-    : lastMoveSquares;
+  const displaySquareStyles = {
+    ...(exploreMode && exploreLastMove
+      ? {
+          [exploreLastMove.from]: { background: "rgba(109, 174, 219, 0.24)" },
+          [exploreLastMove.to]:   { background: "rgba(79, 183, 162, 0.38)" },
+        }
+      : lastMoveSquares),
+    ...highlightStyles,
+  };
 
   const mainlineEvalValue =
     analysis && currentMove >= 0
@@ -536,6 +560,8 @@ export function GameView({ game }: { game: GameData }) {
                 boardOrientation={boardOrientation}
                 arePiecesDraggable={!!parsed}
                 onPieceDrop={parsed ? handleBoardDrop : undefined}
+                onSquareClick={handleSquareClick}
+                onPieceDragBegin={handlePieceDragBegin}
                 customSquareStyles={displaySquareStyles}
                 customArrows={bestMoveArrow}
                 customBoardStyle={{
