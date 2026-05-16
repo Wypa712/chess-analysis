@@ -345,7 +345,7 @@ export function EvalSection({
           <span className={styles.moveCount}>{game.moveCount} ходів</span>
         </div>
         <EvalChart
-          evals={analysis ? analysis.evalGraph.map((p) => evalToPawns(p.eval)) : []}
+          evals={analysis ? analysis.evalGraph.map((p) => evalToPawns(p.eval) ?? 0) : []}
           currentIndex={currentMove + 1}
           onSeek={(i) => onSeek(i - 1)}
           keyMoments={analysis?.keyMoments}
