@@ -77,14 +77,18 @@ export function GameView({ game }: { game: GameData }) {
 
   const layoutRef = useRef<HTMLDivElement>(null);
   const boardAreaRef = useRef<HTMLDivElement>(null);
+  const activeTokenRef = useRef<HTMLButtonElement>(null);
 
   const queryClient = useQueryClient();
 
   const [boardSize, setBoardSize] = useState(MAX_BOARD_SIZE);
+  const [isMobile, setIsMobile] = useState(false);
   const [flipped, setFlipped] = useState(false);
   const [loadingPct, setLoadingPct] = useState(0);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"moves" | "analysis" | "advice">("moves");
+  const [activeTab, setActiveTab] = useState<"moves" | "analysis" | "advice">(
+    typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches ? "analysis" : "moves"
+  );
   const [llmError, setLlmError] = useState<string | null>(null);
   const [llmOpenPhases, setLlmOpenPhases] = useState<Record<string, boolean>>({});
 
@@ -314,20 +318,28 @@ export function GameView({ game }: { game: GameData }) {
     return () => window.removeEventListener("keydown", handleKey);
   }, [exitExploreIfActive, goNextMainline, goPrevMainline, stepExploreBackward]);
 
+  useEffect(() => {
+    if (activeTokenRef.current) {
+      activeTokenRef.current.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    }
+  }, [currentMove]);
+
   useLayoutEffect(() => {
     const layoutEl = layoutRef.current;
     const boardAreaEl = boardAreaRef.current;
     if (!layoutEl || !boardAreaEl) return;
 
     const compute = () => {
-      const isMobile = window.matchMedia("(max-width: 768px)").matches;
+      const mobile = window.matchMedia("(max-width: 768px)").matches;
+      setIsMobile(mobile);
       const style = getComputedStyle(boardAreaEl);
       const paddingX =
         parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
-      const availableW =
-        boardAreaEl.clientWidth - paddingX - EVAL_BAR_WIDTH - BOARD_ROW_GAP;
+      const availableW = mobile
+        ? boardAreaEl.clientWidth - paddingX
+        : boardAreaEl.clientWidth - paddingX - EVAL_BAR_WIDTH - BOARD_ROW_GAP;
       const availableH = layoutEl.clientHeight - DESKTOP_VERTICAL_CHROME;
-      const rawSize = isMobile ? availableW : Math.min(availableW, availableH);
+      const rawSize = mobile ? availableW : Math.min(availableW, availableH);
       const size = snapBoardSize(rawSize);
       setBoardSize((prev) => (prev === size ? prev : size));
     };
@@ -456,6 +468,19 @@ export function GameView({ game }: { game: GameData }) {
   const evalActive = exploreMode ? !!exploreEvalResult : !!analysis;
   const evalPending = exploreMode && exploreAnalyzing && !exploreEvalResult;
 
+  const evalWhitePercent = useMemo(() => {
+    if (evalValue === null || evalValue === undefined) return 50;
+    const clamped = Math.max(-10, Math.min(10, evalValue));
+    return 50 + clamped * 5;
+  }, [evalValue]);
+
+  const evalDisplayStr = useMemo(() => {
+    if (evalValue === null || evalValue === undefined) return "–";
+    if (Math.abs(evalValue) >= 50) return evalValue > 0 ? `M${Math.abs(evalValue)}` : `-M${Math.abs(evalValue)}`;
+    const sign = evalValue > 0 ? "+" : "";
+    return `${sign}${evalValue.toFixed(2)}`;
+  }, [evalValue]);
+
   return (
     <div className={styles.layout} ref={layoutRef}>
       {/* ── Left: board area ── */}
@@ -468,6 +493,21 @@ export function GameView({ game }: { game: GameData }) {
           mistakes={analysis ? countClassifications(analysis, opponentColor, "mistake") : undefined}
           blunders={analysis ? countClassifications(analysis, opponentColor, "blunder") : undefined}
         />
+
+        {isMobile && (
+          <div className={styles.evalBarHorizontalWrap}>
+            <div className={styles.evalBarHorizontal}>
+              <div
+                className={styles.evalBarHorizontalWhite}
+                style={{ width: evalActive ? `${Math.round(evalWhitePercent)}%` : "50%" }}
+              />
+              <div className={styles.evalBarHorizontalBlack} />
+            </div>
+            <span className={styles.evalBarHorizontalLabel}>
+              {evalActive ? evalDisplayStr : "–"}
+            </span>
+          </div>
+        )}
 
         <div className={styles.boardRow}>
           <EvalBar
@@ -511,6 +551,42 @@ export function GameView({ game }: { game: GameData }) {
           mistakes={analysis ? countClassifications(analysis, userColor, "mistake") : undefined}
           blunders={analysis ? countClassifications(analysis, userColor, "blunder") : undefined}
         />
+
+        {isMobile && movePairs.length > 0 && (
+          <div className={styles.moveStrip}>
+            {movePairs.map((pair) => {
+              const whiteIdx = (pair.num - 1) * 2;
+              const blackIdx = whiteIdx + 1;
+              return (
+                <div key={pair.num} className={styles.movePairGroup}>
+                  <span className={styles.moveStripNum}>{pair.num}.</span>
+                  {pair.white && (
+                    <button
+                      type="button"
+                      ref={currentMove === whiteIdx ? activeTokenRef : null}
+                      className={`${styles.moveStripToken} ${currentMove === whiteIdx ? styles.moveStripTokenActive : ""}`}
+                      onClick={() => seekMainline(whiteIdx)}
+                      aria-pressed={currentMove === whiteIdx}
+                    >
+                      {pair.white}
+                    </button>
+                  )}
+                  {pair.black !== undefined && (
+                    <button
+                      type="button"
+                      ref={currentMove === blackIdx ? activeTokenRef : null}
+                      className={`${styles.moveStripToken} ${currentMove === blackIdx ? styles.moveStripTokenActive : ""}`}
+                      onClick={() => seekMainline(blackIdx)}
+                      aria-pressed={currentMove === blackIdx}
+                    >
+                      {pair.black}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         <div className={styles.navControls}>
           <button
