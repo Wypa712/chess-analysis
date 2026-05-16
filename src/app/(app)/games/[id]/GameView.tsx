@@ -701,16 +701,7 @@ export function GameView({ game }: { game: GameData }) {
                 </div>
               </div>
             )}
-            {analysisState === "done" && llmStatus === "idle" && (
-              <button
-                type="button"
-                className={styles.analyzeBtn}
-                onClick={handleLlmAnalyze}
-              >
-                <StockfishIcon />
-                Завершити аналіз
-              </button>
-            )}
+
             {analysisState === "done" && llmStatus === "error" && (
               <div className={styles.analyzeError}>
                 <span>{llmError ?? "Не вдалося отримати LLM-поради"}</span>
